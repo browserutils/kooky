@@ -17,7 +17,7 @@ it), but I guess the keychain parts
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 
 Basic functionality works, on MacOS. I expect Linux to work too, since
-it doesn't encrypt.
+it doesn't encrypt. **The API is currently not expected to be at all stable.**
 
 PRs more than welcome.
 
