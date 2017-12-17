@@ -30,6 +30,29 @@ TODOs
 - [ ] Handle rows in Chrome's cookie DB with other than 14 columns (?)
 - [ ] Make it work for Firefox.
 
+## Example usage
+```go
+usr, _ := user.Current()
+
+var cookies []*kooky.Cookie
+var err error
+
+chrome := false
+if chrome {
+	cookiesFile := fmt.Sprintf("%s/Library/Application Support/Google/Chrome/Default/Cookies", usr.HomeDir)
+	cookies, err = kooky.ReadChromeCookies(cookiesFile, "", "", time.Time{})
+} else {
+	cookiesFile := fmt.Sprintf("%s/Library/Cookies/Cookies.binarycookies", usr.HomeDir)
+	cookies, err = kooky.ReadSafariCookies(cookiesFile, "", "", time.Time{})
+}
+if err != nil {
+	return err
+}
+for _, cookie := range cookies {
+	fmt.Println(cookie)
+}
+```
+
 ## Thanks/references
 - Thanks to [@dacort](http://github.com/dacort) for MacOS cookie decrypting
   code at https://gist.github.com/dacort/bd6a5116224c594b14db.
