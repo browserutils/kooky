@@ -21,7 +21,7 @@ it doesn't encrypt.
 
 PRs more than welcome.
 
-### TODOs
+TODOs
 
 - [ ] Make it work on Windows. (Look at
       [this](https://play.golang.org/p/fknP9AuLU-) and
@@ -29,3 +29,10 @@ PRs more than welcome.
       to learn how to decrypt.)
 - [ ] Handle rows in Chrome's cookie DB with other than 14 columns (?)
 - [ ] Make it work for Firefox.
+
+## Thanks/references
+- Thanks to [@dacort](http://github.com/dacort) for MacOS cookie decrypting
+  code at https://gist.github.com/dacort/bd6a5116224c594b14db.
+- Thanks to [@as0ler](http://github.com/as0ler)
+  (and originally [@satishb3](http://github.com/satishb3) I believe) for
+  Safari cookie-reading Python code at https://github.com/as0ler/BinaryCookieReader.
