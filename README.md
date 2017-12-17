@@ -1,23 +1,30 @@
 # kooky
 
+Reaching into browser-specific, vaguely documented, possibly
+concurrently modified cookie stores to pilfer cookies is a bad idea.
+Since you've arrived here, you're almost certainly going to do it
+anyway. Me too. And if we're going to do the Wrong Thing, at least
+let's try to Do it Right.
+
 Package kooky contains routines to reach into cookie stores for Chrome
 and Safari, and retrieve the cookies.
-
-You don't usually want to do this, but when you do, you do. Apparently
-it's common enough that there is example code scattered around the net
-in various languages. If you wanted it in Go, you're in luck.
 
 It aspires to be pure Go (I spent quite a while making
 [go-sqlite/sqlite3](https://github.com/go-sqlite/sqlite3) work for
 it), but I guess the keychain parts
-([keybase/go-keychain](http://github.com/keybase/go-keychain)) mess that up.
+([keybase/go-keychain](http://github.com/keybase/go-keychain)) mess
+that up.
+
+It also aspires to work for all three major browsers, on all three
+major platforms. Naturally, half of that is TODOs.
 
 ## Status
 
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 
 Basic functionality works, on MacOS. I expect Linux to work too, since
-it doesn't encrypt. **The API is currently not expected to be at all stable.**
+it doesn't encrypt. **The API is currently not expected to be at all
+stable.**
 
 PRs more than welcome.
 
