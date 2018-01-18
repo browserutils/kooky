@@ -35,7 +35,6 @@ TODOs
       [this](https://github.com/cfstras/chromecsv/blob/master/crypt_windows.go)
       to learn how to decrypt.)
 - [ ] Handle rows in Chrome's cookie DB with other than 14 columns (?)
-- [ ] Make it work for Firefox.
 
 ## Example usage
 ```go
