@@ -1,4 +1,5 @@
 // +build !darwin
+// +build !windows
 
 package kooky
 
