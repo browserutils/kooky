@@ -13,11 +13,9 @@ char* decrypt(byte* in, int len, int *outLen) {
 	CryptUnprotectData(
 		&input,
 		&pDescrOut,
-		NULL,                 // Optional entropy
-		NULL,                 // Reserved
-		NULL,                 // Here, the optional
-                              // prompt structure is not
-                              // used.
+		NULL,
+		NULL,
+		NULL,
 		0,
 		&output);
 	*outLen = output.cbData;
