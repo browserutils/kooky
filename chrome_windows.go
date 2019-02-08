@@ -16,8 +16,8 @@ char* decrypt(byte* in, int len, int *outLen) {
 		NULL,                 // Optional entropy
 		NULL,                 // Reserved
 		NULL,                 // Here, the optional
-							  // prompt structure is not
-							  // used.
+                              // prompt structure is not
+                              // used.
 		0,
 		&output);
 	*outLen = output.cbData;
