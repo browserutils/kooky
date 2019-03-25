@@ -16,7 +16,7 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 	defer db.Close()
 
 	err = db.VisitTableRecords("moz_cookies", func(rowId *int64, rec sqlite3.Record) error {
-		if len(rec.Values) != 13 {
+		if lRec := len(rec.Values); lRec != 13 && lRec != 14 {
 			return fmt.Errorf("got %d columns, but expected 13")
 		}
 
@@ -51,8 +51,9 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 		cookie.Path = v
 
 		// Expires
-		v2, ok := rec.Values[7].(int32)
-		if !ok {
+		v2, ok1 := rec.Values[7].(int32)
+		_,  ok2 := rec.Values[7].(uint64)
+		if !ok1 && !ok2 {
 			return fmt.Errorf("got unexpected value for Expires %v (type %T)", rec.Values[7], rec.Values[7], )
 		}
 		cookie.Expires = time.Unix(int64(v2), 0)
