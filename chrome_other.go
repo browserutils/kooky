@@ -1,5 +1,4 @@
-// +build !darwin
-// +build !windows
+// +build !darwin,!windows,!linux android
 
 package kooky
 
