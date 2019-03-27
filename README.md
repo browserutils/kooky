@@ -65,3 +65,7 @@ for _, cookie := range cookies {
 - Thanks to [@as0ler](http://github.com/as0ler)
   (and originally [@satishb3](http://github.com/satishb3) I believe) for
   Safari cookie-reading Python code at https://github.com/as0ler/BinaryCookieReader.
+- Thanks to all the people who have contributed functionality and fixes:
+  - [@srlehn](http://github.com/srlehn) - many fixes, including Linux support for Chrome
+  - [@zippoxer](http://github.com/zippoxer) - Windows support for Chrome
+  - [@adamdecaf](http://github.com/adamdecaf) - Firefox support
