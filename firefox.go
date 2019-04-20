@@ -51,12 +51,13 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 		cookie.Path = v
 
 		// Expires
-		v2, ok1 := rec.Values[7].(int32)
-		_,  ok2 := rec.Values[7].(uint64)
-		if !ok1 && !ok2 {
-			return fmt.Errorf("got unexpected value for Expires %v (type %T)", rec.Values[7], rec.Values[7], )
+		if v2, ok := rec.Values[7].(int32); ok {
+		  cookie.Expires = time.Unix(int64(v2), 0)
+		} else if v3, ok := rec.Values[7].(uint64); ok {
+		  cookie.Expires = time.Unix(int64(v3), 0)
+    } else {
+			return fmt.Errorf("got unexpected value for Expires %v (type %T)", rec.Values[7], rec.Values[7])
 		}
-		cookie.Expires = time.Unix(int64(v2), 0)
 
 		// Creation
 		v3, ok := rec.Values[9].(int64)
