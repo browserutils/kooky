@@ -17,7 +17,7 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 
 	err = db.VisitTableRecords("moz_cookies", func(rowId *int64, rec sqlite3.Record) error {
 		if lRec := len(rec.Values); lRec != 13 && lRec != 14 {
-			return fmt.Errorf("got %d columns, but expected 13 or 14")
+			return fmt.Errorf("got %d columns, but expected 13 or 14", lRec)
 		}
 
 		cookie := Cookie{}
