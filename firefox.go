@@ -21,64 +21,61 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 		}
 
 		cookie := Cookie{}
+		var ok bool
 
 		// Name
-		v, ok := rec.Values[3].(string)
+		cookie.Name, ok = rec.Values[3].(string)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Name %v", rec.Values[3])
 		}
-		cookie.Name = v
 
 		// Value
-		v, ok = rec.Values[4].(string)
+		cookie.Value, ok = rec.Values[4].(string)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Value %v", rec.Values[4])
 		}
-		cookie.Value = v
 
 		// Domain
-		v, ok = rec.Values[1].(string)
+		cookie.Domain, ok = rec.Values[1].(string)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Domain %v", rec.Values[1])
 		}
-		cookie.Domain = v
 
 		// Path
-		v, ok = rec.Values[6].(string)
+		cookie.Path, ok = rec.Values[6].(string)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Path %v", rec.Values[6])
 		}
-		cookie.Path = v
 
 		// Expires
-		if v2, ok := rec.Values[7].(int32); ok {
-			cookie.Expires = time.Unix(int64(v2), 0)
-		} else if v3, ok := rec.Values[7].(uint64); ok {
-			cookie.Expires = time.Unix(int64(v3), 0)
+		if int32Value, ok := rec.Values[7].(int32); ok {
+			cookie.Expires = time.Unix(int64(int32Value), 0)
+		} else if uint64Value, ok := rec.Values[7].(uint64); ok {
+			cookie.Expires = time.Unix(int64(uint64Value), 0)
 		} else {
 			return fmt.Errorf("got unexpected value for Expires %v (type %T)", rec.Values[7], rec.Values[7])
 		}
 
 		// Creation
-		v3, ok := rec.Values[9].(int64)
+		int64Value, ok := rec.Values[9].(int64)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Creation %v (type %T)", rec.Values[9], rec.Values[9])
 		}
-		cookie.Creation = time.Unix(v3/1e6, 0) // drop nanoseconds
+		cookie.Creation = time.Unix(int64Value/1e6, 0) // drop nanoseconds
 
 		// Secure
-		v4, ok := rec.Values[10].(int)
+		intValue, ok := rec.Values[10].(int)
 		if !ok {
 			return fmt.Errorf("got unexpected value for Secure %v", rec.Values[10])
 		}
-		cookie.Secure = v4 > 0
+		cookie.Secure = intValue > 0
 
 		// HttpOnly
-		v4, ok = rec.Values[11].(int)
+		intValue, ok = rec.Values[11].(int)
 		if !ok {
 			return fmt.Errorf("got unexpected value for HttpOnly %v", rec.Values[11])
 		}
-		cookie.HttpOnly = v4 > 0
+		cookie.HttpOnly = intValue > 0
 
 		cookies = append(cookies, &cookie)
 
