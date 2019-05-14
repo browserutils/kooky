@@ -14,7 +14,7 @@ func TestReadFirefoxCookies(t *testing.T) {
 	}
 
 	if len(cookies) != 1 {
-		t.Fatal("got %d cookies, but expected 1", len(cookies))
+		t.Fatalf("got %d cookies, but expected 1", len(cookies))
 	}
 
 	// TZ when I created cookies.sqlite
@@ -25,16 +25,16 @@ func TestReadFirefoxCookies(t *testing.T) {
 
 	c := cookies[0]
 	if c.Domain != "godoc.org" {
-		t.Error("c.Domain=%q", c.Domain)
+		t.Errorf("c.Domain=%q", c.Domain)
 	}
 	if c.Name != "GODOC_ORG_SESSION_ID" {
-		t.Error("c.Name=%q", c.Name)
+		t.Errorf("c.Name=%q", c.Name)
 	}
 	if c.Path != "/github.com/go-sqlite/" {
-		t.Error("c.Path=%q", c.Path)
+		t.Errorf("c.Path=%q", c.Path)
 	}
 	if !c.Expires.Equal(time.Date(2018, 01, 17, 19, 24, 51, 0, tz)) {
-		t.Error("c.Expires=%q", c.Expires)
+		t.Errorf("c.Expires=%q", c.Expires)
 	}
 	if c.Secure {
 		t.Error("c.Secure expected false")
@@ -43,9 +43,9 @@ func TestReadFirefoxCookies(t *testing.T) {
 		t.Error("c.HttpOnly expected false")
 	}
 	if !c.Creation.Equal(time.Date(2018, 01, 17, 18, 24, 47, 0, tz)) {
-		t.Error("c.Creation=%q", c.Creation)
+		t.Errorf("c.Creation=%q", c.Creation)
 	}
 	if c.Value != "a748915ba19c6d0b" {
-		t.Error("c.Value=%q", c.Value)
+		t.Errorf("c.Value=%q", c.Value)
 	}
 }
