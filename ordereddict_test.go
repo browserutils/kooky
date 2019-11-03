@@ -1,4 +1,4 @@
-package vfilter
+package ordereddict
 
 import (
 	"encoding/json"
