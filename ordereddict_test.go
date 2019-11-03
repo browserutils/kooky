@@ -35,6 +35,9 @@ var (
 		// Ensure key order is preserved.
 		{NewDict().Set("A", 1).Set("B", 2), `{"A":1,"B":2}`},
 		{NewDict().Set("B", 1).Set("A", 2), `{"B":1,"A":2}`},
+
+		// Serialize with quotes
+		{NewDict().Set("foo\\'s quote", 1), `{"foo\\'s quote":1}`},
 	}
 
 	// Check that serialization decodes to the object.

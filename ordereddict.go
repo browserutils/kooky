@@ -318,18 +318,21 @@ func (self Dict) MarshalJSON() ([]byte, error) {
 	for _, k := range self.keys {
 
 		// add key
-		kEscaped := strings.Replace(k, `"`, `\"`, -1)
-		result = result + `"` + kEscaped + `":`
+		kEscaped, err := json.Marshal(k)
+		if err != nil {
+			continue
+		}
+
+		result += string(kEscaped) + ":"
 
 		// add value
 		v := self.store[k]
 
 		vBytes, err := json.Marshal(v)
-
 		if err == nil {
-			result = result + string(vBytes) + ","
+			result += string(vBytes) + ","
 		} else {
-			result = result + "null,"
+			result += "null,"
 		}
 	}
 	if len(self.keys) > 0 {
