@@ -1,0 +1,195 @@
+{
+    "FileHeader": [0, {
+        "Magic": [4, ["unsigned long"]],
+        "FormatVersion": [8, ["unsigned long"]],
+        "FormatRevision": [232, ["unsigned long"]],
+        "FileType": [12, ["Enumeration", {
+            "target": "unsigned long",
+            "choices": {
+                "0": "Database",
+                "1": "StreamingFile"
+            }
+        }]],
+        "DataBaseTime": [16, ["DBTime"]],
+        "Signature": [24, ["JET_SIGNATURE"]],
+        "PageSize": [236, ["unsigned long"]]
+    }],
+    "DBTime": [8, {
+        "Hours": [0, ["unsigned short"]],
+        "Min": [2, ["unsigned short"]],
+        "Sec": [4, ["unsigned short"]]
+    }],
+    "JET_SIGNATURE": [28, {
+        "Creation": [4, ["JET_LOGTIME"]],
+        "CreatorMachine": [12, ["String"]]
+    }],
+    "JET_LOGTIME": [8, {
+        "Sec": [0, ["unsigned char"]],
+        "Min": [1, ["unsigned char"]],
+        "Hours": [2, ["unsigned char"]],
+        "Days": [3, ["unsigned char"]],
+        "Month": [4, ["unsigned char"]],
+        "Year": [5, ["unsigned char"]]
+    }],
+    "PageHeader": [0, {
+        "LastModified": [8, ["DBTime"]],
+        "PreviousPage": [16, ["unsigned long"]],
+        "NextPage": [20, ["unsigned long"]],
+        "FatherPage": [24, ["unsigned long"]],
+        "AvailableDataSize": [28, ["unsigned short"]],
+        "AvailableDataOffset": [32, ["unsigned short"]],
+        "AvailablePageTag": [34, ["unsigned short"]],
+        "Flags": [36, ["Flags", {
+            "target": "unsigned long",
+            "maskmap": {
+                "Root": 1,
+                "Leaf": 2,
+                "Parent": 4,
+                "Empty": 8,
+                "SpaceTree": 32,
+                "Index": 64,
+                "Long": 128
+            }
+        }]]
+    }],
+    "Tag": [8, {
+        "ValueSize": [0, ["BitField", {
+            "target": "unsigned short",
+            "start_bit": 0,
+            "end_bit": 13
+        }]],
+        "Flags": [2, ["BitField", {
+            "target": "unsigned short",
+            "start_bit": 13,
+            "end_bit": 16
+        }]],
+        "ValueOffset": [2, ["BitField", {
+            "target": "unsigned short",
+            "start_bit": 0,
+            "end_bit": 13
+        }]]
+    }],
+    "ESENT_ROOT_HEADER": [16, {
+        "InitialNumberOfPages": [0, ["unsigned long"]],
+        "ParentFDP": [4, ["unsigned long"]],
+        "ExtentSpace": [8, ["Enumeration", {
+            "target": "unsigned long",
+            "choices": {
+                "0": "Single",
+                "1": "Multiple"
+            }
+        }]],
+        "SpaceTreePageNumber": [12, ["unsigned long"]]
+    }],
+
+    "ESENT_BRANCH_HEADER": [16, {
+        "CommonPageKey": [0, ["String"]]
+    }],
+
+    "ESENT_SPACE_TREE_HEADER": [16, {
+    }],
+
+    "ESENT_LEAF_HEADER": [16, {
+        "CommonPageKey": [0, ["String"]]
+    }],
+
+    "ESENT_SPACE_TREE_ENTRY": [16, {
+        "PageKeySize": [0, ["unsigned short"]],
+        "LastPageNumber": [0, ["unsigned long"]],
+        "NumberOfPages": [0, ["unsigned long"]]
+    }],
+
+    "ESENT_INDEX_ENTRY": [16, {
+        "RecordPageKey": [0, ["String"]]
+    }],
+
+    "ESENT_LEAF_ENTRY": [16, {
+        "CommonPageKeySize": [0, ["unsigned short"]],
+        "LocalPageKeySize": [2, ["unsigned short"]]
+    }],
+
+    "ESENT_BRANCH_ENTRY": [16, {
+        "LocalPageKeySize": [0, ["unsigned short"]]
+    }],
+
+    "CATALOG_TYPE_TABLE": [0, {
+        "FatherDataPageNumber": [0, ["unsigned long"]],
+        "SpaceUsage": [4, ["unsigned long"]],
+        "Flags": [8, ["unsigned long"]],
+        "InitialNumberOfPages": [12, ["unsigned long"]]
+    }],
+
+    "CATALOG_TYPE_TABLE": [0, {
+        "FatherDataPageNumber": [0, ["unsigned long"]],
+        "SpaceUsage": [4, ["unsigned long"]]
+    }],
+
+    "CATALOG_TYPE_COLUMN": [0, {
+        "ColumnType": [0, ["Enumeration", {
+            "target": "unsigned long",
+            "choices": {
+                "0" : "NULL",
+                "1" : "Boolean",
+                "2" : "Signed byte",
+                "3" : "Signed short",
+                "4" : "Signed long",
+                "5" : "Currency",
+                "6" : "Single precision FP",
+                "7" : "Double precision FP",
+                "8" : "DateTime",
+                "9" : "Binary",
+                "10" : "Text",
+                "11" : "Long Binary",
+                "12" : "Long Text",
+                "13" : "Obsolete",
+                "14" : "Unsigned long",
+                "15" : "Long long",
+                "16" : "GUID",
+                "17" : "Unsigned short",
+                "18" : "Max"
+            }
+        }]],
+        "SpaceUsage": [4, ["unsigned long"]],
+        "ColumnFlags": [8, ["unsigned long"]],
+        "CodePage": [12, ["unsigned long"]]
+    }],
+
+    "CATALOG_TYPE_INDEX": [0, {
+        "FatherDataPageNumber": [0, ["unsigned long"]],
+        "SpaceUsage": [4, ["unsigned long"]],
+        "IndexFlags": [8, ["unsigned long"]],
+        "Locale": [12, ["unsigned long"]]
+    }],
+
+    "CATALOG_TYPE_LONG_VALUE": [0, {
+        "FatherDataPageNumber": [0, ["unsigned long"]],
+        "SpaceUsage": [4, ["unsigned long"]],
+        "LVFlags": [8, ["unsigned long"]],
+        "InitialNumberOfPages": [12, ["unsigned long"]]
+    }],
+
+    "ESENT_DATA_DEFINITION_HEADER": [0, {
+        "LastFixedSize": [0, ["char"]],
+        "LastVariableDataType": [1, ["unsigned char"]],
+        "VariableSizeOffset": [2, ["unsigned short"]],
+        "Catalog": [4, ["ESENT_CATALOG_DATA_DEFINITION_ENTRY"]]
+    }],
+
+    "ESENT_CATALOG_DATA_DEFINITION_ENTRY": [0, {
+        "FDPId": [0, ["unsigned long"]],
+        "Type": [4, ["Enumeration", {
+            "target": "unsigned short",
+            "choices": {
+                "1": "CATALOG_TYPE_TABLE",
+                "2": "CATALOG_TYPE_COLUMN",
+                "3": "CATALOG_TYPE_INDEX",
+                "4": "CATALOG_TYPE_LONG_VALUE"
+            }
+        }]],
+        "Identifier": [6, ["unsigned long"]],
+        "Column": [10, ["CATALOG_TYPE_COLUMN"]],
+        "Table": [10, ["CATALOG_TYPE_TABLE"]],
+        "Index": [10, ["CATALOG_TYPE_INDEX"]],
+        "LongValue": [10, ["CATALOG_TYPE_LONG_VALUE"]]
+    }]
+}
