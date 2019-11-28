@@ -33,8 +33,8 @@
     }],
     "PageHeader": [0, {
         "LastModified": [8, ["DBTime"]],
-        "PreviousPage": [16, ["unsigned long"]],
-        "NextPage": [20, ["unsigned long"]],
+        "PreviousPageNumber": [16, ["unsigned long"]],
+        "NextPageNumber": [20, ["unsigned long"]],
         "FatherPage": [24, ["unsigned long"]],
         "AvailableDataSize": [28, ["unsigned short"]],
         "AvailableDataOffset": [32, ["unsigned short"]],
@@ -104,8 +104,8 @@
     }],
 
     "ESENT_LEAF_ENTRY": [16, {
-        "CommonPageKeySize": [0, ["unsigned short"]],
-        "LocalPageKeySize": [2, ["unsigned short"]]
+        "CommonPageKeySize": [-2, ["unsigned short"]],
+        "LocalPageKeySize": [0, ["unsigned short"]]
     }],
 
     "ESENT_BRANCH_ENTRY": [16, {
@@ -172,7 +172,8 @@
         "LastFixedSize": [0, ["char"]],
         "LastVariableDataType": [1, ["unsigned char"]],
         "VariableSizeOffset": [2, ["unsigned short"]],
-        "Catalog": [4, ["ESENT_CATALOG_DATA_DEFINITION_ENTRY"]]
+        "Catalog": [4, ["ESENT_CATALOG_DATA_DEFINITION_ENTRY"]],
+        "FixedSizeStart": [4, ["unsigned long long"]]
     }],
 
     "ESENT_CATALOG_DATA_DEFINITION_ENTRY": [0, {
@@ -191,5 +192,9 @@
         "Table": [10, ["CATALOG_TYPE_TABLE"]],
         "Index": [10, ["CATALOG_TYPE_INDEX"]],
         "LongValue": [10, ["CATALOG_TYPE_LONG_VALUE"]]
+    }],
+
+    "Misc": [0, {
+        "Misc": [0, ["long"]]
     }]
 }
