@@ -195,6 +195,8 @@
     }],
 
     "Misc": [0, {
-        "Misc": [0, ["long"]]
+        "Misc": [0, ["long"]],
+        "Misc2": [0, ["short"]],
+        "Misc3": [0, ["long long"]]
     }]
 }

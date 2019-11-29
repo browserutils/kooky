@@ -170,11 +170,15 @@ func (self *ESENT_LEAF_HEADER) Dump() {
 	fmt.Println(self.DebugString())
 }
 
+// WalkPages walks the b tree starting with the page id specified and
+// extracts all tagged values into the callback. The callback may
+// return an error which will cause WalkPages to stop and relay that
+// error to our caller.
 func WalkPages(ctx *ESEContext,
 	id int64,
-	cb func(header *PageHeader, id int64, value *Value)) {
+	cb func(header *PageHeader, page_id int64, value *Value) error) error {
 	if id <= 0 {
-		return
+		return nil
 	}
 
 	header := ctx.GetPage(id)
@@ -182,20 +186,32 @@ func WalkPages(ctx *ESEContext,
 
 	// No more records.
 	if len(values) == 0 {
-		return
+		return nil
 	}
 
 	for _, value := range values[1:] {
 		if header.IsLeaf() {
-			cb(header, id, value)
+			// Allow the callback to return early (e.g. in case of cancellation)
+			err := cb(header, id, value)
+			if err != nil {
+				return err
+			}
 		} else if header.IsBranch() {
 			// Walk the branch
 			branch := NewESENT_BRANCH_ENTRY(ctx, value)
-			WalkPages(ctx, branch.ChildPageNumber(), cb)
+			err := WalkPages(ctx, branch.ChildPageNumber(), cb)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	if header.NextPageNumber() > 0 {
-		WalkPages(ctx, int64(header.NextPageNumber()), cb)
+		err := WalkPages(ctx, int64(header.NextPageNumber()), cb)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
