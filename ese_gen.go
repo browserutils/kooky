@@ -68,6 +68,7 @@ type ESEProfile struct {
     Off_ESENT_DATA_DEFINITION_HEADER_LastVariableDataType int64
     Off_ESENT_DATA_DEFINITION_HEADER_VariableSizeOffset int64
     Off_ESENT_DATA_DEFINITION_HEADER_Catalog int64
+    Off_ESENT_DATA_DEFINITION_HEADER_FixedSizeStart int64
     Off_ESENT_INDEX_ENTRY_RecordPageKey int64
     Off_ESENT_LEAF_ENTRY_CommonPageKeySize int64
     Off_ESENT_LEAF_ENTRY_LocalPageKeySize int64
@@ -94,9 +95,12 @@ type ESEProfile struct {
     Off_JET_LOGTIME_Year int64
     Off_JET_SIGNATURE_Creation int64
     Off_JET_SIGNATURE_CreatorMachine int64
+    Off_Misc_Misc int64
+    Off_Misc_Misc2 int64
+    Off_Misc_Misc3 int64
     Off_PageHeader_LastModified int64
-    Off_PageHeader_PreviousPage int64
-    Off_PageHeader_NextPage int64
+    Off_PageHeader_PreviousPageNumber int64
+    Off_PageHeader_NextPageNumber int64
     Off_PageHeader_FatherPage int64
     Off_PageHeader_AvailableDataSize int64
     Off_PageHeader_AvailableDataOffset int64
@@ -109,7 +113,7 @@ type ESEProfile struct {
 
 func NewESEProfile() *ESEProfile {
     // Specific offsets can be tweaked to cater for slight version mismatches.
-    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,4,0,0,2,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,1,2,3,4,5,4,12,8,16,20,24,28,32,34,36,0,2,2}
+    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,4,4,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,1,2,3,4,5,4,12,0,0,0,8,16,20,24,28,32,34,36,0,2,2}
     return self
 }
 
@@ -183,6 +187,10 @@ func (self *ESEProfile) JET_LOGTIME(reader io.ReaderAt, offset int64) *JET_LOGTI
 
 func (self *ESEProfile) JET_SIGNATURE(reader io.ReaderAt, offset int64) *JET_SIGNATURE {
     return &JET_SIGNATURE{Reader: reader, Offset: offset, Profile: self}
+}
+
+func (self *ESEProfile) Misc(reader io.ReaderAt, offset int64) *Misc {
+    return &Misc{Reader: reader, Offset: offset, Profile: self}
 }
 
 func (self *ESEProfile) PageHeader(reader io.ReaderAt, offset int64) *PageHeader {
@@ -541,12 +549,17 @@ func (self *ESENT_DATA_DEFINITION_HEADER) VariableSizeOffset() uint16 {
 func (self *ESENT_DATA_DEFINITION_HEADER) Catalog() *ESENT_CATALOG_DATA_DEFINITION_ENTRY {
     return self.Profile.ESENT_CATALOG_DATA_DEFINITION_ENTRY(self.Reader, self.Profile.Off_ESENT_DATA_DEFINITION_HEADER_Catalog + self.Offset)
 }
+
+func (self *ESENT_DATA_DEFINITION_HEADER) FixedSizeStart() uint64 {
+    return ParseUint64(self.Reader, self.Profile.Off_ESENT_DATA_DEFINITION_HEADER_FixedSizeStart + self.Offset)
+}
 func (self *ESENT_DATA_DEFINITION_HEADER) DebugString() string {
     result := fmt.Sprintf("struct ESENT_DATA_DEFINITION_HEADER @ %#x:\n", self.Offset)
     result += fmt.Sprintf("  LastFixedSize: %#0x\n", self.LastFixedSize())
     result += fmt.Sprintf("  LastVariableDataType: %#0x\n", self.LastVariableDataType())
     result += fmt.Sprintf("  VariableSizeOffset: %#0x\n", self.VariableSizeOffset())
     result += fmt.Sprintf("  Catalog: {\n%v}\n", indent(self.Catalog().DebugString()))
+    result += fmt.Sprintf("  FixedSizeStart: %#0x\n", self.FixedSizeStart())
     return result
 }
 
@@ -831,6 +844,35 @@ func (self *JET_SIGNATURE) DebugString() string {
     return result
 }
 
+type Misc struct {
+    Reader io.ReaderAt
+    Offset int64
+    Profile *ESEProfile
+}
+
+func (self *Misc) Size() int {
+    return 0
+}
+
+func (self *Misc) Misc() int32 {
+   return ParseInt32(self.Reader, self.Profile.Off_Misc_Misc + self.Offset)
+}
+
+func (self *Misc) Misc2() int16 {
+   return ParseInt16(self.Reader, self.Profile.Off_Misc_Misc2 + self.Offset)
+}
+
+func (self *Misc) Misc3() int64 {
+    return int64(ParseUint64(self.Reader, self.Profile.Off_Misc_Misc3 + self.Offset))
+}
+func (self *Misc) DebugString() string {
+    result := fmt.Sprintf("struct Misc @ %#x:\n", self.Offset)
+    result += fmt.Sprintf("  Misc: %#0x\n", self.Misc())
+    result += fmt.Sprintf("  Misc2: %#0x\n", self.Misc2())
+    result += fmt.Sprintf("  Misc3: %#0x\n", self.Misc3())
+    return result
+}
+
 type PageHeader struct {
     Reader io.ReaderAt
     Offset int64
@@ -845,12 +887,12 @@ func (self *PageHeader) LastModified() *DBTime {
     return self.Profile.DBTime(self.Reader, self.Profile.Off_PageHeader_LastModified + self.Offset)
 }
 
-func (self *PageHeader) PreviousPage() uint32 {
-   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_PreviousPage + self.Offset)
+func (self *PageHeader) PreviousPageNumber() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_PreviousPageNumber + self.Offset)
 }
 
-func (self *PageHeader) NextPage() uint32 {
-   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_NextPage + self.Offset)
+func (self *PageHeader) NextPageNumber() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_NextPageNumber + self.Offset)
 }
 
 func (self *PageHeader) FatherPage() uint32 {
@@ -874,6 +916,18 @@ func (self *PageHeader) Flags() *Flags {
    names := make(map[string]bool)
 
 
+   if value & 8 != 0 {
+      names["Empty"] = true
+   }
+
+   if value & 32 != 0 {
+      names["SpaceTree"] = true
+   }
+
+   if value & 64 != 0 {
+      names["Index"] = true
+   }
+
    if value & 128 != 0 {
       names["Long"] = true
    }
@@ -890,26 +944,14 @@ func (self *PageHeader) Flags() *Flags {
       names["Parent"] = true
    }
 
-   if value & 8 != 0 {
-      names["Empty"] = true
-   }
-
-   if value & 32 != 0 {
-      names["SpaceTree"] = true
-   }
-
-   if value & 64 != 0 {
-      names["Index"] = true
-   }
-
    return &Flags{Value: uint64(value), Names: names}
 }
 
 func (self *PageHeader) DebugString() string {
     result := fmt.Sprintf("struct PageHeader @ %#x:\n", self.Offset)
     result += fmt.Sprintf("  LastModified: {\n%v}\n", indent(self.LastModified().DebugString()))
-    result += fmt.Sprintf("  PreviousPage: %#0x\n", self.PreviousPage())
-    result += fmt.Sprintf("  NextPage: %#0x\n", self.NextPage())
+    result += fmt.Sprintf("  PreviousPageNumber: %#0x\n", self.PreviousPageNumber())
+    result += fmt.Sprintf("  NextPageNumber: %#0x\n", self.NextPageNumber())
     result += fmt.Sprintf("  FatherPage: %#0x\n", self.FatherPage())
     result += fmt.Sprintf("  AvailableDataSize: %#0x\n", self.AvailableDataSize())
     result += fmt.Sprintf("  AvailableDataOffset: %#0x\n", self.AvailableDataOffset())
@@ -982,6 +1024,33 @@ func (self Flags) IsSet(flag string) bool {
 }
 
 
+func ParseInt16(reader io.ReaderAt, offset int64) int16 {
+    data := make([]byte, 2)
+    _, err := reader.ReadAt(data, offset)
+    if err != nil {
+       return 0
+    }
+    return int16(binary.LittleEndian.Uint16(data))
+}
+
+func ParseInt32(reader io.ReaderAt, offset int64) int32 {
+    data := make([]byte, 4)
+    _, err := reader.ReadAt(data, offset)
+    if err != nil {
+       return 0
+    }
+    return int32(binary.LittleEndian.Uint32(data))
+}
+
+func ParseInt64(reader io.ReaderAt, offset int64) int64 {
+    data := make([]byte, 8)
+    _, err := reader.ReadAt(data, offset)
+    if err != nil {
+       return 0
+    }
+    return int64(binary.LittleEndian.Uint64(data))
+}
+
 func ParseInt8(reader io.ReaderAt, offset int64) int8 {
     result := make([]byte, 1)
     _, err := reader.ReadAt(result, offset)
@@ -1007,6 +1076,15 @@ func ParseUint32(reader io.ReaderAt, offset int64) uint32 {
        return 0
     }
     return binary.LittleEndian.Uint32(data)
+}
+
+func ParseUint64(reader io.ReaderAt, offset int64) uint64 {
+    data := make([]byte, 8)
+    _, err := reader.ReadAt(data, offset)
+    if err != nil {
+       return 0
+    }
+    return binary.LittleEndian.Uint64(data)
 }
 
 func ParseUint8(reader io.ReaderAt, offset int64) byte {
