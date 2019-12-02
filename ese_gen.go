@@ -922,18 +922,6 @@ func (self *PageHeader) Flags() *Flags {
    names := make(map[string]bool)
 
 
-   if value & 8 != 0 {
-      names["Empty"] = true
-   }
-
-   if value & 32 != 0 {
-      names["SpaceTree"] = true
-   }
-
-   if value & 64 != 0 {
-      names["Index"] = true
-   }
-
    if value & 128 != 0 {
       names["Long"] = true
    }
@@ -948,6 +936,18 @@ func (self *PageHeader) Flags() *Flags {
 
    if value & 4 != 0 {
       names["Parent"] = true
+   }
+
+   if value & 8 != 0 {
+      names["Empty"] = true
+   }
+
+   if value & 32 != 0 {
+      names["SpaceTree"] = true
+   }
+
+   if value & 64 != 0 {
+      names["Index"] = true
    }
 
    return &Flags{Value: uint64(value), Names: names}
@@ -982,7 +982,7 @@ func (self *RecordTag) Identifier() uint16 {
 
 func (self *RecordTag) DataOffset() uint64 {
    value := ParseUint16(self.Reader, self.Profile.Off_RecordTag_DataOffset + self.Offset)
-   return (uint64(value) & 0x7fff) >> 0x0
+   return (uint64(value) & 0x1fff) >> 0x0
 }
 func (self *RecordTag) DebugString() string {
     result := fmt.Sprintf("struct RecordTag @ %#x:\n", self.Offset)

@@ -3,6 +3,7 @@
 package parser
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -235,12 +236,18 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 			buf, pres := taggedItems[identifier]
 			if pres {
 				switch column_type {
-				case "Binary":
-					result.Set(column, buf)
+				case "Binary", "Long Binary":
+					result.Set(column, hex.EncodeToString(buf))
 
 				case "Long Text":
 					result.Set(column, ParseTerminatedUTF16String(
 						&BufferReaderAt{buf}, 0))
+
+				default:
+					if Debug {
+						fmt.Printf("Can not handle Column %v tagged data %v\n",
+							column, catalog.Column().DebugString())
+					}
 				}
 			}
 		}

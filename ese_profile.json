@@ -184,7 +184,7 @@
         "DataOffset": [2, ["BitField", {
             "target": "unsigned short",
             "start_bit": 0,
-            "end_bit": 15
+            "end_bit": 13
         }]]
     }],
 
