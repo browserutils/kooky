@@ -53,21 +53,8 @@
         }]]
     }],
     "Tag": [8, {
-        "ValueSize": [0, ["BitField", {
-            "target": "unsigned short",
-            "start_bit": 0,
-            "end_bit": 13
-        }]],
-        "Flags": [2, ["BitField", {
-            "target": "unsigned short",
-            "start_bit": 13,
-            "end_bit": 16
-        }]],
-        "ValueOffset": [2, ["BitField", {
-            "target": "unsigned short",
-            "start_bit": 0,
-            "end_bit": 13
-        }]]
+        "_ValueSize": [0, ["unsigned short"]],
+        "_ValueOffset": [2, ["unsigned short"]]
     }],
     "ESENT_ROOT_HEADER": [16, {
         "InitialNumberOfPages": [0, ["unsigned long"]],
@@ -168,12 +155,10 @@
         "InitialNumberOfPages": [12, ["unsigned long"]]
     }],
 
-    "ESENT_DATA_DEFINITION_HEADER": [0, {
-        "LastFixedSize": [0, ["char"]],
+    "ESENT_DATA_DEFINITION_HEADER": [4, {
+        "LastFixedType": [0, ["char"]],
         "LastVariableDataType": [1, ["unsigned char"]],
-        "VariableSizeOffset": [2, ["unsigned short"]],
-        "Catalog": [4, ["ESENT_CATALOG_DATA_DEFINITION_ENTRY"]],
-        "FixedSizeStart": [4, ["unsigned long long"]]
+        "VariableSizeOffset": [2, ["unsigned short"]]
     }],
 
     "ESENT_CATALOG_DATA_DEFINITION_ENTRY": [0, {
@@ -194,9 +179,20 @@
         "LongValue": [10, ["CATALOG_TYPE_LONG_VALUE"]]
     }],
 
+    "RecordTag": [4, {
+        "Identifier": [0, ["unsigned short"]],
+        "DataOffset": [2, ["BitField", {
+            "target": "unsigned short",
+            "start_bit": 0,
+            "end_bit": 15
+        }]]
+    }],
+
     "Misc": [0, {
         "Misc": [0, ["long"]],
         "Misc2": [0, ["short"]],
-        "Misc3": [0, ["long long"]]
+        "Misc3": [0, ["long long"]],
+        "Misc5": [0, ["unsigned long long"]],
+        "Misc4": [0, ["UnicodeString"]]
     }]
 }

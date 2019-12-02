@@ -6,6 +6,11 @@ type BufferReaderAt struct {
 
 func (self *BufferReaderAt) ReadAt(buf []byte, offset int64) (int, error) {
 	to_read := int64(len(buf))
+	if offset < 0 {
+		to_read += offset
+		offset = 0
+	}
+
 	if offset+to_read > int64(len(self.buffer)) {
 		to_read = int64(len(self.buffer)) - offset
 	}
