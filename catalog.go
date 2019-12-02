@@ -17,12 +17,21 @@ const (
 	CATALOG_PAGE_NUMBER = 4
 )
 
+// Store a simple struct of column spec for speed.
+type ColumnSpec struct {
+	FDPId      uint32
+	Name       string
+	Identifier uint32
+	Type       string
+	SpaceUsage int64
+}
+
 type Table struct {
 	ctx                  *ESEContext
 	Header               *CATALOG_TYPE_TABLE
 	FatherDataPageNumber uint32
 	Name                 string
-	Columns              *ordereddict.Dict
+	Columns              []*ColumnSpec
 	Indexes              *ordereddict.Dict
 	LongValues           *ordereddict.Dict
 }
@@ -94,124 +103,119 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 	prevItemLen := int64(0)
 	variableSizeOffset := dd_header.Offset + int64(dd_header.VariableSizeOffset())
 	variableDataBytesProcessed := int64(dd_header.LastVariableDataType()-127) * 2
+	last_fixed_type := uint32(dd_header.LastFixedType())
+	last_variable_data_type := uint32(dd_header.LastVariableDataType())
 
 	// Iterate over the column definitions and decode each
 	// identifier according to where it comes from.
-	for _, column := range self.Columns.Keys() {
-		catalog_any, _ := self.Columns.Get(column)
-		catalog := catalog_any.(*ESENT_CATALOG_DATA_DEFINITION_ENTRY)
-		identifier := catalog.Identifier()
-		column_type := catalog.Column().ColumnType().Name
-
+	for _, column := range self.Columns {
 		if Debug {
-			fmt.Printf("Column %v Identifier %v Type %v\n", column, identifier,
-				catalog.Column().ColumnType().Name)
+			fmt.Printf("Column %v Identifier %v Type %v\n", column.Name,
+				column.Identifier, column.Type)
 		}
 
 		// Column is stored in the fixed section.
-		if identifier <= uint32(dd_header.LastFixedType()) {
-			space_usage := catalog.Column().SpaceUsage()
-
-			switch column_type {
+		if column.Identifier <= last_fixed_type {
+			switch column.Type {
 			case "Boolean":
-				if space_usage == 1 {
-					result.Set(column, ParseUint8(tag.Reader, offset) > 0)
+				if column.SpaceUsage == 1 {
+					result.Set(column.Name, ParseUint8(tag.Reader, offset) > 0)
 				}
 
 			case "Signed byte":
-				if space_usage == 1 {
-					result.Set(column, ParseUint8(tag.Reader, offset))
+				if column.SpaceUsage == 1 {
+					result.Set(column.Name, ParseUint8(tag.Reader, offset))
 				}
 
 			case "Signed short":
-				if space_usage == 2 {
-					result.Set(column, ParseInt16(tag.Reader, offset))
+				if column.SpaceUsage == 2 {
+					result.Set(column.Name, ParseInt16(tag.Reader, offset))
 				}
 
 			case "Unsigned short":
-				if space_usage == 2 {
-					result.Set(column, ParseUint16(tag.Reader, offset))
+				if column.SpaceUsage == 2 {
+					result.Set(column.Name, ParseUint16(tag.Reader, offset))
 				}
 
 			case "Signed long":
-				if space_usage == 4 {
-					result.Set(column, ParseInt32(tag.Reader, offset))
+				if column.SpaceUsage == 4 {
+					result.Set(column.Name, ParseInt32(tag.Reader, offset))
 				}
 
 			case "Unsigned long":
-				if space_usage == 4 {
-					result.Set(column, ParseUint32(tag.Reader, offset))
+				if column.SpaceUsage == 4 {
+					result.Set(column.Name, ParseUint32(tag.Reader, offset))
 				}
 
 			case "Single precision FP":
-				if space_usage == 4 {
-					result.Set(column, math.Float32frombits(
+				if column.SpaceUsage == 4 {
+					result.Set(column.Name, math.Float32frombits(
 						ParseUint32(tag.Reader, offset)))
 				}
 
 			case "Double precision FP":
-				if space_usage == 8 {
-					result.Set(column, math.Float64frombits(
+				if column.SpaceUsage == 8 {
+					result.Set(column.Name, math.Float64frombits(
 						ParseUint64(tag.Reader, offset)))
 				}
 
 			case "DateTime":
-				if space_usage == 8 {
+				if column.SpaceUsage == 8 {
 					// Some hair brained time serialization method
 					// https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
 					days_since_1900 := math.Float64frombits(
 						ParseUint64(tag.Reader, offset))
 					// In python time.mktime((1900,1,1,0,0,0,0,365,0))
-					result.Set(column, time.Unix(int64(days_since_1900*24*60*60)+
+					result.Set(column.Name, time.Unix(int64(days_since_1900*24*60*60)+
 						-2208988800, 0))
 				}
 
 			case "Long long", "Currency":
-				if space_usage == 8 {
-					result.Set(column, ParseUint64(tag.Reader, offset))
+				if column.SpaceUsage == 8 {
+					result.Set(column.Name, ParseUint64(tag.Reader, offset))
 				}
 
 			default:
 				fmt.Printf("Can not handle Column %v fixed data %v\n",
-					column, catalog.Column().DebugString())
+					column.Name, column)
 			}
 
 			if Debug {
 				fmt.Printf("Consumed %#x bytes of FIXED space from %#x\n",
-					catalog.Column().SpaceUsage(), offset)
+					column.SpaceUsage, offset)
 			}
 
 			// Move our offset along
-			offset += int64(catalog.Column().SpaceUsage())
+			offset += column.SpaceUsage
 
 			// Identifier is stored in the variable section
-		} else if 127 < identifier &&
-			identifier <= uint32(dd_header.LastVariableDataType()) {
+		} else if 127 < column.Identifier &&
+			column.Identifier <= last_variable_data_type {
 
 			// Variable data type
-			index := int64(identifier) - 127 - 1
+			index := int64(column.Identifier) - 127 - 1
 			itemLen := int64(ParseUint16(tag.Reader, variableSizeOffset+index*2))
 
 			if itemLen&0x8000 > 0 {
 				// Empty Item
 				itemLen = prevItemLen
-				result.Set(column, nil)
+				result.Set(column.Name, nil)
 			} else {
-				switch column_type {
+				switch column.Type {
 				case "Binary":
-					result.Set(column, ParseString(tag.Reader,
+					result.Set(column.Name, ParseString(tag.Reader,
 						variableSizeOffset+variableDataBytesProcessed,
 						itemLen-prevItemLen))
 
 				case "Text":
-					result.Set(column, ParseString(
+					result.Set(column.Name, ParseString(
 						tag.Reader,
 						variableSizeOffset+variableDataBytesProcessed,
 						itemLen-prevItemLen))
 
 				default:
 					fmt.Printf("Can not handle Column %v variable data %v\n",
-						column, catalog.Column().DebugString())
+						column.Name, column)
 				}
 			}
 
@@ -224,7 +228,7 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 			prevItemLen = itemLen
 
 			// Tagged values
-		} else if identifier > 255 {
+		} else if column.Identifier > 255 {
 			if taggedItems == nil {
 				taggedItems = ParseTaggedValues(
 					self.ctx, getSlice(value.Buffer,
@@ -233,20 +237,20 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 						uint64(len(value.Buffer))))
 			}
 
-			buf, pres := taggedItems[identifier]
+			buf, pres := taggedItems[column.Identifier]
 			if pres {
-				switch column_type {
+				switch column.Type {
 				case "Binary", "Long Binary":
-					result.Set(column, hex.EncodeToString(buf))
+					result.Set(column.Name, hex.EncodeToString(buf))
 
 				case "Long Text":
-					result.Set(column, ParseTerminatedUTF16String(
+					result.Set(column.Name, ParseTerminatedUTF16String(
 						&BufferReaderAt{buf}, 0))
 
 				default:
 					if Debug {
 						fmt.Printf("Can not handle Column %v tagged data %v\n",
-							column, catalog.Column().DebugString())
+							column.Name, column)
 					}
 				}
 			}
@@ -389,7 +393,6 @@ func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error
 			Header:               catalog.Table(),
 			Name:                 itemName,
 			FatherDataPageNumber: catalog.Table().FatherDataPageNumber(),
-			Columns:              ordereddict.NewDict(),
 			Indexes:              ordereddict.NewDict(),
 			LongValues:           ordereddict.NewDict()}
 		self.currentTable = table
@@ -399,7 +402,13 @@ func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error
 		if self.currentTable == nil {
 			return errors.New("Internal Error: No existing table when adding column")
 		}
-		self.currentTable.Columns.Set(itemName, catalog)
+		self.currentTable.Columns = append(self.currentTable.Columns, &ColumnSpec{
+			Name:       itemName,
+			FDPId:      catalog.FDPId(),
+			Identifier: catalog.Identifier(),
+			Type:       catalog.Column().ColumnType().Name,
+			SpaceUsage: int64(catalog.Column().SpaceUsage()),
+		})
 
 	case "CATALOG_TYPE_INDEX":
 		if self.currentTable == nil {
@@ -424,11 +433,9 @@ func (self *Catalog) Dump() string {
 		space := "   "
 		result += fmt.Sprintf("[%v] (FDP %#x):\n%sColumns\n", table.Name,
 			table.FatherDataPageNumber, space)
-		for idx, column := range table.Columns.Keys() {
-			catalog_any, _ := table.Columns.Get(column)
-			catalog := catalog_any.(*ESENT_CATALOG_DATA_DEFINITION_ENTRY)
+		for idx, column := range table.Columns {
 			result += fmt.Sprintf("%s%s%-5d%-30v%v\n", space, space, idx,
-				column, catalog.Column().ColumnType().Name)
+				column.Name, column.Type)
 		}
 
 		result += fmt.Sprintf("%sIndexes\n", space)
