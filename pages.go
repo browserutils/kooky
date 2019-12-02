@@ -11,14 +11,41 @@ const (
 
 type Value struct {
 	Tag    *Tag
+	PageID int64
 	Buffer []byte
+	Flags  uint64
 }
 
 func (self *Value) Reader() io.ReaderAt {
 	return &BufferReaderAt{self.Buffer}
 }
 
-func GetPageValues(ctx *ESEContext, header *PageHeader) []*Value {
+func NewValue(ctx *ESEContext, tag *Tag, PageID int64, buffer []byte) *Value {
+	result := &Value{Tag: tag, PageID: PageID, Buffer: buffer}
+	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
+		result.Flags = uint64(buffer[1] >> 5)
+		buffer[1] &= 0x1f
+	} else {
+		result.Flags = uint64(tag._ValueOffset()) >> 13
+	}
+	return result
+}
+
+func (self *Tag) ValueOffset(ctx *ESEContext) uint16 {
+	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
+		return self._ValueOffset() & 0x7FFF
+	}
+	return self._ValueOffset() & 0x1FFF
+}
+
+func (self *Tag) ValueSize(ctx *ESEContext) uint16 {
+	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
+		return self._ValueSize() & 0x7FFF
+	}
+	return self._ValueSize() & 0x1FFF
+}
+
+func GetPageValues(ctx *ESEContext, header *PageHeader, id int64) []*Value {
 	result := []*Value{}
 
 	// Tags are written from the end of the page
@@ -26,15 +53,18 @@ func GetPageValues(ctx *ESEContext, header *PageHeader) []*Value {
 
 	for tag_count := header.AvailablePageTag(); tag_count > 0; tag_count-- {
 		tag := ctx.Profile.Tag(ctx.Reader, offset)
-		value_offset := header.Offset + 40 + int64(tag.ValueOffset())
+		value_offset := header.EndOffset(ctx) + int64(tag.ValueOffset(ctx))
 
-		buffer := make([]byte, int(tag.ValueSize()))
+		buffer := make([]byte, int(tag.ValueSize(ctx)))
 		ctx.Reader.ReadAt(buffer, value_offset)
 
-		result = append(result, &Value{Tag: tag, Buffer: buffer})
+		result = append(result, NewValue(ctx, tag, id, buffer))
 		offset -= 4
 	}
 
+	if DebugWalk {
+		fmt.Printf("Got %v values for page %v\n", len(result), id)
+	}
 	return result
 }
 
@@ -54,18 +84,33 @@ func (self *PageHeader) IsLeaf() bool {
 	return self.Flags().IsSet("Leaf")
 }
 
+func (self *PageHeader) EndOffset(ctx *ESEContext) int64 {
+	// Common size
+	size := int64(40)
+
+	// Depending on version, the size of the header is different.
+	if ctx.Version == 0x620 && ctx.Revision >= 0x11 && ctx.PageSize > 8192 {
+		// Windows 7 and later
+		size += 5 * 8
+	}
+
+	return self.Offset + size
+}
+
 func DumpPage(ctx *ESEContext, id int64) {
 	header := ctx.GetPage(id)
 	fmt.Printf("Page %v: %v\n", id, header.DebugString())
 
 	// Show the tags
-	values := GetPageValues(ctx, header)
+	values := GetPageValues(ctx, header, id)
 	if len(values) == 0 {
 		return
 	}
 
-	for _, value := range values {
-		fmt.Println(value.Tag.DebugString())
+	for i, value := range values {
+		fmt.Printf("Tag %v @ %#x offset %#x length %#x\n",
+			i, value.Tag.Offset, value.Tag.ValueOffset(ctx),
+			value.Tag.ValueSize(ctx))
 	}
 
 	flags := header.Flags()
@@ -120,7 +165,7 @@ func (self *ESENT_INDEX_ENTRY) Dump() {
 // CommonPageKeySize field before the struct. This constructor then
 // positions the struct appropriately.
 func NewESENT_LEAF_ENTRY(ctx *ESEContext, value *Value) *ESENT_LEAF_ENTRY {
-	if value.Tag.Flags()&TAG_COMMON > 0 {
+	if value.Flags&TAG_COMMON > 0 {
 		// Skip the common header
 		return ctx.Profile.ESENT_LEAF_ENTRY(value.Reader(), 2)
 	}
@@ -145,7 +190,7 @@ func (self *ESENT_BRANCH_HEADER) Dump() {
 // CommonPageKeySize field before the struct. This construstor then
 // positions the struct appropriately.
 func NewESENT_BRANCH_ENTRY(ctx *ESEContext, value *Value) *ESENT_BRANCH_ENTRY {
-	if value.Tag.Flags()&TAG_COMMON > 0 {
+	if value.Flags&TAG_COMMON > 0 {
 		// Skip the common header
 		return ctx.Profile.ESENT_BRANCH_ENTRY(value.Reader(), 2)
 	}
@@ -181,8 +226,12 @@ func WalkPages(ctx *ESEContext,
 		return nil
 	}
 
+	if DebugWalk {
+		fmt.Printf("Walking page %v\n", id)
+	}
+
 	header := ctx.GetPage(id)
-	values := GetPageValues(ctx, header)
+	values := GetPageValues(ctx, header, id)
 
 	// No more records.
 	if len(values) == 0 {
