@@ -222,9 +222,20 @@ func (self *ESENT_LEAF_HEADER) Dump() {
 func WalkPages(ctx *ESEContext,
 	id int64,
 	cb func(header *PageHeader, page_id int64, value *Value) error) error {
-	if id <= 0 {
+	seen := make(map[int64]bool)
+
+	return _walkPages(ctx, id, seen, cb)
+}
+
+func _walkPages(ctx *ESEContext,
+	id int64, seen map[int64]bool,
+	cb func(header *PageHeader, page_id int64, value *Value) error) error {
+
+	_, pres := seen[id]
+	if id <= 0 || pres {
 		return nil
 	}
+	seen[id] = true
 
 	if DebugWalk {
 		fmt.Printf("Walking page %v\n", id)
@@ -248,7 +259,7 @@ func WalkPages(ctx *ESEContext,
 		} else if header.IsBranch() {
 			// Walk the branch
 			branch := NewESENT_BRANCH_ENTRY(ctx, value)
-			err := WalkPages(ctx, branch.ChildPageNumber(), cb)
+			err := _walkPages(ctx, branch.ChildPageNumber(), seen, cb)
 			if err != nil {
 				return err
 			}
@@ -256,7 +267,7 @@ func WalkPages(ctx *ESEContext,
 	}
 
 	if header.NextPageNumber() > 0 {
-		err := WalkPages(ctx, int64(header.NextPageNumber()), cb)
+		err := _walkPages(ctx, int64(header.NextPageNumber()), seen, cb)
 		if err != nil {
 			return err
 		}
