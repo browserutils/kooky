@@ -22,7 +22,8 @@ func (self *Value) Reader() io.ReaderAt {
 
 func NewValue(ctx *ESEContext, tag *Tag, PageID int64, buffer []byte) *Value {
 	result := &Value{Tag: tag, PageID: PageID, Buffer: buffer}
-	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
+	if ctx.Version == 0x620 && ctx.Revision >= 17 &&
+		ctx.PageSize > 8192 && len(buffer) > 0 {
 		result.Flags = uint64(buffer[1] >> 5)
 		buffer[1] &= 0x1f
 	} else {
