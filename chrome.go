@@ -9,24 +9,44 @@ import (
 
 func ReadChromeCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*Cookie, error) {
 	var cookies []*Cookie
-	var unexpectedCols bool
 	db, err := sqlite3.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	if err := db.VisitTableRecords("cookies", func(rowId *int64, rec sqlite3.Record) error {
+	err = db.VisitTableRecords("cookies", func(rowId *int64, rec sqlite3.Record) error {
 		if rowId == nil {
 			return fmt.Errorf("unexpected nil RowID in Chrome sqlite database")
 		}
 		cookie := &Cookie{}
 
 		// TODO(zellyn): handle older, shorter rows?
-		if len(rec.Values) != 14 {
-			unexpectedCols = true
-			return nil
+		if len(rec.Values) < 14 {
+			return fmt.Errorf("expected at least 14 columns in cookie file, got: %d", len(rec.Values))
 		}
+
+		/*
+			-- taken from chrome 80's cookies' sqlite_master
+			CREATE TABLE cookies(
+				creation_utc INTEGER NOT NULL,
+				host_key TEXT NOT NULL,
+				name TEXT NOT NULL,
+				value TEXT NOT NULL,
+				path TEXT NOT NULL,
+				expires_utc INTEGER NOT NULL,
+				is_secure INTEGER NOT NULL,
+				is_httponly INTEGER NOT NULL,
+				last_access_utc INTEGER NOT NULL,
+				has_expires INTEGER NOT NULL DEFAULT 1,
+				is_persistent INTEGER NOT NULL DEFAULT 1,
+				priority INTEGER NOT NULL DEFAULT 1,
+				encrypted_value BLOB DEFAULT '',
+				samesite INTEGER NOT NULL DEFAULT -1,
+				source_scheme INTEGER NOT NULL DEFAULT 0,
+				UNIQUE (host_key, name, path)
+			)
+		*/
 
 		domain, ok := rec.Values[1].(string)
 		if !ok {
@@ -98,13 +118,11 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		cookies = append(cookies, cookie)
 
 		return nil
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	if cookies == nil && unexpectedCols {
-		return nil, fmt.Errorf("no cookies found, but we skipped rows with an unexpected number of columns (not 14)")
-	}
 	return cookies, nil
 }
 
