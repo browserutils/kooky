@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 )
 
 // A concerete implementation of a row - similar to Python's
@@ -328,7 +329,7 @@ func (self Dict) MarshalJSON() ([]byte, error) {
 		// add value
 		v := self.store[k]
 
-		vBytes, err := json.Marshal(v)
+		vBytes, err := marshal(v)
 		if err == nil {
 			result += string(vBytes) + ","
 		} else {
@@ -340,4 +341,19 @@ func (self Dict) MarshalJSON() ([]byte, error) {
 	}
 	result = result + "}"
 	return []byte(result), nil
+}
+
+func marshal(v interface{}) ([]byte, error) {
+	switch t := v.(type) {
+	case time.Time:
+		// Always marshal times as UTC
+		return json.Marshal(t.UTC())
+
+	case *time.Time:
+		// Always marshal times as UTC
+		return json.Marshal(t.UTC())
+
+	default:
+		return json.Marshal(v)
+	}
 }
