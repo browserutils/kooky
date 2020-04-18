@@ -148,19 +148,13 @@ func (self *Dict) ToDict() *map[string]interface{} {
 	return &result
 }
 
+// Printing the dict will always result in a valid JSON document.
 func (self *Dict) String() string {
-	self.Lock()
-	defer self.Unlock()
-
-	builder := make([]string, len(self.keys))
-
-	var index int = 0
-	for _, key := range self.keys {
-		val, _ := self.store[key]
-		builder[index] = fmt.Sprintf("%v:%v, ", key, val)
-		index++
+	serialized, err := self.MarshalJSON()
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err)
 	}
-	return fmt.Sprintf("Dict%v", builder)
+	return string(serialized)
 }
 
 func (self *Dict) GoString() string {
