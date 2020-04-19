@@ -77,6 +77,18 @@ func remove(s []string, r string) []string {
 	return s
 }
 
+// Very inefficient but ok for occasional use.
+func (self *Dict) Delete(key string) {
+	new_keys := make([]string, 0, len(self.keys))
+	for _, old_key := range self.keys {
+		if key != old_key {
+			new_keys = append(new_keys, old_key)
+		}
+	}
+	self.keys = new_keys
+	delete(self.store, key)
+}
+
 func (self *Dict) Set(key string, value interface{}) *Dict {
 	self.Lock()
 	defer self.Unlock()
