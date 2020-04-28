@@ -137,6 +137,39 @@ func (self *Dict) Get(key string) (interface{}, bool) {
 	return val, ok
 }
 
+func (self *Dict) GetString(key string) (string, bool) {
+	v, pres := self.Get(key)
+	if pres {
+		v_str, ok := v.(string)
+		if ok {
+			return v_str, true
+		}
+	}
+	return "", false
+}
+
+func (self *Dict) GetStrings(key string) ([]string, bool) {
+	v, pres := self.Get(key)
+	if pres {
+		v_str, ok := v.([]string)
+		if ok {
+			return v_str, true
+		}
+	}
+	return nil, false
+}
+
+func (self *Dict) GetInt64(key string) (int64, bool) {
+	v, pres := self.Get(key)
+	if pres {
+		v_int, ok := v.(int64)
+		if ok {
+			return v_int, true
+		}
+	}
+	return 0, false
+}
+
 func (self *Dict) Keys() []string {
 	self.Lock()
 	defer self.Unlock()
@@ -317,7 +350,7 @@ func handledelim(token json.Token, dec *json.Decoder) (res interface{}, err erro
 	return token, nil
 }
 
-func (self Dict) MarshalJSON() ([]byte, error) {
+func (self *Dict) MarshalJSON() ([]byte, error) {
 	self.Lock()
 	defer self.Unlock()
 
