@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
-	keychain "github.com/keybase/go-keychain"
+	"github.com/zalando/go-keyring"
 )
 
 // Thanks to https://gist.github.com/dacort/bd6a5116224c594b14db.
@@ -36,11 +36,11 @@ func setChromeKeychainPassword(password []byte) []byte {
 // caching it for future calls.
 func getKeychainPassword() ([]byte, error) {
 	if keychainPassword == nil {
-		password, err := keychain.GetGenericPassword("Chrome Safe Storage", "Chrome", "", "")
+		password, err := keyring.Get("Chrome Safe Storage", "Chrome")
 		if err != nil {
 			return nil, fmt.Errorf("error reading 'Chrome Safe Storage' keychain password: %v", err)
 		}
-		keychainPassword = password
+		keychainPassword = []byte(password)
 	}
 	return keychainPassword, nil
 }
