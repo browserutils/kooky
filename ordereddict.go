@@ -160,11 +160,31 @@ func (self *Dict) GetStrings(key string) ([]string, bool) {
 }
 
 func (self *Dict) GetInt64(key string) (int64, bool) {
-	v, pres := self.Get(key)
+	value, pres := self.Get(key)
 	if pres {
-		v_int, ok := v.(int64)
-		if ok {
-			return v_int, true
+		switch t := value.(type) {
+		case int:
+			return int64(t), true
+		case int8:
+			return int64(t), true
+		case int16:
+			return int64(t), true
+		case int32:
+			return int64(t), true
+		case int64:
+			return int64(t), true
+		case uint8:
+			return int64(t), true
+		case uint16:
+			return int64(t), true
+		case uint32:
+			return int64(t), true
+		case uint64:
+			return int64(t), true
+		case float32:
+			return int64(t), true
+		case float64:
+			return int64(t), true
 		}
 	}
 	return 0, false
