@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -140,7 +141,7 @@ func (self *Dict) Get(key string) (interface{}, bool) {
 func (self *Dict) GetString(key string) (string, bool) {
 	v, pres := self.Get(key)
 	if pres {
-		v_str, ok := v.(string)
+		v_str, ok := to_string(v)
 		if ok {
 			return v_str, true
 		}
@@ -148,12 +149,33 @@ func (self *Dict) GetString(key string) (string, bool) {
 	return "", false
 }
 
+func to_string(x interface{}) (string, bool) {
+	switch t := x.(type) {
+	case string:
+		return t, true
+	case *string:
+		return *t, true
+	case []byte:
+		return string(t), true
+	default:
+		return "", false
+	}
+}
+
 func (self *Dict) GetStrings(key string) ([]string, bool) {
 	v, pres := self.Get(key)
 	if pres {
-		v_str, ok := v.([]string)
-		if ok {
-			return v_str, true
+		slice := reflect.ValueOf(v)
+		if slice.Type().Kind() == reflect.Slice {
+			result := []string{}
+			for i := 0; i < slice.Len(); i++ {
+				value := slice.Index(i).Interface()
+				item, ok := to_string(value)
+				if ok {
+					result = append(result, item)
+				}
+			}
+			return result, true
 		}
 	}
 	return nil, false
