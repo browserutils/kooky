@@ -164,7 +164,7 @@ func to_string(x interface{}) (string, bool) {
 
 func (self *Dict) GetStrings(key string) ([]string, bool) {
 	v, pres := self.Get(key)
-	if pres {
+	if pres && v != nil {
 		slice := reflect.ValueOf(v)
 		if slice.Type().Kind() == reflect.Slice {
 			result := []string{}
