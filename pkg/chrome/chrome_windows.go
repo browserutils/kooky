@@ -1,4 +1,4 @@
-package kooky
+package chrome
 
 // https://groups.google.com/d/msg/golang-nuts/bUetmxErnTw/GHC5obCcmTMJ
 // https://play.golang.org/p/fknP9AuLU-

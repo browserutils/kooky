@@ -1,4 +1,4 @@
-package kooky
+package chrome
 
 import (
 	"crypto/aes"
