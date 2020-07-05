@@ -1,4 +1,4 @@
-package kooky
+package firefox
 
 import (
 	"testing"
