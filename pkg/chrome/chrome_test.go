@@ -3,6 +3,8 @@ package chrome
 import (
 	"testing"
 	"time"
+
+	kooky "github.com/kgoins/kooky/pkg"
 )
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
@@ -17,10 +19,12 @@ func TestReadChromeCookies(t *testing.T) {
 
 	domain := "news.ycombinator.com"
 	name := "user"
-	cookie := findCookie(domain, name, cookies)
+
+	cookie := kooky.FindCookie(domain, name, cookies)
 	if cookie == nil {
 		t.Fatalf("Found no cookie with domain=%q, name=%q", domain, name)
 	}
+
 	wantValue := "zellyn&p2EXEjsXVNPxXcrZiK8DoezI4Erqt0vA"
 	if cookie.Value != wantValue {
 		t.Errorf("Want cookie value %q; got %q", wantValue, cookie.Value)
