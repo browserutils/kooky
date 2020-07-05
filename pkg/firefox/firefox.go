@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/go-sqlite/sqlite3"
+	kooky "github.com/kgoins/kooky/pkg"
 )
 
-func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
-	var cookies []*Cookie
+func ReadFirefoxCookies(filename string) ([]*kooky.Cookie, error) {
+	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
 		return nil, err
@@ -20,7 +21,7 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 			return fmt.Errorf("got %d columns, but expected 13 or 14", lRec)
 		}
 
-		cookie := Cookie{}
+		cookie := kooky.Cookie{}
 		var ok bool
 
 		// Name
