@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kgoins/kooky/internal/testutils"
 	kooky "github.com/kgoins/kooky/pkg"
 )
 
@@ -12,7 +13,13 @@ func TestReadChromeCookies(t *testing.T) {
 	// Prevent reading the password from the Keychain on MacOS.
 	oldPassword := setChromeKeychainPassword([]byte("ChromeSafeStoragePasswrd"))
 	defer setChromeKeychainPassword(oldPassword)
-	cookies, err := ReadChromeCookies("testdata/small-chome-cookie-db.sqlite", "", "", time.Time{})
+
+	testCookiesPath, err := testutils.GetTestDataFilePath("small-chome-cookie-db.sqlite")
+	if err != nil {
+		t.Fatalf("Failed to load test data file")
+	}
+
+	cookies, err := ReadChromeCookies(testCookiesPath, "", "", time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
