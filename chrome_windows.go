@@ -1,39 +1,64 @@
 package kooky
 
-/*
-#cgo LDFLAGS: -lCrypt32
-#define NOMINMAX
-#include <windows.h>
-#include <Wincrypt.h>
-char* decrypt(byte* in, int len, int *outLen) {
-	DATA_BLOB input, output;
-	LPWSTR pDescrOut =  NULL;
-	input.cbData = len;
-	input.pbData = in;
-	CryptUnprotectData(
-		&input,
-		&pDescrOut,
-		NULL,
-		NULL,
-		NULL,
-		0,
-		&output);
-	*outLen = output.cbData;
-	return output.pbData;
+// https://groups.google.com/d/msg/golang-nuts/bUetmxErnTw/GHC5obCcmTMJ
+// https://play.golang.org/p/fknP9AuLU-
+
+import (
+	"syscall"
+	"unsafe"
+)
+
+const (
+	CRYPTPROTECT_UI_FORBIDDEN = 0x1
+)
+
+var (
+	dllcrypt32  = syscall.NewLazyDLL("Crypt32.dll")
+	dllkernel32 = syscall.NewLazyDLL("Kernel32.dll")
+
+	procDecryptData = dllcrypt32.NewProc("CryptUnprotectData")
+	procLocalFree   = dllkernel32.NewProc("LocalFree")
+)
+
+type data_blob struct {
+	cbData uint32
+	pbData *byte
 }
-void doFree(char* ptr) {
-	free(ptr);
+
+func newBlob(d []byte) *data_blob {
+	if len(d) == 0 {
+		return &data_blob{}
+	}
+	return &data_blob{
+		pbData: &d[0],
+		cbData: uint32(len(d)),
+	}
 }
-*/
-import "C"
+
+func (b *data_blob) toByteArray() []byte {
+	d := make([]byte, b.cbData)
+	copy(d, (*[1 << 30]byte)(unsafe.Pointer(b.pbData))[:])
+	return d
+}
+
+func decrypt(data []byte) ([]byte, error) {
+	var outblob data_blob
+	r, _, err := procDecryptData.Call(uintptr(unsafe.Pointer(newBlob(data))), 0, 0, 0, 0, CRYPTPROTECT_UI_FORBIDDEN, uintptr(unsafe.Pointer(&outblob)))
+	if r == 0 {
+		return nil, err
+	}
+	defer procLocalFree.Call(uintptr(unsafe.Pointer(outblob.pbData)))
+	return outblob.toByteArray(), nil
+}
+
+func decryptValue(encrypted []byte) (string, error) {
+	s, err := decrypt(encrypted)
+	if err != nil {
+		return ``, err
+	}
+	return string(s), nil
+}
 
 func setChromeKeychainPassword(password []byte) []byte {
 	return password
-}
-
-func decryptValue(input []byte) (string, error) {
-	var length C.int
-	decruptedC := C.decrypt((*C.byte)(&input[0]), C.int(len(input)), &length)
-	decrypted := C.GoStringN(decruptedC, length)
-	return decrypted, nil
 }
