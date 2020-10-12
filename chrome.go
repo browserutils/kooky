@@ -15,6 +15,25 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 	}
 	defer db.Close()
 
+	/*
+		var version int
+		if err := db.VisitTableRecords("meta", func(rowId *int64, rec sqlite3.Record) error {
+			if len(rec.Values) != 2 {
+				return errors.New(`expected 2 columns for "meta" table`)
+			}
+			if key, ok := rec.Values[0].(string); ok && key == `version` {
+				if vStr, ok := rec.Values[1].(string); ok {
+					if v, err := strconv.Atoi(vStr); err == nil {
+						version = v
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	*/
+
 	err = db.VisitTableRecords("cookies", func(rowId *int64, rec sqlite3.Record) error {
 		if rowId == nil {
 			return fmt.Errorf("unexpected nil RowID in Chrome sqlite database")
@@ -107,9 +126,10 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		cookie.HttpOnly = rec.Values[7] == 1
 
 		if len(encrypted_value) > 0 {
+			dbFile = filename
 			decrypted, err := decryptValue(encrypted_value)
 			if err != nil {
-				return fmt.Errorf("decrypting cookie %v: %v", cookie, err)
+				return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
 			}
 			cookie.Value = decrypted
 		} else {
@@ -127,7 +147,7 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 }
 
 // See https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
-const windowsToUnixMicrosecondsOffset = 11644473600000000
+const windowsToUnixMicrosecondsOffset = 116444736e8
 
 // chromeCookieDate converts microseconds to a time.Time object,
 // accounting for the switch to Windows epoch (Jan 1 1601).
@@ -136,5 +156,7 @@ func chromeCookieDate(timestamp_utc int64) time.Time {
 		timestamp_utc -= windowsToUnixMicrosecondsOffset
 	}
 
-	return time.Unix(timestamp_utc/1000000, (timestamp_utc%1000000)*1000)
+	return time.Unix(timestamp_utc/1e6, (timestamp_utc%1e6)*1e3)
 }
+
+var dbFile string // TODO (?)
