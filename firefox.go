@@ -1,6 +1,7 @@
 package kooky
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,14 +17,49 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 	}
 	defer db.Close()
 
-	err = db.VisitTableRecords("moz_cookies", func(rowId *int64, rec sqlite3.Record) error {
+	var baseDomainRemoved bool = true
+	var columnIDs = map[string]int{
+		// fallback values
+		`baseDomain`:   1, // old
+		`name`:         2,
+		`value`:        3,
+		`host`:         4,
+		`path`:         5,
+		`expiry`:       6,
+		`creationTime`: 8,
+		`isSecure`:     9,
+		`isHttpOnly`:   10,
+	}
+	cookiesTableName := `moz_cookies`
+	var highestIndex int
+	for _, table := range db.Tables() {
+		if table.Name() == cookiesTableName {
+			for id, column := range table.Columns() {
+				name := column.Name()
+				if name == `CONSTRAINT` {
+					// github.com/go-sqlite/sqlite3.Table.Columns() reports pseudo-columns for host, path, originAttributes
+					break
+				}
+				if name == `baseDomain` {
+					baseDomainRemoved = false
+				}
+				if id > highestIndex {
+					highestIndex = id
+				}
+				columnIDs[name] = id
+			}
+		}
+	}
+
+	err = db.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
 		if lRec := len(rec.Values); lRec != 13 && lRec != 14 {
 			return fmt.Errorf("got %d columns, but expected 13 or 14", lRec)
+		} else if highestIndex > lRec {
+			return errors.New(`column index out of bound`)
 		}
 
 		cookie := Cookie{}
 		var ok bool
-		var columnShift int
 
 		/*
 			-- Firefox 78 ESR - copied from sqlitebrowser
@@ -46,71 +82,69 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 			)
 		*/
 
-		switch rec.Values[6].(type) {
-		case int32, uint64:
-			columnShift = -1 // "baseDomain" column was removed
-		}
-
 		// Name
-		cookie.Name, ok = rec.Values[3+columnShift].(string)
+		cookie.Name, ok = rec.Values[columnIDs[`name`]].(string)
 		if !ok {
-			return fmt.Errorf("got unexpected value for Name %v", rec.Values[3+columnShift])
+			return fmt.Errorf("got unexpected value for Name %v (type %[1]T)", rec.Values[columnIDs[`name`]])
 		}
 
 		// Value
-		cookie.Value, ok = rec.Values[4+columnShift].(string)
+		cookie.Value, ok = rec.Values[columnIDs[`value`]].(string)
 		if !ok {
-			return fmt.Errorf("got unexpected value for Value %v", rec.Values[4+columnShift])
+			return fmt.Errorf("got unexpected value for Value %v (type %[1]T)", rec.Values[columnIDs[`value`]])
 		}
 
 		// Domain
-		if columnShift == 0 {
-			cookie.Domain, ok = rec.Values[1].(string)
-			if !ok {
-				return fmt.Errorf("got unexpected value for Domain %v", rec.Values[1])
-			}
-		} else {
-			if host, ok := rec.Values[4].(string); ok {
+		if baseDomainRemoved {
+			if host, ok := rec.Values[columnIDs[`host`]].(string); ok {
 				cookie.Domain = domainutil.Domain(host)
 			} else {
-				return fmt.Errorf("got unexpected value for Host %v", rec.Values[4])
+				return fmt.Errorf("got unexpected value for Host %v (type %[1]T)", rec.Values[columnIDs[`host`]])
 			}
-
+		} else {
+			// handle databases prior v78 ESR
+			cookie.Domain, ok = rec.Values[columnIDs[`baseDomain`]].(string)
+			if !ok {
+				return fmt.Errorf("got unexpected value for Domain %v (type %[1]T)", rec.Values[columnIDs[`baseDomain`]])
+			}
 		}
 
 		// Path
-		cookie.Path, ok = rec.Values[6+columnShift].(string)
+		cookie.Path, ok = rec.Values[columnIDs[`path`]].(string)
 		if !ok {
-			return fmt.Errorf("got unexpected value for Path %v", rec.Values[6+columnShift])
+			return fmt.Errorf("got unexpected value for Path %v (type %[1]T)", rec.Values[columnIDs[`path`]])
 		}
 
 		// Expires
-		if int32Value, ok := rec.Values[7+columnShift].(int32); ok {
-			cookie.Expires = time.Unix(int64(int32Value), 0)
-		} else if uint64Value, ok := rec.Values[7+columnShift].(uint64); ok {
-			cookie.Expires = time.Unix(int64(uint64Value), 0)
-		} else {
-			return fmt.Errorf("got unexpected value for Expires %v (type %T)", rec.Values[7+columnShift], rec.Values[7+columnShift])
+		{
+			expiry := rec.Values[columnIDs[`expiry`]]
+			if int32Value, ok := expiry.(int32); ok {
+				cookie.Expires = time.Unix(int64(int32Value), 0)
+			} else if uint64Value, ok := expiry.(uint64); ok {
+				cookie.Expires = time.Unix(int64(uint64Value), 0)
+			} else {
+				return fmt.Errorf("got unexpected value for Expires %v (type %[1]T)", expiry)
+			}
 		}
 
 		// Creation
-		int64Value, ok := rec.Values[9+columnShift].(int64)
+		int64Value, ok := rec.Values[columnIDs[`creationTime`]].(int64)
 		if !ok {
-			return fmt.Errorf("got unexpected value for Creation %v (type %T)", rec.Values[9+columnShift], rec.Values[9+columnShift])
+			return fmt.Errorf("got unexpected value for Creation %v (type %[1]T)", rec.Values[columnIDs[`creationTime`]])
 		}
 		cookie.Creation = time.Unix(int64Value/1e6, 0) // drop nanoseconds
 
 		// Secure
-		intValue, ok := rec.Values[10+columnShift].(int)
+		intValue, ok := rec.Values[columnIDs[`isSecure`]].(int)
 		if !ok {
-			return fmt.Errorf("got unexpected value for Secure %v", rec.Values[10+columnShift])
+			return fmt.Errorf("got unexpected value for Secure %v (type %[1]T)", rec.Values[columnIDs[`isSecure`]])
 		}
 		cookie.Secure = intValue > 0
 
 		// HttpOnly
-		intValue, ok = rec.Values[11+columnShift].(int)
+		intValue, ok = rec.Values[columnIDs[`isHttpOnly`]].(int)
 		if !ok {
-			return fmt.Errorf("got unexpected value for HttpOnly %v", rec.Values[11+columnShift])
+			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", rec.Values[columnIDs[`isHttpOnly`]])
 		}
 		cookie.HttpOnly = intValue > 0
 
