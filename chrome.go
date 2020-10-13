@@ -1,6 +1,7 @@
 package kooky
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,16 +35,48 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		}
 	*/
 
-	err = db.VisitTableRecords("cookies", func(rowId *int64, rec sqlite3.Record) error {
-		if rowId == nil {
-			return fmt.Errorf("unexpected nil RowID in Chrome sqlite database")
+	var columnIDs = map[string]int{
+		// fallback values
+		`host_key`:        1, // domain
+		`name`:            2,
+		`value`:           3,
+		`path`:            4,
+		`expires_utc`:     5,
+		`is_secure`:       6,
+		`is_httponly`:     7,
+		`encrypted_value`: 12,
+	}
+	cookiesTableName := `cookies`
+	var highestIndex int
+	for _, table := range db.Tables() {
+		if table.Name() == cookiesTableName {
+			for id, column := range table.Columns() {
+				name := column.Name()
+				if name == `CONSTRAINT` {
+					// github.com/go-sqlite/sqlite3.Table.Columns() might report pseudo-columns at the end
+					break
+				}
+				if id > highestIndex {
+					highestIndex = id
+				}
+				columnIDs[name] = id
+			}
 		}
-		cookie := &Cookie{}
+	}
+
+	err = db.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
+		if rowId == nil {
+			return errors.New(`unexpected nil RowID in Chrome sqlite database`)
+		}
 
 		// TODO(zellyn): handle older, shorter rows?
-		if len(rec.Values) < 14 {
-			return fmt.Errorf("expected at least 14 columns in cookie file, got: %d", len(rec.Values))
+		if lRec := len(rec.Values); lRec < 14 {
+			return fmt.Errorf("expected at least 14 columns in cookie file, got: %d", lRec)
+		} else if highestIndex > lRec {
+			return errors.New(`column index out of bound`)
 		}
+
+		cookie := &Cookie{}
 
 		/*
 			-- taken from chrome 80's cookies' sqlite_master
@@ -67,36 +100,36 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 			)
 		*/
 
-		domain, ok := rec.Values[1].(string)
+		domain, ok := rec.Values[columnIDs[`host_key`]].(string)
 		if !ok {
-			return fmt.Errorf("expected column 2 (host_key) to to be string; got %T", rec.Values[1])
+			return fmt.Errorf("expected column 2 (host_key) to to be string; got %T", rec.Values[columnIDs[`host_key`]])
 		}
-		name, ok := rec.Values[2].(string)
+		name, ok := rec.Values[columnIDs[`name`]].(string)
 		if !ok {
-			return fmt.Errorf("expected column 3 (name) in cookie(domain:%s) to to be string; got %T", domain, rec.Values[2])
+			return fmt.Errorf("expected column 3 (name) in cookie(domain:%s) to to be string; got %T", domain, rec.Values[columnIDs[`name`]])
 		}
-		value, ok := rec.Values[3].(string)
+		value, ok := rec.Values[columnIDs[`value`]].(string)
 		if !ok {
-			return fmt.Errorf("expected column 4 (value) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[3])
+			return fmt.Errorf("expected column 4 (value) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[columnIDs[`value`]])
 		}
-		path, ok := rec.Values[4].(string)
+		path, ok := rec.Values[columnIDs[`path`]].(string)
 		if !ok {
-			return fmt.Errorf("expected column 5 (path) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[4])
+			return fmt.Errorf("expected column 5 (path) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[columnIDs[`path`]])
 		}
 		var expires_utc int64
-		switch i := rec.Values[5].(type) {
+		switch i := rec.Values[columnIDs[`expires_utc`]].(type) {
 		case int64:
 			expires_utc = i
 		case int:
 			if i != 0 {
-				return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %v", domain, name, rec.Values[5], rec.Values[5])
+				return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %[3]v", domain, name, rec.Values[columnIDs[`expires_utc`]])
 			}
 		default:
-			return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %v", domain, name, rec.Values[5], rec.Values[5])
+			return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %[3]v", domain, name, rec.Values[columnIDs[`expires_utc`]])
 		}
-		encrypted_value, ok := rec.Values[12].([]byte)
+		encrypted_value, ok := rec.Values[columnIDs[`encrypted_value`]].([]byte)
 		if !ok {
-			return fmt.Errorf("expected column 13 (encrypted_value) in cookie(domain:%s, name:%s) to to be []byte; got %T", domain, name, rec.Values[12])
+			return fmt.Errorf("expected column 13 (encrypted_value) in cookie(domain:%s, name:%s) to to be []byte; got %T", domain, name, rec.Values[columnIDs[`encrypted_value`]])
 		}
 
 		var expiry time.Time
@@ -122,8 +155,8 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		cookie.Path = path
 		cookie.Expires = expiry
 		cookie.Creation = creation
-		cookie.Secure = rec.Values[6] == 1
-		cookie.HttpOnly = rec.Values[7] == 1
+		cookie.Secure = rec.Values[columnIDs[`is_secure`]] == 1
+		cookie.HttpOnly = rec.Values[columnIDs[`is_httponly`]] == 1
 
 		if len(encrypted_value) > 0 {
 			dbFile = filename
