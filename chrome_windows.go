@@ -13,8 +13,9 @@ import (
 	"errors"
 	"io/ioutil"
 	"path/filepath"
-	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -22,8 +23,8 @@ const (
 )
 
 var (
-	dllcrypt32  = syscall.NewLazyDLL("Crypt32.dll")
-	dllkernel32 = syscall.NewLazyDLL("Kernel32.dll")
+	dllcrypt32  = windows.NewLazySystemDLL("Crypt32.dll")
+	dllkernel32 = windows.NewLazySystemDLL("Kernel32.dll")
 
 	procDecryptData = dllcrypt32.NewProc("CryptUnprotectData")
 	procLocalFree   = dllkernel32.NewProc("LocalFree")
