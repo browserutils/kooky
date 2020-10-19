@@ -47,10 +47,10 @@ dir, _ := os.UserConfigDir()   // "/<USER>/Library/Application Support/"
 cookiesFile = dir + "/Google/Chrome/Default/Cookies"
 cookies, err: = chrome.ReadCookies(cookiesFile)
 if err != nil {
-  return err
+	return err
 }
 for _, cookie := range cookies {
-  fmt.Println(cookie)
+	fmt.Println(cookie)
 }
 ```
 
@@ -63,10 +63,10 @@ dir, _ := os.UserHomeDir()
 cookiesFile = dir + "/Library/Cookies/Cookies.binarycookies"
 cookies, err: = safari.ReadCookies(cookiesFile)
 if err != nil {
-  return err
+	return err
 }
 for _, cookie := range cookies {
-  fmt.Println(cookie)
+	fmt.Println(cookie)
 }
 ```
 
