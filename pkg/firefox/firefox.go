@@ -1,4 +1,4 @@
-package kooky
+package firefox
 
 import (
 	"errors"
@@ -7,10 +7,11 @@ import (
 
 	"github.com/bobesa/go-domain-util/domainutil"
 	"github.com/go-sqlite/sqlite3"
+	kooky "github.com/kgoins/kooky/pkg"
 )
 
-func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
-	var cookies []*Cookie
+func ReadFirefoxCookies(filename string) ([]*kooky.Cookie, error) {
+	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
 		return nil, err
@@ -58,7 +59,7 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 			return errors.New(`column index out of bound`)
 		}
 
-		cookie := Cookie{}
+		cookie := kooky.Cookie{}
 		var ok bool
 
 		/*

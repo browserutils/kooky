@@ -1,6 +1,6 @@
 // +build !android
 
-package kooky
+package chrome
 
 // https://cs.chromium.org/chromium/src/components/os_crypt/os_crypt_linux.cc?q=peanuts     // password "peanuts"   for v10
 // https://cs.chromium.org/chromium/src/components/os_crypt/os_crypt_linux.cc?q=saltysalt   // salt     "saltysalt"
@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
-	"github.com/zalando/go-keyring/secret_service"
+	ss "github.com/zalando/go-keyring/secret_service"
 )
 
 const (

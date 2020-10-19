@@ -35,11 +35,13 @@ func (c Cookie) HttpCookie() http.Cookie {
 	return hc
 }
 
-func findCookie(domain string, name string, cookies []*Cookie) *Cookie {
+// FindCookie returns a cookie matching the input domain and name from a list of Cookies
+func FindCookie(domain string, name string, cookies []*Cookie) *Cookie {
 	for _, cookie := range cookies {
 		if cookie.Domain == domain && cookie.Name == name {
 			return cookie
 		}
 	}
+
 	return nil
 }

@@ -1,20 +1,28 @@
-package kooky
+package safari
 
 import (
 	"testing"
 	"time"
+
+	"github.com/kgoins/kooky/internal/testutils"
+	kooky "github.com/kgoins/kooky/pkg"
 )
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadSafariCookies(t *testing.T) {
-	cookies, err := ReadSafariCookies("testdata/small-safari-cookie-db.binarycookies", "", "", time.Time{})
+	testCookiesPath, err := testutils.GetTestDataFilePath("small-safari-cookie-db.binarycookies")
+	if err != nil {
+		t.Fatalf("Failed to load test data file")
+	}
+
+	cookies, err := ReadSafariCookies(testCookiesPath, "", "", time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	domain := "news.ycombinator.com"
 	name := "user"
-	cookie := findCookie(domain, name, cookies)
+	cookie := kooky.FindCookie(domain, name, cookies)
 	if cookie == nil {
 		t.Fatalf("Found no cookie with domain=%q, name=%q", domain, name)
 	}

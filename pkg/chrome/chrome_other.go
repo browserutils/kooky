@@ -1,6 +1,6 @@
 // +build !darwin,!windows,!linux android
 
-package kooky
+package chrome
 
 import (
 	"fmt"
