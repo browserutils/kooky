@@ -1,4 +1,4 @@
-package kooky
+package chrome
 
 import (
 	"errors"
@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/go-sqlite/sqlite3"
+	kooky "github.com/kgoins/kooky/pkg"
 )
 
-func ReadChromeCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*Cookie, error) {
-	var cookies []*Cookie
+func ReadChromeCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*kooky.Cookie, error) {
+	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
 		return nil, err
@@ -76,7 +77,7 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 			return errors.New(`column index out of bound`)
 		}
 
-		cookie := &Cookie{}
+		cookie := &kooky.Cookie{}
 
 		/*
 			-- taken from chrome 80's cookies' sqlite_master
