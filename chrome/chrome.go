@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/go-sqlite/sqlite3"
-	kooky "github.com/kgoins/kooky/pkg"
+
+	"github.com/zellyn/kooky"
 )
 
-func ReadChromeCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*kooky.Cookie, error) {
+func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
 	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
@@ -139,18 +140,6 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		}
 		creation := chromeCookieDate(*rowId)
 
-		if domainFilter != "" && domain != domainFilter {
-			return nil
-		}
-
-		if nameFilter != "" && name != nameFilter {
-			return nil
-		}
-
-		if !expiry.IsZero() && expiry.Before(expireAfter) {
-			return nil
-		}
-
 		cookie.Domain = domain
 		cookie.Name = name
 		cookie.Path = path
@@ -169,6 +158,11 @@ func ReadChromeCookies(filename string, domainFilter string, nameFilter string, 
 		} else {
 			cookie.Value = value
 		}
+
+		if !kooky.FilterCookie(cookie, filters...) {
+			return nil
+		}
+
 		cookies = append(cookies, cookie)
 
 		return nil

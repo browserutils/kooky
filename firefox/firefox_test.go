@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kgoins/kooky/internal/testutils"
+	"github.com/zellyn/kooky/internal/testutils"
 )
 
-func TestReadFirefoxCookies(t *testing.T) {
+func TestReadCookies(t *testing.T) {
 	// insert into moz_cookies values
 	// (156181,'godoc.org','','GODOC_ORG_SESSION_ID','a748915ba19c6d0b','godoc.org','/github.com/go-sqlite/',1516245891,1516242287597175,1516242287597175,0,0,'');
 
@@ -16,7 +16,7 @@ func TestReadFirefoxCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadFirefoxCookies(testCookiesPath)
+	cookies, err := ReadCookies(testCookiesPath)
 	if err != nil {
 		t.Fatal(err)
 	}

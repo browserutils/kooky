@@ -13,7 +13,7 @@ import (
 	"os"
 	"time"
 
-	kooky "github.com/kgoins/kooky/pkg"
+	"github.com/zellyn/kooky"
 )
 
 type fileHeader struct {
@@ -40,7 +40,7 @@ type cookieHeader struct {
 	CreationDate   float64
 }
 
-func ReadSafariCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*kooky.Cookie, error) {
+func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
 	var allCookies []*kooky.Cookie
 
 	f, err := os.Open(filename)
@@ -77,20 +77,8 @@ func ReadSafariCookies(filename string, domainFilter string, nameFilter string, 
 	}
 
 	// Filter cookies by specified filters.
-	var cookies []*kooky.Cookie
-	for _, cookie := range allCookies {
-		if domainFilter != "" && domainFilter != cookie.Domain {
-			continue
-		}
-		if nameFilter != "" && nameFilter != cookie.Name {
-			continue
-		}
-		if !cookie.Expires.IsZero() && cookie.Expires.Before(expireAfter) {
-			continue
-		}
+	cookies := kooky.FilterCookies(allCookies, filters...)
 
-		cookies = append(cookies, cookie)
-	}
 	return cookies, nil
 }
 

@@ -7,10 +7,11 @@ import (
 
 	"github.com/bobesa/go-domain-util/domainutil"
 	"github.com/go-sqlite/sqlite3"
-	kooky "github.com/kgoins/kooky/pkg"
+
+	"github.com/zellyn/kooky"
 )
 
-func ReadFirefoxCookies(filename string) ([]*kooky.Cookie, error) {
+func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
 	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
@@ -148,6 +149,10 @@ func ReadFirefoxCookies(filename string) ([]*kooky.Cookie, error) {
 			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", rec.Values[columnIDs[`isHttpOnly`]])
 		}
 		cookie.HttpOnly = intValue > 0
+
+		if !kooky.FilterCookie(&cookie, filters...) {
+			return nil
+		}
 
 		cookies = append(cookies, &cookie)
 

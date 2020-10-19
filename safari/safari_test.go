@@ -4,28 +4,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kgoins/kooky/internal/testutils"
-	kooky "github.com/kgoins/kooky/pkg"
+	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/testutils"
 )
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
-func TestReadSafariCookies(t *testing.T) {
+func TestReadCookies(t *testing.T) {
 	testCookiesPath, err := testutils.GetTestDataFilePath("small-safari-cookie-db.binarycookies")
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadSafariCookies(testCookiesPath, "", "", time.Time{})
+	cookies, err := ReadCookies(testCookiesPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	domain := "news.ycombinator.com"
 	name := "user"
-	cookie := kooky.FindCookie(domain, name, cookies)
-	if cookie == nil {
-		t.Fatalf("Found no cookie with domain=%q, name=%q", domain, name)
+	cookies = kooky.FilterCookies(cookies, kooky.Domain(domain), kooky.Name(name))
+	if len(cookies) == 0 {
+		t.Fatalf("Found no cookies with domain=%q, name=%q", domain, name)
 	}
+	cookie := cookies[0]
 	wantValue := "zellyn&EdK9mzRM38fGtIZQTiqCyAeWg93RDjdo"
 	if cookie.Value != wantValue {
 		t.Errorf("Want cookie value %q; got %q", wantValue, cookie.Value)
