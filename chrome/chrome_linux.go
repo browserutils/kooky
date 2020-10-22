@@ -1,6 +1,6 @@
 // +build !android
 
-package kooky
+package chrome
 
 // https://cs.chromium.org/chromium/src/components/os_crypt/os_crypt_linux.cc?q=peanuts     // password "peanuts"   for v10
 // https://cs.chromium.org/chromium/src/components/os_crypt/os_crypt_linux.cc?q=saltysalt   // salt     "saltysalt"
@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
-	"github.com/zalando/go-keyring/secret_service"
+	secret_service "github.com/zalando/go-keyring/secret_service"
 )
 
 const (
@@ -48,7 +48,7 @@ func queryDbus(browser string) ([]byte, error) {
 
 	type secretServiceProvider struct{}
 
-	svc, err := ss.NewSecretService()
+	svc, err := secret_service.NewSecretService()
 	if err != nil {
 		return []byte{}, err
 	}
