@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
-	ss "github.com/zalando/go-keyring/secret_service"
+	secret_service "github.com/zalando/go-keyring/secret_service"
 )
 
 const (
@@ -48,7 +48,7 @@ func queryDbus(browser string) ([]byte, error) {
 
 	type secretServiceProvider struct{}
 
-	svc, err := ss.NewSecretService()
+	svc, err := secret_service.NewSecretService()
 	if err != nil {
 		return []byte{}, err
 	}
