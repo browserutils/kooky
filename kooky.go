@@ -8,8 +8,7 @@ import (
 // TODO(zellyn): figure out what to do with quoted values, like the "bcookie" cookie
 // from slideshare.net
 
-// Cookie is the struct returned by functions in this package. Similar
-// to http.Cookie, but just a dumb struct.
+// Cookie is the struct returned by functions in this package. Similar to http.Cookie.
 type Cookie struct {
 	Domain   string
 	Name     string
@@ -33,13 +32,4 @@ func (c Cookie) HttpCookie() http.Cookie {
 	hc.Value = c.Value
 
 	return hc
-}
-
-func findCookie(domain string, name string, cookies []*Cookie) *Cookie {
-	for _, cookie := range cookies {
-		if cookie.Domain == domain && cookie.Name == name {
-			return cookie
-		}
-	}
-	return nil
 }

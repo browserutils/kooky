@@ -37,20 +37,31 @@ TODOs
 - [ ] Handle rows in Chrome's cookie DB with other than 14 columns (?)
 
 ## Example usage
+
+### Chrome on macOS
+
 ```go
-usr, _ := user.Current()
+// import "github.com/zellyn/kooky/chrome"
 
-var cookies []*kooky.Cookie
-var err error
-
-chrome := false
-if chrome {
-	cookiesFile := fmt.Sprintf("%s/Library/Application Support/Google/Chrome/Default/Cookies", usr.HomeDir)
-	cookies, err = kooky.ReadChromeCookies(cookiesFile, "", "", time.Time{})
-} else {
-	cookiesFile := fmt.Sprintf("%s/Library/Cookies/Cookies.binarycookies", usr.HomeDir)
-	cookies, err = kooky.ReadSafariCookies(cookiesFile, "", "", time.Time{})
+dir, _ := os.UserConfigDir()   // "/<USER>/Library/Application Support/"
+cookiesFile = dir + "/Google/Chrome/Default/Cookies"
+cookies, err: = chrome.ReadCookies(cookiesFile)
+if err != nil {
+	return err
 }
+for _, cookie := range cookies {
+	fmt.Println(cookie)
+}
+```
+
+### Safari
+
+```go
+// import "github.com/zellyn/kooky/safari"
+
+dir, _ := os.UserHomeDir()
+cookiesFile = dir + "/Library/Cookies/Cookies.binarycookies"
+cookies, err: = safari.ReadCookies(cookiesFile)
 if err != nil {
 	return err
 }

@@ -1,6 +1,6 @@
-package kooky
+package safari
 
-// Read safari Cookie.binarycookies files.
+// Read safari kooky.Cookie.binarycookies files.
 // Thanks to https://github.com/as0ler/BinaryCookieReader
 
 import (
@@ -12,6 +12,8 @@ import (
 	"math"
 	"os"
 	"time"
+
+	"github.com/zellyn/kooky"
 )
 
 type fileHeader struct {
@@ -38,8 +40,8 @@ type cookieHeader struct {
 	CreationDate   float64
 }
 
-func ReadSafariCookies(filename string, domainFilter string, nameFilter string, expireAfter time.Time) ([]*Cookie, error) {
-	var allCookies []*Cookie
+func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	var allCookies []*kooky.Cookie
 
 	f, err := os.Open(filename)
 	if err != nil {
@@ -75,24 +77,12 @@ func ReadSafariCookies(filename string, domainFilter string, nameFilter string, 
 	}
 
 	// Filter cookies by specified filters.
-	var cookies []*Cookie
-	for _, cookie := range allCookies {
-		if domainFilter != "" && domainFilter != cookie.Domain {
-			continue
-		}
-		if nameFilter != "" && nameFilter != cookie.Name {
-			continue
-		}
-		if !cookie.Expires.IsZero() && cookie.Expires.Before(expireAfter) {
-			continue
-		}
+	cookies := kooky.FilterCookies(allCookies, filters...)
 
-		cookies = append(cookies, cookie)
-	}
 	return cookies, nil
 }
 
-func readPage(f io.Reader, pageSize int32, cookies []*Cookie) ([]*Cookie, error) {
+func readPage(f io.Reader, pageSize int32, cookies []*kooky.Cookie) ([]*kooky.Cookie, error) {
 	bb := make([]byte, pageSize)
 	if _, err := io.ReadFull(f, bb); err != nil {
 		return nil, err
@@ -125,7 +115,7 @@ func readPage(f io.Reader, pageSize int32, cookies []*Cookie) ([]*Cookie, error)
 	return cookies, nil
 }
 
-func readCookie(r io.ReadSeeker) (*Cookie, error) {
+func readCookie(r io.ReadSeeker) (*kooky.Cookie, error) {
 	start, _ := r.Seek(0, io.SeekCurrent)
 	var ch cookieHeader
 	if err := binary.Read(r, binary.LittleEndian, &ch); err != nil {
@@ -152,7 +142,7 @@ func readCookie(r io.ReadSeeker) (*Cookie, error) {
 		return nil, err
 	}
 
-	cookie := &Cookie{}
+	cookie := &kooky.Cookie{}
 
 	cookie.Expires = expiry
 	cookie.Creation = creation

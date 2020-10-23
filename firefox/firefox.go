@@ -1,4 +1,4 @@
-package kooky
+package firefox
 
 import (
 	"errors"
@@ -7,10 +7,12 @@ import (
 
 	"github.com/bobesa/go-domain-util/domainutil"
 	"github.com/go-sqlite/sqlite3"
+
+	"github.com/zellyn/kooky"
 )
 
-func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
-	var cookies []*Cookie
+func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	var cookies []*kooky.Cookie
 	db, err := sqlite3.Open(filename)
 	if err != nil {
 		return nil, err
@@ -58,7 +60,7 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 			return errors.New(`column index out of bound`)
 		}
 
-		cookie := Cookie{}
+		cookie := kooky.Cookie{}
 		var ok bool
 
 		/*
@@ -147,6 +149,10 @@ func ReadFirefoxCookies(filename string) ([]*Cookie, error) {
 			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", rec.Values[columnIDs[`isHttpOnly`]])
 		}
 		cookie.HttpOnly = intValue > 0
+
+		if !kooky.FilterCookie(&cookie, filters...) {
+			return nil
+		}
 
 		cookies = append(cookies, &cookie)
 
