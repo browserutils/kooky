@@ -7,10 +7,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"time"
 
 	"github.com/zellyn/kooky"
@@ -41,16 +41,26 @@ type cookieHeader struct {
 }
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	s := &safariCookieStore{filename: filename}
+	defer s.Close()
+
+	return s.ReadCookies(filters...)
+}
+
+func (s *safariCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	if s == nil {
+		return nil, errors.New(`cookie store is nil`)
+	}
+	if err := s.open(); err != nil {
+		return nil, err
+	} else if s.file == nil {
+		return nil, errors.New(`file is nil`)
+	}
+
 	var allCookies []*kooky.Cookie
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
 	var header fileHeader
-	err = binary.Read(f, binary.BigEndian, &header)
+	err := binary.Read(s.file, binary.BigEndian, &header)
 	if err != nil {
 		return nil, fmt.Errorf("error reading header: %v", err)
 	}
@@ -59,19 +69,19 @@ func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, err
 	}
 
 	pageSizes := make([]int32, header.NumPages)
-	if err = binary.Read(f, binary.BigEndian, &pageSizes); err != nil {
+	if err = binary.Read(s.file, binary.BigEndian, &pageSizes); err != nil {
 		return nil, fmt.Errorf("error reading page sizes: %v", err)
 	}
 
 	for i, pageSize := range pageSizes {
-		if allCookies, err = readPage(f, pageSize, allCookies); err != nil {
+		if allCookies, err = readPage(s.file, pageSize, allCookies); err != nil {
 			return nil, fmt.Errorf("error reading page %d: %v", i, err)
 		}
 	}
 
 	// TODO(zellyn): figure out how the checksum works.
 	var checksum [8]byte
-	err = binary.Read(f, binary.BigEndian, &checksum)
+	err = binary.Read(s.file, binary.BigEndian, &checksum)
 	if err != nil {
 		return nil, fmt.Errorf("error reading checksum: %v", err)
 	}
