@@ -12,32 +12,40 @@ const httpOnlyPrefix = `#HttpOnly_`
 //
 // curl, wget, ... use this format.
 func ExportCookies(w io.Writer, cookies []*Cookie) {
-	var isInit bool
-	for _, cookie := range cookies {
+	if len(cookies) < 1 {
+		return
+	}
+	var j int
+	for i, cookie := range cookies {
 		if cookie == nil {
 			continue
 		}
-		if !isInit {
-			fmt.Fprint(w, "# HTTP Cookie File\n\n")
-			isInit = true
+		fmt.Fprint(w, "# HTTP Cookie File\n\n")
+		j = i
+		break
+	}
+
+	for i := j; i < len(cookies); i++ {
+		if cookies[i] == nil {
+			continue
 		}
 
 		var domain string
-		if cookie.HttpOnly {
+		if cookies[i].HttpOnly {
 			domain = httpOnlyPrefix
 		}
-		domain += cookie.Domain
+		domain += cookies[i].Domain
 
 		fmt.Fprintf(
 			w,
 			"%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
 			domain,
-			netscapeBool(strings.HasPrefix(cookie.Domain, `.`)),
-			cookie.Path,
-			netscapeBool(cookie.Secure),
-			cookie.Expires.Unix(),
-			cookie.Name,
-			cookie.Value,
+			netscapeBool(strings.HasPrefix(cookies[i].Domain, `.`)),
+			cookies[i].Path,
+			netscapeBool(cookies[i].Secure),
+			cookies[i].Expires.Unix(),
+			cookies[i].Name,
+			cookies[i].Value,
 		)
 	}
 }
