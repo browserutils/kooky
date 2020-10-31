@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -24,10 +25,26 @@ func main() {
 	pflag.Parse()
 
 	cookieStores := kooky.FindAllCookieStores()
-	var w *tabwriter.Writer
-	if export == nil || len(*export) < 1 {
+
+	var cookiesExport []*kooky.Cookie // for netscape export
+
+	var f io.Writer         // for netscape export
+	var w *tabwriter.Writer // for printing
+	if export != nil && len(*export) > 0 {
+		if *export == `-` {
+			f = os.Stdout
+		} else {
+			fl, err := os.OpenFile(*export, os.O_RDWR|os.O_CREATE, 0644)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			defer fl.Close()
+			f = fl
+		}
+	} else {
 		w = tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 	}
+	trimLen := 45
 	for _, store := range cookieStores {
 		defer store.Close()
 
@@ -57,18 +74,8 @@ func main() {
 		cookies, _ := store.ReadCookies(filters...)
 
 		if export != nil && len(*export) > 0 {
-			if *export == `-` {
-				kooky.ExportCookies(os.Stdout, cookies)
-			} else {
-				f, err := os.OpenFile(*export, os.O_RDWR|os.O_CREATE, 0644)
-				if err != nil {
-					log.Fatalln(err)
-				}
-				defer f.Close()
-				kooky.ExportCookies(f, cookies)
-			}
+			cookiesExport = append(cookiesExport, cookies...)
 		} else {
-			trimLen := 45
 			for _, cookie := range cookies {
 				fmt.Fprintf(
 					w,
@@ -85,7 +92,9 @@ func main() {
 			}
 		}
 	}
-	if export == nil || len(*export) < 1 {
+	if export != nil && len(*export) > 0 {
+		kooky.ExportCookies(f, cookiesExport)
+	} else {
 		w.Flush()
 	}
 }
