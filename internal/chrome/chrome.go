@@ -11,11 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/pbkdf2"
+
 	"github.com/zellyn/kooky"
 	"github.com/zellyn/kooky/internal/utils"
 
 	"github.com/go-sqlite/sqlite3"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 // Thanks to https://gist.github.com/dacort/bd6a5116224c594b14db
