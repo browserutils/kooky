@@ -1,5 +1,12 @@
 # kooky
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/zellyn/kooky)](https://pkg.go.dev/github.com/zellyn/kooky)
+[![Go Report Card](https://goreportcard.com/badge/zellyn/kooky)](https://goreportcard.com/report/zellyn/kooky)
+![Lines of code](https://img.shields.io/tokei/lines/github/zellyn/kooky)
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
+
 Reaching into browser-specific, vaguely documented, possibly
 concurrently modified cookie stores to pilfer cookies is a bad idea.
 Since you've arrived here, you're almost certainly going to do it
@@ -16,8 +23,6 @@ It also aspires to work for all major browsers, on all three
 major platforms.
 
 ## Status
-
-[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 
 Basic functionality works on Windows, MacOS and Linux.
 Some functions might not yet be implemented on some platforms.
