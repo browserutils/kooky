@@ -32,7 +32,7 @@ PRs more than welcome.
 
 TODOs
 
-- [✔] Make it work on Windows. (Look at
+- [x] Make it work on Windows. (Look at
       [this](https://play.golang.org/p/fknP9AuLU-) and
       [this](https://github.com/cfstras/chromecsv/blob/master/crypt_windows.go)
       to learn how to decrypt.)
