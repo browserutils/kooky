@@ -6,9 +6,12 @@ import (
 	"time"
 )
 
-// passed cookies are non-nil
+// Filter is used for filtering cokies in ReadCookies() functions.
+//
+// A cookie passes the Filter if Filter returns true.
 type Filter func(*Cookie) bool
 
+// FilterCookies() applies "filters" in order to the "cookies".
 func FilterCookies(cookies []*Cookie, filters ...Filter) []*Cookie {
 	var ret = make([]*Cookie, 0, len(cookies))
 cookieLoop:
@@ -26,6 +29,7 @@ cookieLoop:
 	return ret
 }
 
+// FilterCookie() tells if a "cookie" passes all "filters".
 func FilterCookie(cookie *Cookie, filters ...Filter) bool {
 	if cookie == nil {
 		return false
@@ -40,6 +44,9 @@ func FilterCookie(cookie *Cookie, filters ...Filter) bool {
 
 // debug filter
 
+// Debug prints the cookie.
+//
+// Position Debug after the filter you want to test.
 var Debug Filter = func(cookie *Cookie) bool {
 	fmt.Printf("%+#v\n", cookie)
 	return cookie != nil && true
@@ -160,6 +167,15 @@ var HTTPOnly Filter = func(cookie *Cookie) bool {
 }
 
 // expires filters
+
+var Valid Filter = func(cookie *Cookie) bool {
+	return cookie != nil && cookie.Expires.After(time.Now())
+
+}
+var Expired Filter = func(cookie *Cookie) bool {
+	return cookie != nil && cookie.Expires.Before(time.Now())
+
+}
 
 func ExpiresAfter(u time.Time) Filter {
 	return func(cookie *Cookie) bool {

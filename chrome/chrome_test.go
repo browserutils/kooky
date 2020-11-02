@@ -10,16 +10,18 @@ import (
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadCookies(t *testing.T) {
-	// Prevent reading the password from the Keychain on MacOS.
-	oldPassword := setChromeKeychainPassword([]byte("ChromeSafeStoragePasswrd"))
-	defer setChromeKeychainPassword(oldPassword)
-
-	testCookiesPath, err := testutils.GetTestDataFilePath("small-chrome-cookie-db.sqlite")
+	testCookiesPath, err := testutils.GetTestDataFilePath("small-chrome-cookie-db.sqlite") // this test file was created on macos
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadCookies(testCookiesPath)
+	s := &chromeCookieStore{filename: testCookiesPath}
+	defer s.Close()
+	// Prevent reading the password from the OS Keyring.
+	oldPassword := s.setKeyringPassword([]byte("ChromeSafeStoragePasswrd"))
+	defer s.setKeyringPassword(oldPassword)
+
+	cookies, err := s.ReadCookies()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,5 +49,4 @@ func TestReadCookies(t *testing.T) {
 	if !cookie.Creation.Equal(wantCreation) {
 		t.Errorf("Want cookie.Creation=%v; got %v", wantCreation, cookie.Creation)
 	}
-
 }

@@ -1,36 +1,38 @@
 # kooky
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/zellyn/kooky)](https://pkg.go.dev/github.com/zellyn/kooky)
+[![Go Report Card](https://goreportcard.com/badge/zellyn/kooky)](https://goreportcard.com/report/zellyn/kooky)
+![Lines of code](https://img.shields.io/tokei/lines/github/zellyn/kooky)
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
+
 Reaching into browser-specific, vaguely documented, possibly
 concurrently modified cookie stores to pilfer cookies is a bad idea.
 Since you've arrived here, you're almost certainly going to do it
 anyway. Me too. And if we're going to do the Wrong Thing, at least
 let's try to Do it Right.
 
-Package kooky contains routines to reach into cookie stores for Chrome
-and Safari, and retrieve the cookies.
+Package kooky contains routines to reach into cookie stores for Chrome, Firefox, Safari, ... and retrieve the cookies.
 
 It aspires to be pure Go (I spent quite a while making
 [go-sqlite/sqlite3](https://github.com/go-sqlite/sqlite3) work for
-it), but I guess the keychain parts
-([keybase/go-keychain](http://github.com/keybase/go-keychain)) mess
-that up.
+it).
 
-It also aspires to work for all three major browsers, on all three
-major platforms. Naturally, half of that is TODOs.
+It also aspires to work for all major browsers, on all three
+major platforms.
 
 ## Status
 
-[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
-
-Basic functionality works, on MacOS. I expect Linux to work too, since
-it doesn't encrypt. **The API is currently not expected to be at all
-stable.**
+Basic functionality works on Windows, MacOS and Linux.
+Some functions might not yet be implemented on some platforms.
+**The API is currently not expected to be at all stable.**
 
 PRs more than welcome.
 
 TODOs
 
-- [ ] Make it work on Windows. (Look at
+- [x] Make it work on Windows. (Look at
       [this](https://play.golang.org/p/fknP9AuLU-) and
       [this](https://github.com/cfstras/chromecsv/blob/master/crypt_windows.go)
       to learn how to decrypt.)
@@ -38,35 +40,78 @@ TODOs
 
 ## Example usage
 
+### Any Browser - Cookie Filter Usage
+
+```go
+package main
+
+import (
+  "fmt"
+
+	"github.com/zellyn/kooky"
+	_ "github.com/zellyn/kooky/allbrowsers" // register cookie store finders!
+)
+
+func main() {
+  // uses registered finders to find cookie store files in default locations
+  // applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
+	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`))
+
+	for _, cookie := range cookies {
+		fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
+  }
+ }
+```
+
 ### Chrome on macOS
 
 ```go
-// import "github.com/zellyn/kooky/chrome"
+package main
 
-dir, _ := os.UserConfigDir()   // "/<USER>/Library/Application Support/"
-cookiesFile = dir + "/Google/Chrome/Default/Cookies"
-cookies, err: = chrome.ReadCookies(cookiesFile)
-if err != nil {
-	return err
-}
-for _, cookie := range cookies {
-	fmt.Println(cookie)
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/zellyn/kooky/chrome"
+)
+
+func main() {
+	dir, _ := os.UserConfigDir() // "/<USER>/Library/Application Support/"
+	cookiesFile := dir + "/Google/Chrome/Default/Cookies"
+	cookies, err := chrome.ReadCookies(cookiesFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, cookie := range cookies {
+		fmt.Println(cookie)
+	}
 }
 ```
 
 ### Safari
 
 ```go
-// import "github.com/zellyn/kooky/safari"
+package main
 
-dir, _ := os.UserHomeDir()
-cookiesFile = dir + "/Library/Cookies/Cookies.binarycookies"
-cookies, err: = safari.ReadCookies(cookiesFile)
-if err != nil {
-	return err
-}
-for _, cookie := range cookies {
-	fmt.Println(cookie)
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/zellyn/kooky/safari"
+)
+
+func main() {
+	dir, _ := os.UserHomeDir()
+	cookiesFile := dir + "/Library/Cookies/Cookies.binarycookies"
+	cookies, err := safari.ReadCookies(cookiesFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, cookie := range cookies {
+		fmt.Println(cookie)
+	}
 }
 ```
 
