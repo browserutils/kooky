@@ -49,7 +49,7 @@ func FilterCookie(cookie *Cookie, filters ...Filter) bool {
 // Position Debug after the filter you want to test.
 var Debug Filter = func(cookie *Cookie) bool {
 	fmt.Printf("%+#v\n", cookie)
-	return cookie != nil && true
+	return true
 }
 
 // domain filters
