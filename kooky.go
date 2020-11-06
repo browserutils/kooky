@@ -20,8 +20,8 @@ type Cookie struct {
 	Value    string
 }
 
-// HttpCookie returns an http.Cookie equivalent to this Cookie.
-func (c Cookie) HttpCookie() http.Cookie {
+// HTTPCookie() returns an http.Cookie equivalent to this Cookie.
+func (c Cookie) HTTPCookie() http.Cookie {
 	hc := http.Cookie{}
 	hc.Domain = c.Domain
 	hc.Name = c.Name
