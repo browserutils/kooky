@@ -1,35 +1,20 @@
 package netscape
 
 import (
-	"errors"
-	"os"
-
 	"github.com/zellyn/kooky"
 	"github.com/zellyn/kooky/internal/netscape"
 )
 
+// This ReadCookies() function returns an additional boolean "strict" telling
+// if the file adheres to the netscape cookies.txt format
 func ReadCookies(filename string, filters ...kooky.Filter) (c []*kooky.Cookie, strict bool, e error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, false, err
-	}
-	defer f.Close()
+	s := &netscape.CookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `netscape`
 
-	return netscape.ReadCookies(f, filters...)
-}
+	defer s.Close()
 
-func (s *netscapeCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
-	}
-	if err := s.open(); err != nil {
-		return nil, err
-	} else if s.file == nil {
-		return nil, errors.New(`file is nil`)
-	}
+	cookies, err := s.ReadCookies(filters...)
 
-	cookies, isStrict, err := netscape.ReadCookies(s.file, filters...)
-	s.isStrict = isStrict
-
-	return cookies, err
+	return cookies, s.IsStrict(), err
 }

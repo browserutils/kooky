@@ -13,6 +13,22 @@ import (
 
 const httpOnlyPrefix = `#HttpOnly_`
 
+func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	if s == nil {
+		return nil, errors.New(`cookie store is nil`)
+	}
+	if err := s.Open(); err != nil {
+		return nil, err
+	} else if s.File == nil {
+		return nil, errors.New(`file is nil`)
+	}
+
+	cookies, isStrict, err := ReadCookies(s.File, filters...)
+	s.IsStrictBool = isStrict
+
+	return cookies, err
+}
+
 func ReadCookies(file io.Reader, filters ...kooky.Filter) (c []*kooky.Cookie, strict bool, e error) {
 	// http://web.archive.org/web/20080520061150/wp.netscape.com/newsref/std/cookie_spec.html
 	// https://github.com/Rob--W/cookie-manager/blob/83c04b74b79cb7768a33c4a93fbdfd04b90fa931/cookie-manager.js#L975
@@ -36,9 +52,17 @@ func ReadCookies(file io.Reader, filters ...kooky.Filter) (c []*kooky.Cookie, st
 		if len(sp) != 7 {
 			continue
 		}
-		exp, err := strconv.ParseInt(sp[4], 10, 64)
-		if err != nil {
-			continue
+		var exp int64
+		if len(sp[4]) > 0 {
+			e, err := strconv.ParseInt(sp[4], 10, 64)
+			if err != nil {
+				continue
+			} else {
+				exp = e
+			}
+		} else {
+			// allow empty expiry field for uzbl's "session-cookies.txt" file
+			strict = false
 		}
 
 		cookie := &kooky.Cookie{}
