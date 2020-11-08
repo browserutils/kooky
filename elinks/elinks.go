@@ -8,10 +8,20 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
+type elinksCookieStore struct {
+	internal.DefaultCookieStore
+}
+
+var _ kooky.CookieStore = (*elinksCookieStore)(nil)
+
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &elinksCookieStore{filename: filename}
+	s := &elinksCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `elinks`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -21,15 +31,15 @@ func (s *elinksCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cooki
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
 	var ret []*kooky.Cookie
 
-	scanner := bufio.NewScanner(s.file)
+	scanner := bufio.NewScanner(s.File)
 	for scanner.Scan() {
 		line := scanner.Text()
 		sp := strings.Split(line, "\t")
@@ -44,16 +54,15 @@ func (s *elinksCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cooki
 		if err != nil {
 			continue
 		}
+
 		cookie := &kooky.Cookie{}
 
-		// src/cookies/cookies.c
-		// enum { NAME = 0, VALUE, SERVER, PATH, DOMAIN, EXPIRES, SECURE, MEMBERS };
 		cookie.Name = sp[0]
 		cookie.Value = sp[1]
 		cookie.Path = sp[3]
 		cookie.Domain = sp[4]
 		cookie.Expires = time.Unix(exp, 0)
-		cookie.Secure = sec > 1
+		cookie.Secure = sec == 1
 
 		if !kooky.FilterCookie(cookie, filters...) {
 			continue

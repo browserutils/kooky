@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type elinksFinder struct{}
@@ -23,9 +24,11 @@ func (s *elinksFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret = []kooky.CookieStore{
 		&elinksCookieStore{
-			browser:          `elinks`,
-			isDefaultProfile: true,
-			filename:         filepath.Join(home, `.elinks`, `cookies`),
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `elinks`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(home, `.elinks`, `cookies`),
+			},
 		},
 	}
 	return ret, nil
