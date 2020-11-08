@@ -56,15 +56,15 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 	}
 
 	err := s.Database.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
-		switch lRec := len(rec.Values); lRec {
-		case 13, 14, 15:
-			// known values for firefox from past/current versions
-			// v78 LTS: 14 columns
-			// v82: 15 columns
-		default:
-			if highestIndex > lRec {
-				return errors.New(`column index out of bound`)
-			}
+		/*
+		   known column counts for firefox from past/current versions
+		   ???:     13 columns
+		   v78 LTS: 14 columns
+		   v82:     15 columns
+		*/
+
+		if highestIndex >= len(rec.Values) {
+			return errors.New(`column index out of bound`)
 		}
 
 		cookie := kooky.Cookie{}
