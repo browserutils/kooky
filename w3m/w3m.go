@@ -8,10 +8,20 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
+type w3mCookieStore struct {
+	internal.DefaultCookieStore
+}
+
+var _ kooky.CookieStore = (*w3mCookieStore)(nil)
+
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &w3mCookieStore{filename: filename}
+	s := &w3mCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `w3m`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -24,15 +34,15 @@ func (s *w3mCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, 
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
 	var ret []*kooky.Cookie
 
-	scanner := bufio.NewScanner(s.file)
+	scanner := bufio.NewScanner(s.File)
 	for scanner.Scan() {
 		// split line into fields
 		sp := strings.Split(scanner.Text(), "\t")

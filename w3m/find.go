@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type w3mFinder struct{}
@@ -23,9 +24,11 @@ func (s *w3mFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret = []kooky.CookieStore{
 		&w3mCookieStore{
-			browser:          `w3m`,
-			isDefaultProfile: true,
-			filename:         filepath.Join(home, `.w3m`, `cookie`),
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `w3m`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(home, `.w3m`, `cookie`),
+			},
 		},
 	}
 	return ret, nil
