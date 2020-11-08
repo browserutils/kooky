@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/netscape"
 )
 
 type dilloFinder struct{}
@@ -25,10 +27,12 @@ func (s *dilloFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	}
 
 	var ret = []kooky.CookieStore{
-		&dilloCookieStore{
-			browser:          `dillo`,
-			isDefaultProfile: true,
-			filename:         filepath.Join(home, `.dillo`, `cookies.txt`),
+		&netscape.CookieStore{
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `dillo`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(home, `.dillo`, `cookies.txt`),
+			},
 		},
 	}
 	return ret, nil
