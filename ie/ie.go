@@ -4,27 +4,38 @@ import (
 	"bufio"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 	"github.com/zellyn/kooky/internal/utils"
-
-	"github.com/bobesa/go-domain-util/domainutil"
 )
 
+type ieCookieStore struct {
+	internal.DefaultCookieStore
+}
+
+var _ kooky.CookieStore = (*ieCookieStore)(nil)
+
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &ieCookieStore{filename: filename}
+	s := &ieCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `ie`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
 }
 
 func (s *ieCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	// TODO: internalize for reuse by edge
+
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
@@ -34,7 +45,7 @@ func (s *ieCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, e
 		cookie             *kooky.Cookie
 		cookies            []*kooky.Cookie
 	)
-	scanner := bufio.NewScanner(s.file)
+	scanner := bufio.NewScanner(s.File)
 	for scanner.Scan() {
 		lineNr = lineNr%9 + 1
 		line := scanner.Text()
@@ -45,7 +56,13 @@ func (s *ieCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, e
 		case 2:
 			cookie.Value = line
 		case 3:
-			cookie.Domain = domainutil.Domain(line)
+			sp := strings.SplitN(line, `/`, 2)
+			cookie.Domain = sp[0]
+			if len(sp) == 2 {
+				cookie.Path = `/` + sp[1]
+			} else {
+				cookie.Path = `/`
+			}
 		case 4:
 			flags, err := strconv.ParseUint(line, 10, 32)
 			if err != nil {
@@ -92,6 +109,15 @@ func (s *ieCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, e
 }
 
 /*
+TODO:
+
+* index.dat parsing
+* reuse WebCacheV01.dat edge parser
+*/
+
+/*
+NOTES:
+
 https://www.digital-detective.net/random-cookie-filenames/
 To mitigate the threat, Internet Explorer 9.0.2 now names the cookie files using a randomly-generated alphanumeric string.
 
