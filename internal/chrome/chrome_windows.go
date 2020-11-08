@@ -67,12 +67,12 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if useSaved && s.KeyringPassword != nil {
-		return s.KeyringPassword, nil
+	if useSaved && s.KeyringPasswordBytes != nil {
+		return s.KeyringPasswordBytes, nil
 	}
 
 	// the "Local State" json file is normally one directory above the "Cookies" database
-	stateFile, err := filepath.Abs(filepath.Join(filepath.Dir(filepath.Dir(s.Filename)), `Local State`))
+	stateFile, err := filepath.Abs(filepath.Join(filepath.Dir(filepath.Dir(s.FileNameStr)), `Local State`))
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +112,8 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if len(key) != 32 {
 		return nil, errors.New(`master key is not 32 bytes long`)
 	}
-	s.KeyringPassword = key
+	s.KeyringPasswordBytes = key
 	keyringPasswordMap.set(stateFile, key)
 
-	return s.KeyringPassword, nil
+	return s.KeyringPasswordBytes, nil
 }

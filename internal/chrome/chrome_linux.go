@@ -26,8 +26,8 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if useSaved && s.KeyringPassword != nil {
-		return s.KeyringPassword, nil
+	if useSaved && s.KeyringPasswordBytes != nil {
+		return s.KeyringPasswordBytes, nil
 	}
 
 	// chromium --password-store=gnome
@@ -36,7 +36,7 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	// Get()      from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L77
 	// findItem() from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L51
 
-	browser := s.Browser
+	browser := s.BrowserStr
 	switch browser {
 	case `chrome`:
 	case `chromium`:
@@ -91,9 +91,9 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		return nil, err
 	}
 
-	s.KeyringPassword = secret.Value
+	s.KeyringPasswordBytes = secret.Value
 	keyringPasswordMap.set(kpmKey, secret.Value)
 
 	// s.KeyringPassword is base64 standard encoded - do not decode!
-	return s.KeyringPassword, nil
+	return s.KeyringPasswordBytes, nil
 }

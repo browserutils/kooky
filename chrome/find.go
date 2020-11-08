@@ -2,6 +2,8 @@ package chrome
 
 import (
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/chrome"
 	"github.com/zellyn/kooky/internal/chrome/find"
 )
 
@@ -26,12 +28,14 @@ func (s *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	for _, file := range files {
 		ret = append(
 			ret,
-			&chromeCookieStore{
-				filename:         file.Path,
-				browser:          file.Browser,
-				profile:          file.Profile,
-				os:               file.OS,
-				isDefaultProfile: file.IsDefaultProfile,
+			&chrome.CookieStore{
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:           file.Browser,
+					ProfileStr:           file.Profile,
+					OSStr:                file.OS,
+					IsDefaultProfileBool: file.IsDefaultProfile,
+					FileNameStr:          file.Path,
+				},
 			},
 		)
 	}
@@ -49,12 +53,14 @@ func (s *chromiumFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	for _, file := range files {
 		ret = append(
 			ret,
-			&chromeCookieStore{
-				filename:         file.Path,
-				browser:          file.Browser,
-				profile:          file.Profile,
-				os:               file.OS,
-				isDefaultProfile: file.IsDefaultProfile,
+			&chrome.CookieStore{
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:           file.Browser,
+					ProfileStr:           file.Profile,
+					OSStr:                file.OS,
+					IsDefaultProfileBool: file.IsDefaultProfile,
+					FileNameStr:          file.Path,
+				},
 			},
 		)
 	}

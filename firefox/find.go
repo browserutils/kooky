@@ -2,6 +2,8 @@ package firefox
 
 import (
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/firefox"
 	"github.com/zellyn/kooky/internal/firefox/find"
 )
 
@@ -23,11 +25,13 @@ func (s *firefoxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	for _, file := range files {
 		ret = append(
 			ret,
-			&firefoxCookieStore{
-				filename:         file.Path,
-				browser:          file.Browser,
-				profile:          file.Profile,
-				isDefaultProfile: file.IsDefaultProfile,
+			&firefox.CookieStore{
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:           file.Browser,
+					ProfileStr:           file.Profile,
+					IsDefaultProfileBool: file.IsDefaultProfile,
+					FileNameStr:          file.Path,
+				},
 			},
 		)
 	}

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type fileHeader struct {
@@ -40,8 +41,17 @@ type cookieHeader struct {
 	CreationDate   float64
 }
 
+type safariCookieStore struct {
+	internal.DefaultCookieStore
+}
+
+var _ kooky.CookieStore = (*safariCookieStore)(nil)
+
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &safariCookieStore{filename: filename}
+	s := &safariCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `safari`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -51,16 +61,16 @@ func (s *safariCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cooki
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
 	var allCookies []*kooky.Cookie
 
 	var header fileHeader
-	err := binary.Read(s.file, binary.BigEndian, &header)
+	err := binary.Read(s.File, binary.BigEndian, &header)
 	if err != nil {
 		return nil, fmt.Errorf("error reading header: %v", err)
 	}
@@ -69,19 +79,19 @@ func (s *safariCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cooki
 	}
 
 	pageSizes := make([]int32, header.NumPages)
-	if err = binary.Read(s.file, binary.BigEndian, &pageSizes); err != nil {
+	if err = binary.Read(s.File, binary.BigEndian, &pageSizes); err != nil {
 		return nil, fmt.Errorf("error reading page sizes: %v", err)
 	}
 
 	for i, pageSize := range pageSizes {
-		if allCookies, err = readPage(s.file, pageSize, allCookies); err != nil {
+		if allCookies, err = readPage(s.File, pageSize, allCookies); err != nil {
 			return nil, fmt.Errorf("error reading page %d: %v", i, err)
 		}
 	}
 
 	// TODO(zellyn): figure out how the checksum works.
 	var checksum [8]byte
-	err = binary.Read(s.file, binary.BigEndian, &checksum)
+	err = binary.Read(s.File, binary.BigEndian, &checksum)
 	if err != nil {
 		return nil, fmt.Errorf("error reading checksum: %v", err)
 	}

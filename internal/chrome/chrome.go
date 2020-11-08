@@ -25,7 +25,9 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if s.Database == nil {
+	if err := s.Open(); err != nil {
+		return nil, err
+	} else if s.Database == nil {
 		return nil, errors.New(`database is nil`)
 	}
 
@@ -234,7 +236,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 
 	// try to reuse previously successful decryption method
 	if s.DecryptionMethod != nil {
-		decrypted, err := s.DecryptionMethod(encrypted, s.Password)
+		decrypted, err := s.DecryptionMethod(encrypted, s.PasswordBytes)
 		if err == nil {
 			return decrypted, nil
 		} else {
@@ -248,7 +250,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 	// TODO: mobile
 	var osMap = map[string]struct{}{} // used for deduplication
 	var oss []string
-	for _, opsys := range []string{s.OS, runtime.GOOS, `windows`, `darwin`, `linux`} {
+	for _, opsys := range []string{s.OSStr, runtime.GOOS, `windows`, `darwin`, `linux`} {
 		if _, ok := osMap[opsys]; ok {
 			continue
 		}
@@ -281,7 +283,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 			needsKeyringQuerying = true
 			fallbackPassword = fallbackPasswordMacOS[:]
 			decrypt = func(encrypted, password []byte) ([]byte, error) {
-				return decryptAESCBC(encrypted, password, iterationsMacOS)
+				return decryptAESCBC(encrypted, password, aescbcIterationsMacOS)
 			}
 		case `linux`:
 			switch {
@@ -294,7 +296,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 				password = fallbackPasswordLinux[:]
 			}
 			decrypt = func(encrypted, password []byte) ([]byte, error) {
-				return decryptAESCBC(encrypted, password, iterationsLinux)
+				return decryptAESCBC(encrypted, password, aescbcIterationsLinux)
 			}
 		}
 		if decrypt == nil {
@@ -322,10 +324,10 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 		decrypted, err := decrypt(encrypted, password)
 		if err == nil {
 			s.DecryptionMethod = decrypt
-			s.OS = opsys
-			s.Password = password
+			s.OSStr = opsys
+			s.PasswordBytes = password
 			if len(keyringPassword) > 0 {
-				s.KeyringPassword = keyringPassword
+				s.KeyringPasswordBytes = keyringPassword
 			}
 			return decrypted, nil
 		} else if tryNr > 0 && tryNr < 3 {
@@ -337,11 +339,11 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 }
 
 const (
-	salt            = "saltysalt"
-	iv              = "                "
-	iterationsLinux = 1
-	iterationsMacOS = 1003
-	length          = 16
+	aescbcSalt            = `saltysalt`
+	aescbcIV              = `                `
+	aescbcIterationsLinux = 1
+	aescbcIterationsMacOS = 1003
+	aescbcLength          = 16
 )
 
 func decryptAESCBC(encrypted, password []byte, iterations int) ([]byte, error) {
@@ -356,20 +358,20 @@ func decryptAESCBC(encrypted, password []byte, iterations int) ([]byte, error) {
 	// strip "v##"
 	encrypted = encrypted[3:]
 
-	key := pbkdf2.Key(password, []byte(salt), iterations, length, sha1.New)
+	key := pbkdf2.Key(password, []byte(aescbcSalt), iterations, aescbcLength, sha1.New)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
 	decrypted := make([]byte, len(encrypted))
-	cbc := cipher.NewCBCDecrypter(block, []byte(iv))
+	cbc := cipher.NewCBCDecrypter(block, []byte(aescbcIV))
 	cbc.CryptBlocks(decrypted, encrypted)
 
 	// In the padding scheme the last <padding length> bytes
 	// have a value equal to the padding length, always in (1,16]
-	if len(decrypted)%length != 0 {
-		return nil, fmt.Errorf("decrypted data block length is not a multiple of %d", length)
+	if len(decrypted)%aescbcLength != 0 {
+		return nil, fmt.Errorf("decrypted data block length is not a multiple of %d", aescbcLength)
 	}
 	paddingLen := int(decrypted[len(decrypted)-1])
 	if paddingLen > 16 {

@@ -5,21 +5,24 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/chrome"
 	"github.com/zellyn/kooky/internal/testutils"
 )
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadCookies(t *testing.T) {
-	testCookiesPath, err := testutils.GetTestDataFilePath("small-chrome-cookie-db.sqlite") // this test file was created on macos
+	testCookiesPath, err := testutils.GetTestDataFilePath("chrome-macos-cookie-db.sqlite") // this test file was created on macos
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	s := &chromeCookieStore{filename: testCookiesPath}
+	s := &chrome.CookieStore{}
+	s.FileNameStr = testCookiesPath
+
 	defer s.Close()
 	// Prevent reading the password from the OS Keyring.
-	oldPassword := s.setKeyringPassword([]byte("ChromeSafeStoragePasswrd"))
-	defer s.setKeyringPassword(oldPassword)
+	oldPassword := s.SetKeyringPassword([]byte("ChromeSafeStoragePasswrd"))
+	defer s.SetKeyringPassword(oldPassword)
 
 	cookies, err := s.ReadCookies()
 	if err != nil {

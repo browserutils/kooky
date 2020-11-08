@@ -14,11 +14,11 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if useSaved && s.KeyringPassword != nil {
-		return s.KeyringPassword, nil
+	if useSaved && s.KeyringPasswordBytes != nil {
+		return s.KeyringPasswordBytes, nil
 	}
 
-	kpmKey := `keychain_` + s.Browser
+	kpmKey := `keychain_` + s.BrowserStr
 	if useSaved {
 		if kpw, ok := keyringPasswordMap.get(kpmKey); ok {
 			return kpw, nil
@@ -30,8 +30,8 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.KeyringPassword = []byte(strings.TrimSpace(string(out)))
-	keyringPasswordMap.set(kpmKey, s.KeyringPassword)
+	s.KeyringPasswordBytes = []byte(strings.TrimSpace(string(out)))
+	keyringPasswordMap.set(kpmKey, s.KeyringPasswordBytes)
 
-	return s.KeyringPassword, nil
+	return s.KeyringPasswordBytes, nil
 }
