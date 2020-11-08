@@ -56,4 +56,51 @@ func TestReadCookies(t *testing.T) {
 	if c.Value != "a748915ba19c6d0b" {
 		t.Errorf("c.Value=%q", c.Value)
 	}
+
+	// 15 columns
+
+	testCookiesPath, err = testutils.GetTestDataFilePath("firefox-v82-linux-cookies.sqlite")
+	if err != nil {
+		t.Fatalf("Failed to load test data file")
+	}
+
+	cookies, err = ReadCookies(testCookiesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(cookies) != 4 {
+		t.Fatalf("got %d cookies, but expected 4", len(cookies))
+	}
+
+	tz, err = time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c = cookies[0]
+	if c.Domain != "google.de" {
+		t.Errorf("c.Domain=%q", c.Domain)
+	}
+	if c.Name != "NID" {
+		t.Errorf("c.Name=%q", c.Name)
+	}
+	if c.Path != "/" {
+		t.Errorf("c.Path=%q", c.Path)
+	}
+	if !c.Expires.Equal(time.Date(2021, 5, 10, 23, 14, 45, 0, tz)) {
+		t.Errorf("c.Expires=%q", c.Expires)
+	}
+	if !c.Secure {
+		t.Error("c.Secure expected true")
+	}
+	if !c.HttpOnly {
+		t.Error("c.HttpOnly expected true")
+	}
+	if !c.Creation.Equal(time.Date(2020, 11, 8, 22, 14, 45, 0, tz)) {
+		t.Errorf("c.Creation=%q", c.Creation)
+	}
+	if c.Value != "204=blabla" {
+		t.Errorf("c.Value=%q", c.Value)
+	}
 }
