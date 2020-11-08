@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/firefox"
 )
 
 type browshFinder struct{}
@@ -22,10 +24,12 @@ func (s *browshFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	}
 
 	var ret = []kooky.CookieStore{
-		&browshCookieStore{
-			browser:          `browsh`,
-			isDefaultProfile: true,
-			filename:         filepath.Join(dotConfig, `browsh`, `firefox_profile`, `cookies.sqlite`),
+		&firefox.CookieStore{
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `browsh`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(dotConfig, `browsh`, `firefox_profile`, `cookies.sqlite`),
+			},
 		},
 	}
 
