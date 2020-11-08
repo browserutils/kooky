@@ -10,7 +10,7 @@ import (
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadCookies(t *testing.T) {
-	testCookiesPath, err := testutils.GetTestDataFilePath("small-safari-cookie-db.binarycookies")
+	testCookiesPath, err := testutils.GetTestDataFilePath("safari-macos-cookie-db.binarycookies")
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type safariFinder struct{}
@@ -28,10 +29,11 @@ func (s *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret = []kooky.CookieStore{
 		&safariCookieStore{
-			browser:          `safari`,
-			profile:          ``,
-			isDefaultProfile: true,
-			filename:         filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`),
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `safari`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`),
+			},
 		},
 	}
 	return ret, nil

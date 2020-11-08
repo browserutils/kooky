@@ -15,7 +15,9 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if s.Database == nil {
+	if err := s.Open(); err != nil {
+		return nil, err
+	} else if s.Database == nil {
 		return nil, errors.New(`database is nil`)
 	}
 
