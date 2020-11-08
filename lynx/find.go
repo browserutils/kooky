@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/netscape"
 )
 
 type lynxFinder struct{}
@@ -95,10 +97,12 @@ configFileLoop:
 		cookieMap[cookieFile] = struct{}{}
 		ret = append(
 			ret,
-			&lynxCookieStore{
-				browser:          `lynx`,
-				isDefaultProfile: cookieFile == primCookieFile,
-				filename:         cookieFile,
+			&netscape.CookieStore{
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:           `lynx`,
+					IsDefaultProfileBool: cookieFile == primCookieFile,
+					FileNameStr:          cookieFile,
+				},
 			},
 		)
 	}
@@ -106,17 +110,19 @@ configFileLoop:
 	// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
 	ret = append(
 		ret,
-		&lynxCookieStore{
-			browser:          `lynx`,
-			isDefaultProfile: true,
-			filename:         filepath.Join(home, `.lynx_cookies`),
+		&netscape.CookieStore{
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:           `lynx`,
+				IsDefaultProfileBool: true,
+				FileNameStr:          filepath.Join(home, `.lynx_cookies`),
+			},
 		},
 	)
 
 	// last one probably overwrites earlier configuration
 	if len(primCookieFile) == 0 {
-		if cs, ok := ret[len(ret)-1].(*lynxCookieStore); ok {
-			cs.isDefaultProfile = true
+		if cs, ok := ret[len(ret)-1].(*netscape.CookieStore); ok {
+			cs.IsDefaultProfileBool = true
 		}
 	}
 
