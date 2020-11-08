@@ -7,74 +7,43 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/chrome"
 
 	"github.com/go-sqlite/sqlite3"
 )
 
 type operaCookieStore struct {
-	filename         string
-	file             *os.File // Presto cookies4.dat
-	database         *sqlite3.DbFile
-	keyringPassword  []byte
-	password         []byte
-	browser          string
-	profile          string
-	os               string
-	isDefaultProfile bool
-	decryptionMethod func(data, password []byte) ([]byte, error)
-	// os            string
-}
-
-func (s *operaCookieStore) FilePath() string {
-	if s == nil {
-		return ``
-	}
-	return s.filename
-}
-func (s *operaCookieStore) Browser() string {
-	if s == nil {
-		return ``
-	}
-	return s.browser
-}
-func (s *operaCookieStore) Profile() string {
-	if s == nil {
-		return ``
-	}
-	return s.profile
-}
-func (s *operaCookieStore) IsDefaultProfile() bool {
-	if s == nil {
-		return false
-	}
-	return s.isDefaultProfile
+	chrome.CookieStore
 }
 
 var _ kooky.CookieStore = (*operaCookieStore)(nil)
 
-func (s *operaCookieStore) open() error {
+func (s *operaCookieStore) Open() error {
 	if s == nil {
 		return errors.New(`cookie store is nil`)
 	}
-	if s.file != nil {
-		s.file.Seek(0, 0)
+	if s.File != nil {
+		s.File.Seek(0, 0)
+		return nil
+	}
+	if len(s.FileNameStr) < 1 {
 		return nil
 	}
 
 	// TODO use file type detection
 
-	if filepath.Base(s.filename) == `cookies4.dat` {
-		f, err := os.Open(s.filename)
+	if filepath.Base(s.FileNameStr) == `cookies4.dat` {
+		f, err := os.Open(s.FileNameStr)
 		if err != nil {
 			return err
 		}
-		s.file = f
+		s.File = f
 	} else {
-		db, err := sqlite3.Open(s.filename)
+		db, err := sqlite3.Open(s.FileNameStr)
 		if err != nil {
 			return err
 		}
-		s.database = db
+		s.Database = db
 	}
 
 	return nil
@@ -87,13 +56,13 @@ func (s *operaCookieStore) Close() error {
 
 	var err, errFile, errDB error
 
-	if s.file != nil {
-		errFile = s.file.Close()
-		s.file = nil
+	if s.File != nil {
+		errFile = s.File.Close()
+		s.File = nil
 	}
-	if s.database != nil {
-		errDB = s.database.Close()
-		s.file = nil
+	if s.Database != nil {
+		errDB = s.Database.Close()
+		s.File = nil
 	}
 
 	if errFile != nil && errDB == nil {

@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/chrome"
 )
 
 type operaFinder struct{}
@@ -25,9 +27,13 @@ func (s *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		files = append(
 			files,
 			&operaCookieStore{
-				browser:          `opera`,
-				isDefaultProfile: true,
-				filename:         filepath.Join(root, `cookies4.dat`),
+				CookieStore: chrome.CookieStore{
+					DefaultCookieStore: internal.DefaultCookieStore{
+						BrowserStr:           `opera`,
+						IsDefaultProfileBool: true,
+						FileNameStr:          filepath.Join(root, `cookies4.dat`),
+					},
+				},
 			},
 		)
 	}
@@ -40,9 +46,13 @@ func (s *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		files = append(
 			files,
 			&operaCookieStore{
-				browser:          `opera`,
-				isDefaultProfile: true,
-				filename:         filepath.Join(root, `Cookies`),
+				CookieStore: chrome.CookieStore{
+					DefaultCookieStore: internal.DefaultCookieStore{
+						BrowserStr:           `opera`,
+						IsDefaultProfileBool: true,
+						FileNameStr:          filepath.Join(root, `Cookies`),
+					},
+				},
 			},
 		)
 	}
