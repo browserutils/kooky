@@ -11,7 +11,10 @@ import (
 )
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &epiphanyCookieStore{filename: filename}
+	s := &epiphanyCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `epiphany`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -21,9 +24,9 @@ func (s *epiphanyCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Coo
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.database == nil {
+	} else if s.Database == nil {
 		return nil, errors.New(`database is nil`)
 	}
 
@@ -45,7 +48,7 @@ func (s *epiphanyCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Coo
 	}
 	cookiesTableName := `moz_cookies`
 	var highestIndex int
-	for _, table := range s.database.Tables() {
+	for _, table := range s.Database.Tables() {
 		if table.Name() == cookiesTableName {
 			for id, column := range table.Columns() {
 				name := column.Name()
@@ -61,7 +64,7 @@ func (s *epiphanyCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Coo
 		}
 	}
 
-	err := s.database.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
+	err := s.Database.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
 		if lRec := len(rec.Values); lRec != 9 {
 			return fmt.Errorf("got %d columns, but expected 9", lRec)
 		} else if highestIndex > lRec {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type epiphanyFinder struct{}
@@ -29,15 +30,17 @@ func (s *epiphanyFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		ret = append(
 			ret,
 			&epiphanyCookieStore{
-				browser:  `epiphany`,
-				filename: filepath.Join(root, `epiphany`, `cookies.sqlite`),
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:  `epiphany`,
+					FileNameStr: filepath.Join(root, `epiphany`, `cookies.sqlite`),
+				},
 			},
 		)
 	}
 
 	if len(ret) > 0 {
 		if cookieStore, ok := ret[len(ret)-1].(*epiphanyCookieStore); ok {
-			cookieStore.isDefaultProfile = true
+			cookieStore.IsDefaultProfileBool = true
 		}
 
 	}
