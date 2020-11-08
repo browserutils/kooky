@@ -8,12 +8,22 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 
 	"golang.org/x/text/encoding/charmap"
 )
 
+type konquerorCookieStore struct {
+	internal.DefaultCookieStore
+}
+
+var _ kooky.CookieStore = (*konquerorCookieStore)(nil)
+
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &konquerorCookieStore{filename: filename}
+	s := &konquerorCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `konqueror`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -23,15 +33,15 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
 	var ret []*kooky.Cookie
 
-	latin1 := charmap.ISO8859_1.NewDecoder().Reader(s.file)
+	latin1 := charmap.ISO8859_1.NewDecoder().Reader(s.File)
 
 	scanner := bufio.NewScanner(latin1)
 	for scanner.Scan() {
@@ -50,9 +60,9 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 			continue
 		}
 		cookie := &kooky.Cookie{}
-		// Domain field is sometimes empty
-		// Host and Domain fields seem to be the same otherwise // TODO
-		cookie.Domain = sp[0]
+		// the Domain field is empty if the cookie is not for subdomains.
+		// in that case the domain string does not start with '.' disallowing subdomains.
+		cookie.Domain = sp[0] // fallback
 
 		// DOMAIN
 		sp = strings.SplitN(strings.TrimLeft(sp[1], ` `), `"`, 3)
@@ -63,7 +73,10 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 			// Domain field is not quoted
 			continue
 		}
-		// ignore Domain field (it can be empty)
+		if len(sp[1]) > 0 {
+			// regular domain string starting with '.' allowing subdomains
+			cookie.Domain = sp[1]
+		}
 
 		// PATH
 		sp = strings.SplitN(strings.TrimLeft(sp[2], ` `), `"`, 3)
@@ -132,3 +145,9 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 	}
 	return ret, nil
 }
+
+/*
+// TODO
+cookie file starts with "# KDE Cookie File v2"
+-> there is probably a v1 format // TODO
+*/

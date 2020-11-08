@@ -1,0 +1,24 @@
+# KDE Cookie File v2
+#
+# Host               Domain               Path         Exp.date   Prot Name                 Sec  Value
+[.google.de]
+consent.google.de    ""                   "/"          1605445402    0 OTZ                  5    some-value
+google.de            ".google.de"         "/"          2146723199    0 CONSENT              5    some-value
+google.de            ".google.de"         "/"          1618665390    0 NID                  7    204=some-value
+[.google.com]
+accounts.google.com  ""                   "/"          1665926008    0 __Host-GAPS          7    1:some-value
+google.com           ".google.com"        "/"          1618665209    0 NID                  7    204=some-value
+google.com           ".google.com"        "/"          2145916800    0 CONSENT              4    WP.some-value
+[.store.google.com]
+store.google.com     ".store.google.com"  "/"          1610630547    0 _gcl_au              4    1.1.some-value
+store.google.com     ".store.google.com"  "/"          1665926548    0 _ga                  4    GA1.3.some-value
+store.google.com     ".store.google.com"  "/"          1602940948    0 _gid                 4    GA1.3some-value
+[.ebay.de]
+ebay.de              ".ebay.de"           "/"          1665926668    0 dp1                  4    bbl/DEsome-value^
+ebay.de              ".ebay.de"           "/"          1665926668    0 nonsession           4    some-value**
+ebay.de              ".ebay.de"           "/"          1602861868    0 ak_bmsc              6    some-value=
+ebay.de              ".ebay.de"           "/"          1665926676    0 npii                 4    btguid/some-value^
+[.amazon.de]
+www.amazon.de        ""                   "/"          1633094716    0 csm-hit              4    tb:s-some-value
+amazon.de            ".amazon.de"         "/"          1634390720    0 session-token        4    some-value
+amazon.de            ".amazon.de"         "/"          1634390720    0 i18n-prefs           4    EUR

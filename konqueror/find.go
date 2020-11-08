@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 )
 
 type konquerorFinder struct{}
@@ -29,15 +30,17 @@ func (s *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		ret = append(
 			ret,
 			&konquerorCookieStore{
-				browser:  `konqueror`,
-				filename: filepath.Join(root, `kcookiejar`, `cookies`),
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:  `konqueror`,
+					FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
+				},
 			},
 		)
 	}
 
 	if len(ret) > 0 {
 		if cookieStore, ok := ret[len(ret)-1].(*konquerorCookieStore); ok {
-			cookieStore.isDefaultProfile = true
+			cookieStore.IsDefaultProfileBool = true
 		}
 	}
 
