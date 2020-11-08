@@ -1,7 +1,6 @@
 package edge
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -15,7 +14,10 @@ import (
 )
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &edgeCookieStore{filename: filename}
+	s := &edgeCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `edge`
+
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -25,108 +27,35 @@ func (s *edgeCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie,
 	if s == nil {
 		return nil, errors.New(`cookie store is nil`)
 	}
-	if err := s.open(); err != nil {
+	if err := s.Open(); err != nil {
 		return nil, err
-	} else if s.file == nil {
+	} else if s.File == nil {
 		return nil, errors.New(`file is nil`)
 	}
 
-	// In the file header of the database we find that the first 4 bytes are a XOR checksum.
-	// The following 4 bytes after the checksum is a file signature. The file signature has
-	// offset 4, and the value is EF CD AB 89.
-	signature := make([]byte, 8)
-	if _, err := s.file.Read(signature); err != nil {
-		return nil, err
-	}
-	if _, err := s.file.Seek(0, 0); err != nil {
-		return nil, err
-	}
-	var signatureESEdatabase = []byte{239, 205, 171, 137} // EF CD AB 89
-	if !bytes.Equal(signature[4:8], signatureESEdatabase) {
-		return nil, errors.New(`file is not an ESE database`)
-	}
-
-	ese_ctx, err := parser.NewESEContext(s.file)
-	if err != nil {
-		return nil, err
-	}
-	catalog, err := parser.ReadCatalog(ese_ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// directories with old text file cookies
-	cookiesContainers, _ := getEdgeCookieDirectories(catalog)
-	for _, cookiesContainer := range cookiesContainers {
-		_ = cookiesContainer.directory // TODO
-	}
-
 	var cookies []*kooky.Cookie
-	textCookies, errTXT := getEdgeTextCookies(catalog, filters...)
-	cookies = append(cookies, textCookies...)
+	var errTXT, errESE, errCHR error
+	if s.ESECatalog != nil {
+		textCookies, e := s.getEdgeTextCookies(filters...)
+		cookies = append(cookies, textCookies...)
+		errTXT = e
 
-	eseCookies, errESE := getEdgeESEcookies(catalog, filters...)
-	cookies = append(cookies, eseCookies...)
+		eseCookies, e := s.getEdgeESEcookies(filters...)
+		cookies = append(cookies, eseCookies...)
+		errESE = e
+	}
 
-	chromeCookies, errCHR := getEdgeChromecookies(s.filename, filters...)
-	cookies = append(cookies, chromeCookies...)
+	if s.Database != nil {
+		chromeCookies, e := s.getEdgeChromecookies(filters...)
+		cookies = append(cookies, chromeCookies...)
+		errCHR = e
+	}
 
 	if errTXT != nil && errESE != nil && errCHR != nil && len(cookies) == 0 {
 		return nil, errors.New(`cannot read edge cookies file`)
 	}
 
 	return cookies, nil
-}
-
-type webCacheContainer struct {
-	containerID      int    // ContainerId
-	setID            int    // SetId
-	flags            int    // Flags
-	size             int    // Size
-	limit            int    // Limit
-	lastScavengeTime int    // LastScavengeTime
-	entryMaxAge      int    // EntryMaxAge
-	lastAccessTime   int64  // LastAccessTime
-	name             string // Name
-	partitionID      string // PartitionId
-	directory        string // Directory
-}
-
-func getEdgeCookieDirectories(catalog *parser.Catalog) ([]webCacheContainer, error) {
-	var cookiesContainers []webCacheContainer
-
-	cbContainers := func(row *ordereddict.Dict) error {
-		var name, directory string
-		if n, ok := row.GetString(`Name`); ok {
-			name = strings.TrimRight(parser.UTF16BytesToUTF8([]byte(n), binary.LittleEndian), "\x00")
-		} else {
-			return nil
-		}
-		if name != `Cookies` {
-			return nil
-		}
-
-		directory, ok := row.GetString(`Directory`)
-		if !ok {
-			return nil
-		}
-
-		cookiesContainers = append(
-			cookiesContainers,
-			webCacheContainer{
-				name:      name,
-				directory: directory,
-			},
-		)
-
-		return nil
-	}
-
-	if err := catalog.DumpTable(`Containers`, cbContainers); err != nil {
-		return nil, err
-	}
-
-	return cookiesContainers, nil
 }
 
 type webCacheCookieEntry struct {
@@ -142,8 +71,14 @@ type webCacheCookieEntry struct {
 	value                  string // Value
 }
 
-func getEdgeESEcookies(catalog *parser.Catalog, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	tables := catalog.Tables
+// func getEdgeESEcookies(catalog *parser.Catalog, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+
+func (s *edgeCookieStore) getEdgeESEcookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	if s == nil {
+		return nil, errors.New(`cookie store is nil`)
+	}
+
+	tables := s.ESECatalog.Tables
 	if tables == nil {
 		return nil, errors.New(`catalog.Tables is nil`)
 	}
@@ -232,7 +167,7 @@ func getEdgeESEcookies(catalog *parser.Catalog, filters ...kooky.Filter) ([]*koo
 		if !strings.HasPrefix(tableName, `CookieEntryEx_`) {
 			continue
 		}
-		if err := catalog.DumpTable(tableName, cbCookieEntries); err != nil {
+		if err := s.ESECatalog.DumpTable(tableName, cbCookieEntries); err != nil {
 			errs = append(errs, err)
 			err = errorList{Errors: errs}
 			return nil, err
@@ -301,12 +236,81 @@ func convertCookieEntry(entry *webCacheCookieEntry) (*kooky.Cookie, error) {
 	return cookie, nil
 }
 
-func getEdgeTextCookies(catalog *parser.Catalog, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+type webCacheContainer struct {
+	containerID      int    // ContainerId
+	setID            int    // SetId
+	flags            int    // Flags
+	size             int    // Size
+	limit            int    // Limit
+	lastScavengeTime int    // LastScavengeTime
+	entryMaxAge      int    // EntryMaxAge
+	lastAccessTime   int64  // LastAccessTime
+	name             string // Name
+	partitionID      string // PartitionId
+	directory        string // Directory
+}
+
+func getEdgeCookieDirectories(catalog *parser.Catalog) ([]webCacheContainer, error) {
+	var cookiesContainers []webCacheContainer
+
+	cbContainers := func(row *ordereddict.Dict) error {
+		var name, directory string
+		if n, ok := row.GetString(`Name`); ok {
+			name = strings.TrimRight(parser.UTF16BytesToUTF8([]byte(n), binary.LittleEndian), "\x00")
+		} else {
+			return nil
+		}
+		if name != `Cookies` {
+			return nil
+		}
+
+		directory, ok := row.GetString(`Directory`)
+		if !ok {
+			return nil
+		}
+
+		cookiesContainers = append(
+			cookiesContainers,
+			webCacheContainer{
+				name:      name,
+				directory: directory,
+			},
+		)
+
+		return nil
+	}
+
+	if err := catalog.DumpTable(`Containers`, cbContainers); err != nil {
+		return nil, err
+	}
+
+	return cookiesContainers, nil
+}
+
+func (s *edgeCookieStore) getEdgeTextCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	if s == nil {
+		return nil, errors.New(`cookie store is nil`)
+	}
+
+	/*
+		// directories with old text file cookies
+		cookiesContainers, _ := getEdgeCookieDirectories(s.ESECatalog)
+		for _, cookiesContainer := range cookiesContainers {
+			_ = cookiesContainer.directory // TODO
+		}
+	*/
+
 	return nil, errors.New(`not implemented`)
 }
 
-func getEdgeChromecookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	return nil, errors.New(`not implemented`)
+func (s *edgeCookieStore) getEdgeChromecookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	if s == nil {
+		return nil, errors.New(`cookie store is nil`)
+	}
+
+	cookies, err := s.CookieStore.ReadCookies(filters...)
+
+	return cookies, err
 }
 
 /*

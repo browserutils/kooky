@@ -1,81 +1,94 @@
 package edge
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/chrome"
+	"www.velocidex.com/golang/go-ese/parser"
 
 	"github.com/go-sqlite/sqlite3"
 )
 
 type edgeCookieStore struct {
-	filename         string
-	file             *os.File
-	database         *sqlite3.DbFile
-	keyringPassword  []byte
-	password         []byte
-	browser          string
-	profile          string
-	os               string
-	isDefaultProfile bool
-	decryptionMethod func(data, password []byte) ([]byte, error)
-	// os            string
-}
-
-func (s *edgeCookieStore) FilePath() string {
-	if s == nil {
-		return ``
-	}
-	return s.filename
-}
-func (s *edgeCookieStore) Browser() string {
-	if s == nil {
-		return ``
-	}
-	return s.browser
-}
-func (s *edgeCookieStore) Profile() string {
-	if s == nil {
-		return ``
-	}
-	return s.profile
-}
-func (s *edgeCookieStore) IsDefaultProfile() bool {
-	if s == nil {
-		return false
-	}
-	return s.isDefaultProfile
+	chrome.CookieStore
+	ESECatalog *parser.Catalog
 }
 
 var _ kooky.CookieStore = (*edgeCookieStore)(nil)
 
-func (s *edgeCookieStore) open() error {
+func (s *edgeCookieStore) Open() error {
 	if s == nil {
 		return errors.New(`cookie store is nil`)
 	}
-	if s.file != nil {
-		s.file.Seek(0, 0)
+	if s.File != nil {
+		s.File.Seek(0, 0)
 		return nil
 	}
-
-	// TODO use file type detection
-
-	if filepath.Base(s.filename) == `cookies4.dat` {
-		f, err := os.Open(s.filename)
-		if err != nil {
-			return err
-		}
-		s.file = f
-	} else {
-		db, err := sqlite3.Open(s.filename)
-		if err != nil {
-			return err
-		}
-		s.database = db
+	if s.ESECatalog != nil || s.Database != nil {
+		return nil
 	}
+	if f, err := os.Open(s.FileNameStr); err != nil {
+		return err
+	} else {
+		s.File = f
+	}
+
+	signature := make([]byte, 16)
+	if _, err := s.File.Read(signature); err != nil {
+		return err
+	}
+	if _, err := s.File.Seek(0, 0); err != nil {
+		return err
+	}
+	if s.ESECatalog == nil {
+		// In the file header of the database we find that the first 4 bytes are a XOR checksum.
+		// The following 4 bytes after the checksum is a file signature. The file signature has
+		// offset 4, and the value is EF CD AB 89.
+
+		var signatureESEdatabase = []byte{239, 205, 171, 137} // EF CD AB 89
+		if bytes.Equal(signature[4:8], signatureESEdatabase) {
+			// file is an ESE database
+
+			// TODO: create temporary copy of the file on Windows - a service on Windows has a permanent lock on it
+			// TODO: remove temporary copy in Close()
+
+			ese_ctx, err := parser.NewESEContext(s.File)
+			if err != nil {
+				return err
+			}
+
+			catalog, err := parser.ReadCatalog(ese_ctx)
+			if err != nil {
+				return err
+			}
+
+			s.ESECatalog = catalog
+
+			return nil
+		}
+	}
+
+	if s.Database == nil {
+		var signatureSQLite3database = []byte("SQLite format 3\x00")
+		if bytes.Equal(signature[0:16], signatureSQLite3database) {
+			// file is an SQLite 3 database
+
+			db, err := sqlite3.Open(s.FileNameStr)
+			if err != nil {
+				return err
+			}
+
+			s.Database = db
+
+			return nil
+		}
+	}
+
+	// file is probably a cookie text file (*.txt)
 
 	return nil
 }
@@ -87,14 +100,15 @@ func (s *edgeCookieStore) Close() error {
 
 	var err, errFile, errDB error
 
-	if s.file != nil {
-		errFile = s.file.Close()
-		s.file = nil
+	if s.File != nil {
+		errFile = s.File.Close()
+		s.File = nil
 	}
-	if s.database != nil {
-		errDB = s.database.Close()
-		s.file = nil
+	if s.Database != nil {
+		errDB = s.Database.Close()
+		s.Database = nil
 	}
+	s.ESECatalog = nil
 
 	if errFile != nil && errDB == nil {
 		err = errFile
