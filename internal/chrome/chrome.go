@@ -9,14 +9,11 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
-	"time"
 
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/zellyn/kooky"
 	"github.com/zellyn/kooky/internal/utils"
-
-	"github.com/go-sqlite/sqlite3"
 )
 
 // Thanks to https://gist.github.com/dacort/bd6a5116224c594b14db
@@ -33,67 +30,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 
 	var cookies []*kooky.Cookie
 
-	/*
-		var version int
-		if err := db.VisitTableRecords("meta", func(rowID *int64, rec sqlite3.Record) error {
-			if len(rec.Values) != 2 {
-				return errors.New(`expected 2 columns for "meta" table`)
-			}
-			if key, ok := rec.Values[0].(string); ok && key == `version` {
-				if vStr, ok := rec.Values[1].(string); ok {
-					if v, err := strconv.Atoi(vStr); err == nil {
-						version = v
-					}
-				}
-			}
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-	*/
-
-	var columnIDs = map[string]int{
-		// fallback values
-		`host_key`:        1, // domain
-		`name`:            2,
-		`value`:           3,
-		`path`:            4,
-		`expires_utc`:     5,
-		`is_secure`:       6,
-		`is_httponly`:     7,
-		`encrypted_value`: 12,
-	}
-	cookiesTableName := `cookies`
-	for _, table := range s.Database.Tables() {
-		if table.Name() == cookiesTableName {
-			for id, column := range table.Columns() {
-				name := column.Name()
-				if _, ok := columnIDs[name]; ok {
-					columnIDs[name] = id
-				}
-			}
-		}
-	}
-
-	minimumValuesInRow := -1
-	for _, index := range columnIDs {
-		if index > minimumValuesInRow {
-			minimumValuesInRow = index
-		}
-	}
-	minimumValuesInRow++
-
-	err := s.Database.VisitTableRecords(cookiesTableName, func(rowID *int64, rec sqlite3.Record) error {
-		if rowID == nil {
-			return errors.New(`unexpected nil rowID in Chrome sqlite database`)
-		}
-
-		if lRec := len(rec.Values); lRec < minimumValuesInRow {
-			return fmt.Errorf("Expected each row to have at least %d values, got %d in row %d", minimumValuesInRow, lRec, rowID)
-		}
-
-		cookie := &kooky.Cookie{}
-
+	err := utils.VisitTableRows(s.Database, `cookies`, func(rowID *int64, row utils.TableRow) error {
 		/*
 			-- taken from chrome 80's cookies' sqlite_master
 			CREATE TABLE cookies(
@@ -116,68 +53,67 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			)
 		*/
 
-		domain, ok := rec.Values[columnIDs[`host_key`]].(string)
-		if !ok {
-			return fmt.Errorf("expected column 2 (host_key) to to be string; got %T", rec.Values[columnIDs[`host_key`]])
+		cookie := &kooky.Cookie{
+			Creation: utils.FromFILETIME(*rowID * 10),
 		}
-		name, ok := rec.Values[columnIDs[`name`]].(string)
-		if !ok {
-			return fmt.Errorf("expected column 3 (name) in cookie(domain:%s) to to be string; got %T", domain, rec.Values[columnIDs[`name`]])
+
+		var err error
+
+		cookie.Domain, err = row.String(`host_key`)
+		if err != nil {
+			return err
 		}
-		value, ok := rec.Values[columnIDs[`value`]].(string)
-		if !ok {
-			return fmt.Errorf("expected column 4 (value) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[columnIDs[`value`]])
+
+		cookie.Name, err = row.String(`name`)
+		if err != nil {
+			return err
 		}
-		path, ok := rec.Values[columnIDs[`path`]].(string)
-		if !ok {
-			return fmt.Errorf("expected column 5 (path) in cookie(domain:%s, name:%s) to to be string; got %T", domain, name, rec.Values[columnIDs[`path`]])
+
+		cookie.Path, err = row.String(`path`)
+		if err != nil {
+			return err
 		}
-		var expires_utc int64
-		switch i := rec.Values[columnIDs[`expires_utc`]].(type) {
-		case int64:
-			expires_utc = i
-		case int:
-			if i != 0 {
-				return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %[3]v", domain, name, rec.Values[columnIDs[`expires_utc`]])
+
+		if expires_utc, err := row.Int64(`expires_utc`); err == nil {
+			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
+			if expires_utc != 0 {
+				cookie.Expires = utils.FromFILETIME(expires_utc * 10)
 			}
-		default:
-			return fmt.Errorf("expected column 6 (expires_utc) in cookie(domain:%s, name:%s) to to be int64 or int with value=0; got %T with value %[3]v", domain, name, rec.Values[columnIDs[`expires_utc`]])
-		}
-		encrypted_value, ok := rec.Values[columnIDs[`encrypted_value`]].([]byte)
-		if !ok {
-			return fmt.Errorf("expected column 13 (encrypted_value) in cookie(domain:%s, name:%s) to to be []byte; got %T", domain, name, rec.Values[columnIDs[`encrypted_value`]])
+		} else {
+			return err
 		}
 
-		// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
-		var expiry time.Time
-		if expires_utc != 0 {
-			expiry = utils.FromFILETIME(expires_utc * 10)
+		if is_secure, err := row.Byte(`is_secure`); err == nil {
+			cookie.Secure = is_secure == 1
+		} else {
+			return err
 		}
-		creation := utils.FromFILETIME(*rowID * 10)
 
-		cookie.Domain = domain
-		cookie.Name = name
-		cookie.Path = path
-		cookie.Expires = expiry
-		cookie.Creation = creation
-		cookie.Secure = rec.Values[columnIDs[`is_secure`]] == 1
-		cookie.HttpOnly = rec.Values[columnIDs[`is_httponly`]] == 1
+		if is_httponly, err := row.Byte(`is_httponly`); err == nil {
+			cookie.HttpOnly = is_httponly == 1
+		} else {
+			return err
+		}
 
-		if len(encrypted_value) > 0 {
-			decrypted, err := s.decrypt(encrypted_value)
-			if err != nil {
+		encrypted_value, err := row.BlobOrFallback(`encrypted_value`, nil)
+		if err != nil {
+			return err
+		} else if len(encrypted_value) > 0 {
+			if decrypted, err := s.decrypt(encrypted_value); err == nil {
+				cookie.Value = string(decrypted)
+			} else {
 				return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
 			}
-			cookie.Value = string(decrypted)
 		} else {
-			cookie.Value = value
+			cookie.Value, err = row.String(`value`)
+			if err != nil {
+				return err
+			}
 		}
 
-		if !kooky.FilterCookie(cookie, filters...) {
-			return nil
+		if kooky.FilterCookie(cookie, filters...) {
+			cookies = append(cookies, cookie)
 		}
-
-		cookies = append(cookies, cookie)
 
 		return nil
 	})
