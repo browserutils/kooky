@@ -30,7 +30,11 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 
 	var cookies []*kooky.Cookie
 
-	err := utils.VisitTableRows(s.Database, `cookies`, func(rowID *int64, row utils.TableRow) error {
+	headerMappings := map[string]string{
+		"secure":   "is_secure",
+		"httponly": "is_httponly",
+	}
+	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
 		/*
 			-- taken from chrome 80's cookies' sqlite_master
 			CREATE TABLE cookies(
@@ -83,15 +87,13 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		if is_secure, err := row.Byte(`is_secure`); err == nil {
-			cookie.Secure = is_secure == 1
-		} else {
+		cookie.Secure, err = row.Bool(`is_secure`)
+		if err != nil {
 			return err
 		}
 
-		if is_httponly, err := row.Byte(`is_httponly`); err == nil {
-			cookie.HttpOnly = is_httponly == 1
-		} else {
+		cookie.HttpOnly, err = row.Bool(`is_httponly`)
+		if err != nil {
 			return err
 		}
 

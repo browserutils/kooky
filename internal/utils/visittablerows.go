@@ -6,12 +6,16 @@ import (
 	"github.com/go-sqlite/sqlite3"
 )
 
-func VisitTableRows(db *sqlite3.DbFile, tableName string, f func(rowID *int64, row TableRow) error) error {
+func VisitTableRows(db *sqlite3.DbFile, tableName string, columnNameMappings map[string]string, f func(rowID *int64, row TableRow) error) error {
 	columns := make(map[string]int)
 	if table, ok := findTable(db, tableName); ok {
 		for index, column := range table.Columns() {
-			if _, ok := columns[column.Name()]; !ok {
-				columns[column.Name()] = index
+			columnName := column.Name()
+			if mappedColumnName, ok := columnNameMappings[columnName]; ok {
+				columnName = mappedColumnName
+			}
+			if _, ok := columns[columnName]; !ok {
+				columns[columnName] = index
 			}
 		}
 	} else {

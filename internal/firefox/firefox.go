@@ -23,7 +23,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 
 	var cookies []*kooky.Cookie
 
-	err := utils.VisitTableRows(s.Database, `moz_cookies`, func(rowId *int64, row utils.TableRow) error {
+	err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, func(rowId *int64, row utils.TableRow) error {
 		/*
 			-- Firefox 78 ESR - copied from sqlitebrowser
 			CREATE TABLE moz_cookies(
@@ -97,16 +97,14 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		}
 
 		// Secure
-		if isSecure, err := row.Int(`isSecure`); err == nil {
-			cookie.Secure = isSecure > 0
-		} else {
+		cookie.Secure, err = row.Bool(`isSecure`)
+		if err != nil {
 			return err
 		}
 
 		// HttpOnly
-		if isHttpOnly, err := row.Int(`isHttpOnly`); err == nil {
-			cookie.HttpOnly = isHttpOnly > 0
-		} else {
+		cookie.HttpOnly, err = row.Bool(`isHttpOnly`)
+		if err != nil {
 			return err
 		}
 

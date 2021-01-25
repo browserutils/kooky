@@ -19,26 +19,12 @@ func (row TableRow) BlobOrFallback(columnName string, fallback []byte) ([]byte, 
 	return nil, fmt.Errorf("expected column [%s] to be []byte; got %T with value %[2]v", columnName, rawValue)
 }
 
-func (row TableRow) Byte(columnName string) (byte, error) {
+func (row TableRow) Bool(columnName string) (bool, error) {
 	rawValue, err := row.Value(columnName)
 	if err != nil {
-		return 0, nil
+		return false, err
 	}
-	if value, ok := rawValue.(byte); ok {
-		return value, nil
-	}
-	return 0, fmt.Errorf("expected column [%s] to be byte; got %T with value %[2]v", columnName, rawValue)
-}
-
-func (row TableRow) Int(columnName string) (int, error) {
-	rawValue, err := row.Value(columnName)
-	if err != nil {
-		return 0, nil
-	}
-	if value, ok := rawValue.(int); ok {
-		return value, nil
-	}
-	return 0, fmt.Errorf("expected column [%s] to be int; got %T with value %[2]v", columnName, rawValue)
+	return rawValue != 0, nil
 }
 
 func (row TableRow) Int64(columnName string) (int64, error) {
@@ -49,6 +35,11 @@ func (row TableRow) Int64(columnName string) (int64, error) {
 	switch value := rawValue.(type) {
 	case int64:
 		return value, nil
+	case uint64:
+		if int64(value) < 0 {
+			return 0, fmt.Errorf("expected column [%s] to be int64; got uint64 value that can't fit in int64: %d", columnName, rawValue)
+		}
+		return int64(value), nil
 	case int32:
 		return int64(value), nil
 	case int:
