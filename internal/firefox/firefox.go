@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/utils"
 
 	"github.com/bobesa/go-domain-util/domainutil"
-	"github.com/go-sqlite/sqlite3"
 )
 
 func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
@@ -23,55 +23,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 
 	var cookies []*kooky.Cookie
 
-	var baseDomainRemoved bool = true
-	var columnIDs = map[string]int{
-		// fallback values
-		`baseDomain`:   1, // old
-		`name`:         2,
-		`value`:        3,
-		`host`:         4,
-		`path`:         5,
-		`expiry`:       6,
-		`creationTime`: 8,
-		`isSecure`:     9,
-		`isHttpOnly`:   10,
-	}
-	cookiesTableName := `moz_cookies`
-	var highestIndex int
-	for _, table := range s.Database.Tables() {
-		if table.Name() == cookiesTableName {
-			for id, column := range table.Columns() {
-				name := column.Name()
-				if name == `CONSTRAINT` {
-					// github.com/go-sqlite/sqlite3.Table.Columns() reports pseudo-columns for host, path, originAttributes
-					break
-				}
-				if name == `baseDomain` {
-					baseDomainRemoved = false
-				}
-				if id > highestIndex {
-					highestIndex = id
-				}
-				columnIDs[name] = id
-			}
-		}
-	}
-
-	err := s.Database.VisitTableRecords(cookiesTableName, func(rowId *int64, rec sqlite3.Record) error {
-		/*
-		   known column counts for firefox from past/current versions
-		   ???:     13 columns
-		   v78 LTS: 14 columns
-		   v82:     15 columns
-		*/
-
-		if highestIndex >= len(rec.Values) {
-			return errors.New(`column index out of bound`)
-		}
-
-		cookie := kooky.Cookie{}
-		var ok bool
-
+	err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, func(rowId *int64, row utils.TableRow) error {
 		/*
 			-- Firefox 78 ESR - copied from sqlitebrowser
 			CREATE TABLE moz_cookies(
@@ -93,77 +45,72 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			)
 		*/
 
+		cookie := kooky.Cookie{}
+		var err error
+
 		// Name
-		cookie.Name, ok = rec.Values[columnIDs[`name`]].(string)
-		if !ok {
-			return fmt.Errorf("got unexpected value for Name %v (type %[1]T)", rec.Values[columnIDs[`name`]])
+		cookie.Name, err = row.String(`name`)
+		if err != nil {
+			return err
 		}
 
 		// Value
-		cookie.Value, ok = rec.Values[columnIDs[`value`]].(string)
-		if !ok {
-			return fmt.Errorf("got unexpected value for Value %v (type %[1]T)", rec.Values[columnIDs[`value`]])
+		cookie.Value, err = row.String(`value`)
+		if err != nil {
+			return err
 		}
 
 		// Domain
-		if baseDomainRemoved {
-			if host, ok := rec.Values[columnIDs[`host`]].(string); ok {
-				cookie.Domain = domainutil.Domain(host)
+		if baseDomain := row.ValueOrFallback(`baseDomain`, nil); baseDomain == nil {
+			if host, err := row.String(`host`); err != nil {
+				return err
 			} else {
-				return fmt.Errorf("got unexpected value for Host %v (type %[1]T)", rec.Values[columnIDs[`host`]])
+				cookie.Domain = domainutil.Domain(host)
 			}
 		} else {
 			// handle databases prior v78 ESR
-			cookie.Domain, ok = rec.Values[columnIDs[`baseDomain`]].(string)
+			var ok bool
+			cookie.Domain, ok = baseDomain.(string)
 			if !ok {
-				return fmt.Errorf("got unexpected value for Domain %v (type %[1]T)", rec.Values[columnIDs[`baseDomain`]])
+				return fmt.Errorf("got unexpected value for baseDomain %v (type %[1]T)", baseDomain)
 			}
 		}
 
 		// Path
-		cookie.Path, ok = rec.Values[columnIDs[`path`]].(string)
-		if !ok {
-			return fmt.Errorf("got unexpected value for Path %v (type %[1]T)", rec.Values[columnIDs[`path`]])
+		cookie.Path, err = row.String(`path`)
+		if err != nil {
+			return err
 		}
 
 		// Expires
-		{
-			expiry := rec.Values[columnIDs[`expiry`]]
-			if int32Value, ok := expiry.(int32); ok {
-				cookie.Expires = time.Unix(int64(int32Value), 0)
-			} else if uint64Value, ok := expiry.(uint64); ok {
-				cookie.Expires = time.Unix(int64(uint64Value), 0)
-			} else {
-				return fmt.Errorf("got unexpected value for Expires %v (type %[1]T)", expiry)
-			}
+		if expiry, err := row.Int64(`expiry`); err == nil {
+			cookie.Expires = time.Unix(expiry, 0)
+		} else {
+			return err
 		}
 
 		// Creation
-		int64Value, ok := rec.Values[columnIDs[`creationTime`]].(int64)
-		if !ok {
-			return fmt.Errorf("got unexpected value for Creation %v (type %[1]T)", rec.Values[columnIDs[`creationTime`]])
+		if creationTime, err := row.Int64(`creationTime`); err == nil {
+			cookie.Creation = time.Unix(creationTime/1e6, 0) // drop nanoseconds
+		} else {
+			return err
 		}
-		cookie.Creation = time.Unix(int64Value/1e6, 0) // drop nanoseconds
 
 		// Secure
-		intValue, ok := rec.Values[columnIDs[`isSecure`]].(int)
-		if !ok {
-			return fmt.Errorf("got unexpected value for Secure %v (type %[1]T)", rec.Values[columnIDs[`isSecure`]])
+		cookie.Secure, err = row.Bool(`isSecure`)
+		if err != nil {
+			return err
 		}
-		cookie.Secure = intValue > 0
 
 		// HttpOnly
-		intValue, ok = rec.Values[columnIDs[`isHttpOnly`]].(int)
-		if !ok {
-			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", rec.Values[columnIDs[`isHttpOnly`]])
-		}
-		cookie.HttpOnly = intValue > 0
-
-		if !kooky.FilterCookie(&cookie, filters...) {
-			return nil
+		cookie.HttpOnly, err = row.Bool(`isHttpOnly`)
+		if err != nil {
+			return err
 		}
 
-		cookies = append(cookies, &cookie)
+		if kooky.FilterCookie(&cookie, filters...) {
+			cookies = append(cookies, &cookie)
+		}
 
 		return nil
 	})
