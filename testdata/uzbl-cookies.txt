@@ -1,0 +1,3 @@
+# HTTP Cookie File
+#HttpOnly_.google.de	TRUE	/	FALSE	1618676575	NID	204=blabla
+#HttpOnly_accounts.google.com	FALSE	/	TRUE	1665937378	__Host-GAPS	blabla
