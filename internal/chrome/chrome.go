@@ -64,33 +64,32 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		`encrypted_value`: 12,
 	}
 	cookiesTableName := `cookies`
-	var highestIndex int
 	for _, table := range s.Database.Tables() {
 		if table.Name() == cookiesTableName {
 			for id, column := range table.Columns() {
 				name := column.Name()
-				if name == `CONSTRAINT` {
-					// github.com/go-sqlite/sqlite3.Table.Columns() might report pseudo-columns at the end
-					break
+				if _, ok := columnIDs[name]; ok {
+					columnIDs[name] = id
 				}
-				if id > highestIndex {
-					highestIndex = id
-				}
-				columnIDs[name] = id
 			}
 		}
 	}
+
+	minimumValuesInRow := -1
+	for _, index := range columnIDs {
+		if index > minimumValuesInRow {
+			minimumValuesInRow = index
+		}
+	}
+	minimumValuesInRow++
 
 	err := s.Database.VisitTableRecords(cookiesTableName, func(rowID *int64, rec sqlite3.Record) error {
 		if rowID == nil {
 			return errors.New(`unexpected nil rowID in Chrome sqlite database`)
 		}
 
-		// TODO(zellyn): handle older, shorter rows?
-		if lRec := len(rec.Values); lRec < 14 {
-			return fmt.Errorf("expected at least 14 columns in cookie file, got: %d", lRec)
-		} else if highestIndex > lRec {
-			return errors.New(`column index out of bound`)
+		if lRec := len(rec.Values); lRec < minimumValuesInRow {
+			return fmt.Errorf("Expected each row to have at least %d values, got %d in row %d", minimumValuesInRow, lRec, rowID)
 		}
 
 		cookie := &kooky.Cookie{}
