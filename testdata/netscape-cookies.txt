@@ -1,0 +1,8 @@
+# HTTP Cookie File
+# http://www.netscape.com/newsref/std/cookie_spec.html
+# This is a generated file!  Do not edit.
+# To delete cookies, use the Cookie Manager.
+
+www.aol.de	FALSE	/	FALSE	1602769958	dlTimestamp	1602768758
+#HttpOnly_.google.de	TRUE	/	FALSE	1618579984	NID	204=blabla
+.netscape.com	TRUE	/	TRUE	1634304757	BX	blabla
