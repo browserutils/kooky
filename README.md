@@ -30,7 +30,7 @@ Some functions might not yet be implemented on some platforms.
 
 PRs more than welcome.
 
-TODOs
+## TODOs
 
 - [ ] Set up CI
 - [x] Make it work on Windows. (Look at
