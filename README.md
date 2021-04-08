@@ -122,6 +122,7 @@ func main() {
   (and originally [@satishb3](http://github.com/satishb3) I believe) for
   Safari cookie-reading Python code at https://github.com/as0ler/BinaryCookieReader.
 - Thanks to all the people who have contributed functionality and fixes:
-  - [@srlehn](http://github.com/srlehn) - many fixes, including Linux support for Chrome
+  - [@srlehn](http://github.com/srlehn) - many fixes, Linux support for Chrome, added about a dozen browsers!
   - [@zippoxer](http://github.com/zippoxer) - Windows support for Chrome
   - [@adamdecaf](http://github.com/adamdecaf) - Firefox support
+  - [@barnardb](https://github.com/barnardb) - better row abstraction, fixing column length errors
