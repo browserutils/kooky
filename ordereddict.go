@@ -89,6 +89,21 @@ func (self *Dict) Delete(key string) {
 	delete(self.store, key)
 }
 
+// Like Set() but does not effect the order.
+func (self *Dict) Update(key string, value interface{}) *Dict {
+	self.Lock()
+	defer self.Unlock()
+
+	_, pres := self.store[key]
+	if pres {
+		self.store[key] = value
+	} else {
+		self.Set(key, value)
+	}
+
+	return self
+}
+
 func (self *Dict) Set(key string, value interface{}) *Dict {
 	self.Lock()
 	defer self.Unlock()
@@ -404,11 +419,16 @@ func (self *Dict) MarshalJSON() ([]byte, error) {
 			continue
 		}
 
-		result += string(kEscaped) + ":"
-
 		// add value
 		v := self.store[k]
 
+		// Check for back references and skip them - this is not perfect.
+		subdict, ok := v.(*Dict)
+		if ok && subdict == self {
+			continue
+		}
+
+		result += string(kEscaped) + ":"
 		vBytes, err := json.Marshal(v)
 		if err == nil {
 			result += string(vBytes) + ","
