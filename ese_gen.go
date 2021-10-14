@@ -112,13 +112,14 @@ type ESEProfile struct {
     Off_PageHeader_Flags int64
     Off_RecordTag_Identifier int64
     Off_RecordTag_DataOffset int64
+    Off_RecordTag_Flags int64
     Off_Tag__ValueSize int64
     Off_Tag__ValueOffset int64
 }
 
 func NewESEProfile() *ESEProfile {
     // Specific offsets can be tweaked to cater for slight version mismatches.
-    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,4,6,8,0,1,2,3,4,5,4,12,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,0,2}
+    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,4,6,8,0,1,2,3,4,5,4,12,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,2,0,2}
     return self
 }
 
@@ -963,6 +964,10 @@ func (self *PageHeader) Flags() *Flags {
    names := make(map[string]bool)
 
 
+   if value & 1 != 0 {
+      names["Root"] = true
+   }
+
    if value & 2 != 0 {
       names["Leaf"] = true
    }
@@ -985,10 +990,6 @@ func (self *PageHeader) Flags() *Flags {
 
    if value & 128 != 0 {
       names["Long"] = true
-   }
-
-   if value & 1 != 0 {
-      names["Root"] = true
    }
 
    return &Flags{Value: uint64(value), Names: names}
@@ -1025,10 +1026,16 @@ func (self *RecordTag) DataOffset() uint64 {
    value := ParseUint16(self.Reader, self.Profile.Off_RecordTag_DataOffset + self.Offset)
    return (uint64(value) & 0x1fff) >> 0x0
 }
+
+func (self *RecordTag) Flags() uint64 {
+   value := ParseUint16(self.Reader, self.Profile.Off_RecordTag_Flags + self.Offset)
+   return (uint64(value) & 0xffff) >> 0xe
+}
 func (self *RecordTag) DebugString() string {
     result := fmt.Sprintf("struct RecordTag @ %#x:\n", self.Offset)
     result += fmt.Sprintf("  Identifier: %#0x\n", self.Identifier())
     result += fmt.Sprintf("  DataOffset: %#0x\n", self.DataOffset())
+    result += fmt.Sprintf("  Flags: %#0x\n", self.Flags())
     return result
 }
 

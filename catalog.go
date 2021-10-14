@@ -184,6 +184,7 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 						result.Set(column.Name, ParseUint64(tag.Reader, offset))
 					}
 				}
+
 			case "Long long", "Currency":
 				if column.SpaceUsage == 8 {
 					result.Set(column.Name, ParseUint64(tag.Reader, offset))
@@ -220,6 +221,7 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 				// Empty Item
 				itemLen = prevItemLen
 				result.Set(column.Name, nil)
+
 			} else {
 				switch column.Type {
 				case "Binary":
@@ -250,22 +252,109 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 			// Tagged values
 		} else if column.Identifier > 255 {
 			if taggedItems == nil {
+				if Debug {
+					fmt.Printf("Slice is %#x-%#x %x\n",
+						variableDataBytesProcessed+variableSizeOffset,
+						len(value.Buffer), getSlice(value.Buffer,
+							uint64(variableDataBytesProcessed+
+								variableSizeOffset),
+							uint64(len(value.Buffer)+1)))
+				}
 				taggedItems = ParseTaggedValues(
 					self.ctx, getSlice(value.Buffer,
 						uint64(variableDataBytesProcessed+
 							variableSizeOffset),
-						uint64(len(value.Buffer))))
+						uint64(len(value.Buffer)+1)))
 			}
 
 			buf, pres := taggedItems[column.Identifier]
 			if pres {
+				reader := &BufferReaderAt{buf}
 				switch column.Type {
 				case "Binary", "Long Binary":
 					result.Set(column.Name, hex.EncodeToString(buf))
 
 				case "Long Text":
 					result.Set(column.Name, ParseTerminatedUTF16String(
-						&BufferReaderAt{buf}, 0))
+						reader, 0))
+
+				case "Boolean":
+					if column.SpaceUsage == 1 {
+						result.Set(column.Name, ParseUint8(reader, 0) > 0)
+					}
+
+				case "Signed byte":
+					if column.SpaceUsage == 1 {
+						result.Set(column.Name, ParseUint8(reader, 0))
+					}
+
+				case "Signed short":
+					if column.SpaceUsage == 2 {
+						result.Set(column.Name, ParseInt16(reader, 0))
+					}
+
+				case "Unsigned short":
+					if column.SpaceUsage == 2 {
+						result.Set(column.Name, ParseUint16(reader, 0))
+					}
+
+				case "Signed long":
+					if column.SpaceUsage == 4 {
+						result.Set(column.Name, ParseInt32(reader, 0))
+					}
+
+				case "Unsigned long":
+					if column.SpaceUsage == 4 {
+						result.Set(column.Name, ParseUint32(reader, 0))
+					}
+
+				case "Single precision FP":
+					if column.SpaceUsage == 4 {
+						result.Set(column.Name, math.Float32frombits(
+							ParseUint32(reader, 0)))
+					}
+
+				case "Double precision FP":
+					if column.SpaceUsage == 8 {
+						result.Set(column.Name, math.Float64frombits(
+							ParseUint64(reader, 0)))
+					}
+
+				case "DateTime":
+					if column.SpaceUsage == 8 {
+						switch column.Flags {
+						case 1:
+							// A more modern way of encoding
+							result.Set(column.Name, WinFileTime64(reader, 0))
+
+						case 0:
+							// Some hair brained time serialization method
+							// https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
+
+							value_int := ParseUint64(reader, 0)
+							days_since_1900 := math.Float64frombits(value_int)
+
+							// In python time.mktime((1900,1,1,0,0,0,0,365,0))
+							result.Set(column.Name,
+								time.Unix(int64(days_since_1900*24*60*60)+
+									-2208988800, 0).UTC())
+
+						default:
+							// We have no idea
+							result.Set(column.Name, ParseUint64(reader, 0))
+						}
+					}
+
+				case "Long long", "Currency":
+					if column.SpaceUsage == 8 {
+						result.Set(column.Name, ParseUint64(tag.Reader, 0))
+					}
+
+				case "GUID":
+					if column.SpaceUsage == 16 {
+						result.Set(column.Name,
+							self.Header.Profile.GUID(tag.Reader, 0).AsString())
+					}
 
 				default:
 					if Debug {
@@ -306,6 +395,31 @@ func getSlice(buffer []byte, start, end uint64) []byte {
 	return buffer[start:end]
 }
 
+// working slice to reassemble data
+type tagBuffer struct {
+	identifier uint32
+	start, end uint64
+	flags      uint64
+}
+
+/*
+  Tagged values are used to store sparse values.
+
+  The consist of an array of RecordTag, each RecordTag has an
+  Identifier and an offset to the start of its data. The length of the
+  data in each record is determine by the start of the next record.
+
+  Example:
+
+  00000050  00 01 0c 40 a4 01 21 00  a5 01 23 00 01 6c 00 61  |...@..!...#..l.a|
+  00000060  00 62 00 5c 00 64 00 63  00 2d 00 31 00 24 00 00  |.b.\.d.c.-.1.$..|
+  00000070  00 3d 00 f9 00                                    |.=...|
+
+  Slice is 0x50-0x75 00010c40a4012100a5012300016c00610062005c00640063002d003100240000003d00f900
+  Consumed 0x15 bytes of TAGGED space from 0xc to 0x21 for tag 0x100
+  Consumed 0x2 bytes of TAGGED space from 0x21 to 0x23 for tag 0x1a4
+  Consumed 0x2 bytes of TAGGED space from 0x23 to 0x25 for tag 0x1a5
+*/
 func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32][]byte {
 	result := make(map[uint32][]byte)
 
@@ -315,36 +429,40 @@ func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32][]byte {
 
 	reader := &BufferReaderAt{buffer}
 	first_record := ctx.Profile.RecordTag(reader, 0)
-	prev_record := first_record
+	tags := []tagBuffer{}
 
-	// Iterate over all tag headers - the headers go until the
-	// start of the first data segment
-	for offset := uint64(first_record.Size()); offset < first_record.DataOffset(); offset += uint64(first_record.Size()) {
-		record := ctx.Profile.RecordTag(reader, int64(offset))
-		result[uint32(prev_record.Identifier())] = getSlice(buffer, prev_record.DataOffset()+
-			prev_record.FlagSkip(), record.DataOffset())
-
+	// Tags go from 0 to the start of the first tag's data
+	for offset := int64(0); offset < int64(first_record.DataOffset()); offset += 4 {
+		record_tag := ctx.Profile.RecordTag(reader, offset)
 		if Debug {
-			fmt.Printf("Consumed %#x bytes of TAGGED space from %#x for tag %#x\n",
-				record.DataOffset()-prev_record.DataOffset()-prev_record.FlagSkip(),
-				prev_record.DataOffset()+prev_record.FlagSkip(),
-				prev_record.Identifier())
+			fmt.Printf("RecordTag %v\n", record_tag.DebugString())
+		}
+		tags = append(tags, tagBuffer{
+			identifier: uint32(record_tag.Identifier()),
+			start:      record_tag.DataOffset(),
+			flags:      record_tag.Flags(),
+		})
+	}
+
+	// Now build a map from identifier to buffer.
+	for idx, tag := range tags {
+		// The last tag goes until the end of the buffer
+		end := uint64(len(buffer))
+		start := tag.start
+		if idx < len(tags)-1 {
+			end = tags[idx+1].start
 		}
 
-		prev_record = record
+		if tag.flags > 0 {
+			start += 1
+		}
+
+		result[tag.identifier] = buffer[start:end]
+		if Debug {
+			fmt.Printf("Consumed %#x bytes of TAGGED space from %#x to %#x for tag %#x\n",
+				end-start, start, end, tag.identifier)
+		}
 	}
-
-	// Last record goes to the end of the buffer.
-	result[uint32(prev_record.Identifier())] = getSlice(buffer, prev_record.DataOffset()+
-		prev_record.FlagSkip(), uint64(len(buffer)))
-
-	if Debug {
-		fmt.Printf("Consumed %#x bytes of TAGGED space from %#x for tag %#x\n",
-			uint64(len(buffer))-prev_record.DataOffset()-prev_record.FlagSkip(),
-			prev_record.DataOffset()+prev_record.FlagSkip(),
-			prev_record.Identifier())
-	}
-
 	return result
 }
 
