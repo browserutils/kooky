@@ -23,6 +23,7 @@ type ColumnSpec struct {
 	Name       string
 	Identifier uint32
 	Type       string
+	Flags      uint32
 	SpaceUsage int64
 }
 
@@ -161,18 +162,37 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 
 			case "DateTime":
 				if column.SpaceUsage == 8 {
-					// Some hair brained time serialization method
-					// https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
-					days_since_1900 := math.Float64frombits(
-						ParseUint64(tag.Reader, offset))
-					// In python time.mktime((1900,1,1,0,0,0,0,365,0))
-					result.Set(column.Name, time.Unix(int64(days_since_1900*24*60*60)+
-						-2208988800, 0))
-				}
+					switch column.Flags {
+					case 1:
+						// A more modern way of encoding
+						result.Set(column.Name, WinFileTime64(tag.Reader, offset))
 
+					case 0:
+						// Some hair brained time serialization method
+						// https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
+
+						value_int := ParseUint64(tag.Reader, offset)
+						days_since_1900 := math.Float64frombits(value_int)
+
+						// In python time.mktime((1900,1,1,0,0,0,0,365,0))
+						result.Set(column.Name,
+							time.Unix(int64(days_since_1900*24*60*60)+
+								-2208988800, 0).UTC())
+
+					default:
+						// We have no idea
+						result.Set(column.Name, ParseUint64(tag.Reader, offset))
+					}
+				}
 			case "Long long", "Currency":
 				if column.SpaceUsage == 8 {
 					result.Set(column.Name, ParseUint64(tag.Reader, offset))
+				}
+
+			case "GUID":
+				if column.SpaceUsage == 16 {
+					result.Set(column.Name,
+						self.Header.Profile.GUID(tag.Reader, offset).AsString())
 				}
 
 			default:
@@ -402,12 +422,15 @@ func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error
 		if self.currentTable == nil {
 			return errors.New("Internal Error: No existing table when adding column")
 		}
+		column := catalog.Column()
+
 		self.currentTable.Columns = append(self.currentTable.Columns, &ColumnSpec{
 			Name:       itemName,
 			FDPId:      catalog.FDPId(),
 			Identifier: catalog.Identifier(),
-			Type:       catalog.Column().ColumnType().Name,
-			SpaceUsage: int64(catalog.Column().SpaceUsage()),
+			Type:       column.ColumnType().Name,
+			Flags:      column.ColumnFlags(),
+			SpaceUsage: int64(column.SpaceUsage()),
 		})
 
 	case "CATALOG_TYPE_INDEX":
@@ -434,8 +457,8 @@ func (self *Catalog) Dump() string {
 		result += fmt.Sprintf("[%v] (FDP %#x):\n%sColumns\n", table.Name,
 			table.FatherDataPageNumber, space)
 		for idx, column := range table.Columns {
-			result += fmt.Sprintf("%s%s%-5d%-30v%v\n", space, space, idx,
-				column.Name, column.Type)
+			result += fmt.Sprintf("%s%s%-5d%-30v%-15vFlags %v\n", space, space, idx,
+				column.Name, column.Type, column.Flags)
 		}
 
 		result += fmt.Sprintf("%sIndexes\n", space)

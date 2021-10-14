@@ -85,6 +85,10 @@ type ESEProfile struct {
     Off_FileHeader_DataBaseTime int64
     Off_FileHeader_Signature int64
     Off_FileHeader_PageSize int64
+    Off_GUID_Data1 int64
+    Off_GUID_Data2 int64
+    Off_GUID_Data3 int64
+    Off_GUID_Data4 int64
     Off_JET_LOGTIME_Sec int64
     Off_JET_LOGTIME_Min int64
     Off_JET_LOGTIME_Hours int64
@@ -114,7 +118,7 @@ type ESEProfile struct {
 
 func NewESEProfile() *ESEProfile {
     // Specific offsets can be tweaked to cater for slight version mismatches.
-    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,1,2,3,4,5,4,12,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,0,2}
+    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,4,6,8,0,1,2,3,4,5,4,12,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,0,2}
     return self
 }
 
@@ -180,6 +184,10 @@ func (self *ESEProfile) ESENT_SPACE_TREE_HEADER(reader io.ReaderAt, offset int64
 
 func (self *ESEProfile) FileHeader(reader io.ReaderAt, offset int64) *FileHeader {
     return &FileHeader{Reader: reader, Offset: offset, Profile: self}
+}
+
+func (self *ESEProfile) GUID(reader io.ReaderAt, offset int64) *GUID {
+    return &GUID{Reader: reader, Offset: offset, Profile: self}
 }
 
 func (self *ESEProfile) JET_LOGTIME(reader io.ReaderAt, offset int64) *JET_LOGTIME {
@@ -770,6 +778,39 @@ func (self *FileHeader) DebugString() string {
     return result
 }
 
+type GUID struct {
+    Reader io.ReaderAt
+    Offset int64
+    Profile *ESEProfile
+}
+
+func (self *GUID) Size() int {
+    return 16
+}
+
+func (self *GUID) Data1() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_GUID_Data1 + self.Offset)
+}
+
+func (self *GUID) Data2() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_GUID_Data2 + self.Offset)
+}
+
+func (self *GUID) Data3() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_GUID_Data3 + self.Offset)
+}
+
+func (self *GUID) Data4() []byte {
+   return ParseArray_byte(self.Profile, self.Reader, self.Profile.Off_GUID_Data4 + self.Offset, 8)
+}
+func (self *GUID) DebugString() string {
+    result := fmt.Sprintf("struct GUID @ %#x:\n", self.Offset)
+    result += fmt.Sprintf("  Data1: %#0x\n", self.Data1())
+    result += fmt.Sprintf("  Data2: %#0x\n", self.Data2())
+    result += fmt.Sprintf("  Data3: %#0x\n", self.Data3())
+    return result
+}
+
 type JET_LOGTIME struct {
     Reader io.ReaderAt
     Offset int64
@@ -922,14 +963,6 @@ func (self *PageHeader) Flags() *Flags {
    names := make(map[string]bool)
 
 
-   if value & 128 != 0 {
-      names["Long"] = true
-   }
-
-   if value & 1 != 0 {
-      names["Root"] = true
-   }
-
    if value & 2 != 0 {
       names["Leaf"] = true
    }
@@ -948,6 +981,14 @@ func (self *PageHeader) Flags() *Flags {
 
    if value & 64 != 0 {
       names["Index"] = true
+   }
+
+   if value & 128 != 0 {
+      names["Long"] = true
+   }
+
+   if value & 1 != 0 {
+      names["Root"] = true
    }
 
    return &Flags{Value: uint64(value), Names: names}
@@ -1046,6 +1087,24 @@ func (self Flags) IsSet(flag string) bool {
     return result
 }
 
+func (self Flags) Values() []string {
+    result := make([]string, 0, len(self.Names))
+    for k, _ := range self.Names {
+       result = append(result, k)
+    }
+    return result
+}
+
+
+func ParseArray_byte(profile *ESEProfile, reader io.ReaderAt, offset int64, count int) []byte {
+    result := make([]byte, 0, count)
+    for i:=0; i<count; i++ {
+      value := ParseUint8(reader, offset)
+      result = append(result, value)
+      offset += int64(1)
+    }
+    return result
+}
 
 func ParseInt16(reader io.ReaderAt, offset int64) int16 {
     data := make([]byte, 2)

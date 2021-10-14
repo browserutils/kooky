@@ -25,6 +25,7 @@ Structs:
   - ESENT_DATA_DEFINITION_HEADER
   - ESENT_CATALOG_DATA_DEFINITION_ENTRY
   - RecordTag
+  - GUID
 
   # This one is here to include some utility functions we might need.
   - Misc

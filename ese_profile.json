@@ -194,5 +194,15 @@
         "Misc3": [0, ["long long"]],
         "Misc5": [0, ["unsigned long long"]],
         "Misc4": [0, ["UnicodeString"]]
+    }],
+
+    "GUID": [16, {
+        "Data1": [0, ["unsigned long", {}]],
+        "Data2": [4, ["unsigned short", {}]],
+        "Data3": [6, ["unsigned short", {}]],
+        "Data4": [8, ["Array", {
+            "count": 8,
+            "target": "unsigned char"
+        }]]
     }]
 }
