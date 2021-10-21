@@ -43,20 +43,30 @@ var (
 	// Check that serialization decodes to the object.
 	dictUnserializationTest = []dictSerializationTest{
 		// Preserve order of keys on deserialization.
-		{NewDict().Set("A", int64(1)).Set("B", int64(2)), `{"A":1,"B":2}`},
-		{NewDict().Set("B", int64(1)).Set("A", int64(2)), `{"B":1,"A":2}`},
+		{NewDict().Set("A", uint64(1)).Set("B", uint64(2)), `{"A":1,"B":2}`},
+		{NewDict().Set("B", uint64(1)).Set("A", uint64(2)), `{"B":1,"A":2}`},
 
 		// Handle arrays, ints floats and bools
-		{NewDict().Set("B", int64(1)).Set("A", int64(2)), `{"B":1,"A":2}`},
-		{NewDict().Set("B", float64(1)).Set("A", int64(2)), `{"B":1.0,"A":2}`},
-		{NewDict().Set("B", []interface{}{int64(1)}).Set("A", int64(2)), `{"B":[1],"A":2}`},
-		{NewDict().Set("B", true).Set("A", int64(2)), `{"B":true,"A":2}`},
-		{NewDict().Set("B", nil).Set("A", int64(2)), `{"B":null,"A":2}`},
+		{NewDict().Set("B", uint64(1)).Set("A", uint64(2)), `{"B":1,"A":2}`},
+		{NewDict().Set("B", float64(1)).Set("A", uint64(2)), `{"B":1.0,"A":2}`},
+		{NewDict().Set("B", []interface{}{uint64(1)}).Set("A", uint64(2)), `{"B":[1],"A":2}`},
+		{NewDict().Set("B", true).Set("A", uint64(2)), `{"B":true,"A":2}`},
+		{NewDict().Set("B", nil).Set("A", uint64(2)), `{"B":null,"A":2}`},
 
 		// Embedded dicts decode into ordered dicts.
 		{NewDict().
 			Set("B", NewDict().Set("Zoo", "X").Set("Baz", "Y")).
 			Set("A", "Z"), `{"B":{"Zoo":"X","Baz":"Y"},"A":"Z"}`},
+
+		// Make sure we properly preserve uint64 (overflows int64)
+		{NewDict().
+			Set("Uint64", uint64(9223372036854775808)),
+			`{"Uint64": 9223372036854775808}`},
+
+		// We prefer uint64 but int64 is needed for negative numbers
+		{NewDict().
+			Set("Int64", int64(-500)),
+			`{"Int64": -500}`},
 	}
 )
 

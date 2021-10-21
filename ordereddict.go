@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -98,7 +99,7 @@ func (self *Dict) Update(key string, value interface{}) *Dict {
 	if pres {
 		self.store[key] = value
 	} else {
-		self.Set(key, value)
+		self.set(key, value)
 	}
 
 	return self
@@ -108,6 +109,10 @@ func (self *Dict) Set(key string, value interface{}) *Dict {
 	self.Lock()
 	defer self.Unlock()
 
+	return self.set(key, value)
+}
+
+func (self *Dict) set(key string, value interface{}) *Dict {
 	// O(n) but for our use case this is faster since Dicts are
 	// typically small and we rarely overwrite a key.
 	_, pres := self.store[key]
@@ -262,7 +267,9 @@ func (self *Dict) GoString() string {
 	return self.String()
 }
 
-// this implements type json.Unmarshaler interface, so can be called in json.Unmarshal(data, om)
+// this implements type json.Unmarshaler interface, so can be called
+// in json.Unmarshal(data, om). We preserve key order when
+// unmarshaling from JSON.
 func (self *Dict) UnmarshalJSON(data []byte) error {
 	self.Lock()
 	defer self.Unlock()
@@ -391,12 +398,21 @@ func handledelim(token json.Token, dec *json.Decoder) (res interface{}, err erro
 		}
 
 	case json.Number:
-		value, err := t.Int64()
+		value_str := t.String()
+
+		// Try to parse as Uint
+		value_uint, err := strconv.ParseUint(value_str, 10, 64)
 		if err == nil {
-			return value, nil
+			return value_uint, nil
 		}
 
-		float, err := t.Float64()
+		value_int, err := strconv.ParseInt(value_str, 10, 64)
+		if err == nil {
+			return value_int, nil
+		}
+
+		// Failing this, try a float
+		float, err := strconv.ParseFloat(value_str, 64)
 		if err == nil {
 			return float, nil
 		}
@@ -406,6 +422,7 @@ func handledelim(token json.Token, dec *json.Decoder) (res interface{}, err erro
 	return token, nil
 }
 
+// Preserve key order when marshalling to JSON.
 func (self *Dict) MarshalJSON() ([]byte, error) {
 	self.Lock()
 	defer self.Unlock()
