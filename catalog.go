@@ -175,9 +175,31 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 						days_since_1900 := math.Float64frombits(value_int)
 
 						// In python time.mktime((1900,1,1,0,0,0,0,365,0))
+
+						// From https://docs.microsoft.com/en-us/windows/win32/api/oleauto/nf-oleauto-varianttimetosystemtime
+						// A variant time is stored as an 8-byte real
+						// value (double), representing a date between
+						// January 1, 100 and December 31, 9999,
+						// inclusive. The value 2.0 represents January
+						// 1, 1900; 3.0 represents January 2, 1900,
+						// and so on. Adding 1 to the value increments
+						// the date by a day. The fractional part of
+						// the value represents the time of
+						// day. Therefore, 2.5 represents noon on
+						// January 1, 1900; 3.25 represents 6:00
+						// A.M. on January 2, 1900, and so
+						// on. Negative numbers represent the dates
+						// prior to December 30, 1899.
 						result.Set(column.Name,
-							time.Unix(int64(days_since_1900*24*60*60)+
-								-2208988800, 0).UTC())
+							time.Unix(int64(
+								days_since_1900*24*60*60)+
+
+								// Number of Sec between 1900 and 1970
+								-2208988800-
+
+								// Jan 1 1900 is actually value of 2
+								// days so correct for it here.
+								2*24*60*60, 0).UTC())
 
 					default:
 						// We have no idea
