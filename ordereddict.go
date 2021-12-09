@@ -168,6 +168,17 @@ func (self *Dict) GetString(key string) (string, bool) {
 	return "", false
 }
 
+func (self *Dict) GetBool(key string) (bool, bool) {
+	v, pres := self.Get(key)
+	if pres {
+		v_bool, ok := v.(bool)
+		if ok {
+			return v_bool, true
+		}
+	}
+	return false, false
+}
+
 func to_string(x interface{}) (string, bool) {
 	switch t := x.(type) {
 	case string:
