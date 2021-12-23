@@ -1,3 +1,5 @@
+github.com/Velocidex/yaml/v2 v2.2.5 h1:8XZwR8tmm5UWAXotI3fL17s9fjKEMqZ293fgqUiMhBw=
+github.com/Velocidex/yaml/v2 v2.2.5/go.mod h1:VBjrsTMc/b1h0ankOOnJPYoCbJNwhpGYpnDgICEs2mk=
 github.com/alecthomas/repr v0.0.0-20181024024818-d37bc2a10ba1 h1:GDQdwm/gAcJcLAKQQZGOJ4knlw+7rfEQQcmwTbt4p5E=
 github.com/alecthomas/repr v0.0.0-20181024024818-d37bc2a10ba1/go.mod h1:xTS7Pm1pD1mvyM075QCDSRqH6qRLXylzS24ZTpRiSzQ=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=

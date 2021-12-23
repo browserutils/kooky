@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/Velocidex/yaml/v2"
 )
 
 // A concerete implementation of a row - similar to Python's
@@ -469,4 +471,19 @@ func (self *Dict) MarshalJSON() ([]byte, error) {
 	}
 	result = result + "}"
 	return []byte(result), nil
+}
+
+func (self *Dict) MarshalYAML() (interface{}, error) {
+	self.Lock()
+	defer self.Unlock()
+
+	result := yaml.MapSlice{}
+	for _, k := range self.keys {
+		v := self.store[k]
+		result = append(result, yaml.MapItem{
+			Key: k, Value: v,
+		})
+	}
+
+	return result, nil
 }
