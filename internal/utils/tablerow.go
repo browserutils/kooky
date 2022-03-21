@@ -11,12 +11,25 @@ type TableRow struct {
 	record  *sqlite3.Record
 }
 
-func (row TableRow) BlobOrFallback(columnName string, fallback []byte) ([]byte, error) {
+func (row TableRow) BytesOrFallback(columnName string, fallback []byte) ([]byte, error) {
 	rawValue := row.ValueOrFallback(columnName, nil)
 	if value, ok := rawValue.([]byte); ok {
 		return value, nil
 	}
 	return nil, fmt.Errorf("expected column [%s] to be []byte; got %T with value %[2]v", columnName, rawValue)
+}
+func (row TableRow) BytesStringOrFallback(columnName string, fallback []byte) ([]byte, error) {
+	rawValue := row.ValueOrFallback(columnName, nil)
+	if value, ok := rawValue.([]byte); ok {
+		return value, nil
+	}
+	switch value := rawValue.(type) {
+	case []byte:
+		return value, nil
+	case string:
+		return []byte(value), nil
+	}
+	return nil, fmt.Errorf("expected column [%s] to be []byte or string; got %T with value %[2]v", columnName, rawValue)
 }
 
 func (row TableRow) Bool(columnName string) (bool, error) {

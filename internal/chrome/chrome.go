@@ -97,7 +97,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		encrypted_value, err := row.BlobOrFallback(`encrypted_value`, nil)
+		encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
 		if err != nil {
 			return err
 		} else if len(encrypted_value) > 0 {
