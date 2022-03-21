@@ -50,7 +50,7 @@ import (
 	"fmt"
 
 	"github.com/zellyn/kooky"
-	_ "github.com/zellyn/kooky/allbrowsers" // register cookie store finders!
+	_ "github.com/zellyn/kooky/browser/all" // register cookie store finders!
 )
 
 func main() {
@@ -74,7 +74,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/zellyn/kooky/chrome"
+	"github.com/zellyn/kooky/browser/chrome"
 )
 
 func main() {
@@ -100,7 +100,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/zellyn/kooky/safari"
+	"github.com/zellyn/kooky/browser/safari"
 )
 
 func main() {

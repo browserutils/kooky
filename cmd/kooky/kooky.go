@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/zellyn/kooky"
-	_ "github.com/zellyn/kooky/allbrowsers"
+	_ "github.com/zellyn/kooky/browser/all"
 
 	"github.com/spf13/pflag"
 )

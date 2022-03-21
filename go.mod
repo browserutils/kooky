@@ -19,3 +19,4 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	www.velocidex.com/golang/go-ese v0.1.0
 )
+

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/zellyn/kooky"
-	_ "github.com/zellyn/kooky/allbrowsers" // This registers all cookiestore finders!
-	// _ "github.com/zellyn/kooky/chrome" // load only the chrome cookiestore finder
+	_ "github.com/zellyn/kooky/browser/all" // This registers all cookiestore finders!
+	// _ "github.com/zellyn/kooky/browser/chrome" // load only the chrome cookiestore finder
 )
 
 func ExampleReadCookies_all() {
