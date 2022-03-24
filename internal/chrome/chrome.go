@@ -35,28 +35,6 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		"httponly": "is_httponly",
 	}
 	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
-		/*
-			-- taken from chrome 80's cookies' sqlite_master
-			CREATE TABLE cookies(
-				creation_utc INTEGER NOT NULL,
-				host_key TEXT NOT NULL,
-				name TEXT NOT NULL,
-				value TEXT NOT NULL,
-				path TEXT NOT NULL,
-				expires_utc INTEGER NOT NULL,
-				is_secure INTEGER NOT NULL,
-				is_httponly INTEGER NOT NULL,
-				last_access_utc INTEGER NOT NULL,
-				has_expires INTEGER NOT NULL DEFAULT 1,
-				is_persistent INTEGER NOT NULL DEFAULT 1,
-				priority INTEGER NOT NULL DEFAULT 1,
-				encrypted_value BLOB DEFAULT '',
-				samesite INTEGER NOT NULL DEFAULT -1,
-				source_scheme INTEGER NOT NULL DEFAULT 0,
-				UNIQUE (host_key, name, path)
-			)
-		*/
-
 		cookie := &kooky.Cookie{
 			Creation: utils.FromFILETIME(*rowID * 10),
 		}

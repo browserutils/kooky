@@ -2,6 +2,8 @@ package firefox
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 
 	"github.com/go-sqlite/sqlite3"
 	"github.com/zellyn/kooky"
@@ -10,7 +12,9 @@ import (
 
 type CookieStore struct {
 	internal.DefaultCookieStore
-	Database *sqlite3.DbFile
+	Database   *sqlite3.DbFile
+	Containers map[int]string
+	contFile   *os.File
 }
 
 func (s *CookieStore) Open() error {
@@ -27,6 +31,9 @@ func (s *CookieStore) Open() error {
 	}
 	s.Database = db
 
+	contFileName := filepath.Join(filepath.Dir(s.FileNameStr), `containers.json`)
+	s.contFile, _ = os.Open(contFileName)
+
 	return nil
 }
 
@@ -40,6 +47,12 @@ func (s *CookieStore) Close() error {
 	err := s.Database.Close()
 	if err == nil {
 		s.Database = nil
+	}
+	if s.contFile != nil {
+		errCont := s.contFile.Close()
+		if errCont != nil && err == nil {
+			err = errCont
+		}
 	}
 
 	return err

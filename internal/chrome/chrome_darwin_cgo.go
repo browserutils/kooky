@@ -1,4 +1,5 @@
-//+build darwin,cgo
+//go:build darwin && cgo
+// +build darwin,cgo
 
 package chrome
 
@@ -9,7 +10,7 @@ import (
 	keychain "github.com/keybase/go-keychain"
 )
 
-// getKeychainPassword retrieves the Chrome Safe Storage password,
+// getKeyringPassword retrieves the Chrome Safe Storage password,
 // caching it for future calls.
 func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {

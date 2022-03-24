@@ -1,4 +1,4 @@
-//+build !cgo
+//go:build !ios && !cgo
 
 package chrome
 
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// getKeychainPassword retrieves the Chrome Safe Storage password,
+// getKeyringPassword retrieves the Chrome Safe Storage password,
 // caching it for future calls.
 func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {

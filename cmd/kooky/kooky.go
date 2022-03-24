@@ -77,11 +77,16 @@ func main() {
 			cookiesExport = append(cookiesExport, cookies...)
 		} else {
 			for _, cookie := range cookies {
+				container := cookie.Container
+				if len(container) > 0 {
+					container = ` [` + container + `]`
+				}
 				fmt.Fprintf(
 					w,
-					"%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 					store.Browser(),
 					store.Profile(),
+					container,
 					trimStr(store.FilePath(), trimLen),
 					trimStr(cookie.Domain, trimLen),
 					trimStr(cookie.Name, trimLen),

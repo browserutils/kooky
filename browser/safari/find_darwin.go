@@ -1,4 +1,4 @@
-//+build darwin,!arm,!arm64
+//go:build darwin && !arm && !arm64 && !ios
 
 // TODO: fix build tag when/if ios tag is implemented
 // https://github.com/golang/go/issues/38485
@@ -38,9 +38,3 @@ func (s *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	}
 	return ret, nil
 }
-
-/*
-TODO: windows
-v5.1.7 last windows version
-https://www.heise.de/download/product/safari-44740
-*/

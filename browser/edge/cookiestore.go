@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
 	"github.com/zellyn/kooky/internal/chrome"
 	"www.velocidex.com/golang/go-ese/parser"
 
@@ -14,6 +15,7 @@ import (
 )
 
 type edgeCookieStore struct {
+	internal.DefaultCookieStore
 	chrome.CookieStore
 	ESECatalog *parser.Catalog
 }

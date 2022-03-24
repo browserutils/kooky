@@ -1,4 +1,4 @@
-//+build windows
+//go:build windows
 
 package edge
 
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/chrome"
 	"github.com/zellyn/kooky/internal/chrome/find"
 )
 
@@ -31,8 +33,10 @@ func (s *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	cookiesFiles = append(
 		cookiesFiles,
 		&edgeCookieStore{
-			browser:  `edge`,
-			filename: filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
+			DefaultCookieStore: internal.DefaultCookieStore{
+				BrowserStr:  `edge`,
+				FileNameStr: filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
+			},
 		},
 	)
 
@@ -40,19 +44,23 @@ func (s *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	newRoot := func() ([]string, error) {
 		return []string{filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`)}, nil
 	}
-	if blinkCookiesFiles, err := find.FindCookieStoreFiles(newRoot, `edge`); err != nil {
-		for _, cookiesFile := range blinkCookiesFiles {
-			cookiesFiles = append(
-				cookiesFiles,
-				&edgeCookieStore{
-					filename:         cookiesFile.Path,
-					browser:          cookiesFile.Browser,
-					profile:          cookiesFile.Profile,
-					os:               cookiesFile.OS,
-					isDefaultProfile: cookiesFile.IsDefaultProfile,
+	blinkCookiesFiles, err := find.FindCookieStoreFiles(newRoot, `edge`)
+	if err != nil {
+		return nil, err
+	}
+	for _, cookiesFile := range blinkCookiesFiles {
+		cookiesFiles = append(
+			cookiesFiles,
+			&chrome.CookieStore{
+				DefaultCookieStore: internal.DefaultCookieStore{
+					BrowserStr:           cookiesFile.Browser,
+					ProfileStr:           cookiesFile.Profile,
+					OSStr:                cookiesFile.OS,
+					IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
+					FileNameStr:          cookiesFile.Path,
 				},
-			)
-		}
+			},
+		)
 	}
 
 	return cookiesFiles, nil

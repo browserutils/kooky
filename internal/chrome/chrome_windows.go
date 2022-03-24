@@ -71,11 +71,17 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		return s.KeyringPasswordBytes, nil
 	}
 
-	// the "Local State" json file is normally one directory above the "Cookies" database
-	stateFile, err := filepath.Abs(filepath.Join(filepath.Dir(filepath.Dir(s.FileNameStr)), `Local State`))
+	var stateFile string
+	// the "Local State" json file is normally one or two directory above the "Cookies" database
+	dir := filepath.Dir(s.FileNameStr)
+	if filepath.Base(dir) == `Network` { // Chrome 96
+		dir = filepath.Dir(dir)
+	}
+	stateFile, err := filepath.Abs(filepath.Join(filepath.Dir(dir), `Local State`))
 	if err != nil {
 		return nil, err
 	}
+
 	if useSaved {
 		if kpw, ok := keyringPasswordMap.get(stateFile); ok {
 			return kpw, nil

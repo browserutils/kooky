@@ -1,4 +1,4 @@
-// +build !android
+//go:build linux && !android
 
 package chrome
 
@@ -18,7 +18,7 @@ import (
 
 // https://gist.github.com/dacort/bd6a5116224c594b14db
 
-// getKeychainPassword retrieves the Chrome Safe Storage password,
+// getKeyringPassword retrieves the Chrome Safe Storage password,
 // caching it for future calls.
 func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	// https://cs.chromium.org/chromium/src/components/os_crypt/key_storage_linux.cc?q="chromium+safe+storage"

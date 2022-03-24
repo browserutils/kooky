@@ -8,7 +8,6 @@ import (
 )
 
 type chromeFinder struct{}
-type chromiumFinder struct{}
 
 var _ kooky.CookieStoreFinder = (*chromeFinder)(nil)
 

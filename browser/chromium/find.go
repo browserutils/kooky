@@ -7,7 +7,6 @@ import (
 	"github.com/zellyn/kooky/internal/chrome/find"
 )
 
-type chromeFinder struct{}
 type chromiumFinder struct{}
 
 var _ kooky.CookieStoreFinder = (*chromiumFinder)(nil)

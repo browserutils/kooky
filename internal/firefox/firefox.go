@@ -3,6 +3,8 @@ package firefox
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zellyn/kooky"
@@ -21,30 +23,11 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		return nil, errors.New(`database is nil`)
 	}
 
+	_ = s.initContainersMap()
+
 	var cookies []*kooky.Cookie
 
 	err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, func(rowId *int64, row utils.TableRow) error {
-		/*
-			-- Firefox 78 ESR - copied from sqlitebrowser
-			CREATE TABLE moz_cookies(
-				id INTEGER PRIMARY KEY,
-				originAttributes TEXT NOT NULL DEFAULT '',
-				name TEXT,
-				value TEXT,
-				host TEXT,
-				path TEXT,
-				expiry INTEGER,
-				lastAccessed INTEGER,
-				creationTime INTEGER,
-				isSecure INTEGER,
-				isHttpOnly INTEGER,
-				inBrowserElement INTEGER DEFAULT 0,
-				sameSite INTEGER DEFAULT 0,
-				rawSameSite INTEGER DEFAULT 0,
-				CONSTRAINT moz_uniqueid UNIQUE (name, host, path, originAttributes)
-			)
-		*/
-
 		cookie := kooky.Cookie{}
 		var err error
 
@@ -91,7 +74,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 
 		// Creation
 		if creationTime, err := row.Int64(`creationTime`); err == nil {
-			cookie.Creation = time.Unix(creationTime/1e6, 0) // drop nanoseconds
+			cookie.Creation = time.UnixMicro(creationTime)
 		} else {
 			return err
 		}
@@ -106,6 +89,23 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		cookie.HttpOnly, err = row.Bool(`isHttpOnly`)
 		if err != nil {
 			return err
+		}
+
+		// Container
+		if s.Containers != nil {
+			ucidStr, _ := row.String(`originAttributes`)
+			prefixContextID := `^userContextId=`
+			if len(ucidStr) > 0 && strings.HasPrefix(ucidStr, prefixContextID) {
+				ucidStr = strings.TrimPrefix(ucidStr, prefixContextID)
+				cookie.Container = ucidStr
+				ucid, err := strconv.Atoi(ucidStr)
+				if err == nil {
+					contName, okContName := s.Containers[ucid]
+					if okContName && len(contName) > 0 {
+						cookie.Container += `|` + contName
+					}
+				}
+			}
 		}
 
 		if kooky.FilterCookie(&cookie, filters...) {
