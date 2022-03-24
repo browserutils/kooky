@@ -50,7 +50,7 @@ func TestReadCookies(t *testing.T) {
 	if c.HttpOnly {
 		t.Error("c.HttpOnly expected false")
 	}
-	if !c.Creation.Equal(time.Date(2018, 01, 17, 18, 24, 47, 0, tz)) {
+	if !c.Creation.Equal(time.Date(2018, 01, 17, 18, 24, 47, 597175000, tz)) {
 		t.Errorf("c.Creation=%q", c.Creation)
 	}
 	if c.Value != "a748915ba19c6d0b" {
@@ -97,7 +97,7 @@ func TestReadCookies(t *testing.T) {
 	if !c.HttpOnly {
 		t.Error("c.HttpOnly expected true")
 	}
-	if !c.Creation.Equal(time.Date(2020, 11, 8, 22, 14, 45, 0, tz)) {
+	if !c.Creation.Equal(time.Date(2020, 11, 8, 22, 14, 45, 143525000, tz)) {
 		t.Errorf("c.Creation=%q", c.Creation)
 	}
 	if c.Value != "204=blabla" {

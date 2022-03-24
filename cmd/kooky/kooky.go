@@ -92,7 +92,8 @@ func main() {
 					trimStr(cookie.Name, trimLen),
 					// be careful about raw bytes
 					trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-					cookie.Expires.Format(`2006.01.02 15:04:05`),
+					// cookie.Expires.Format(`2006.01.02 15:04:05`),
+					cookie.Creation.Format(`2006.01.02 15:04:05`),
 				)
 			}
 		}
