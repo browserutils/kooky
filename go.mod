@@ -1,6 +1,6 @@
 module github.com/zellyn/kooky
 
-go 1.13
+go 1.18
 
 require (
 	github.com/Velocidex/ordereddict v0.0.0-20220107075049-3dbe58412844
@@ -19,4 +19,3 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	www.velocidex.com/golang/go-ese v0.1.0
 )
-

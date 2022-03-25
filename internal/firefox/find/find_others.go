@@ -1,4 +1,4 @@
-//+build plan9 android js aix
+//go:build plan9 || android || js || aix
 
 package find
 

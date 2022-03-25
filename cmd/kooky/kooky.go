@@ -72,6 +72,12 @@ func main() {
 		}
 
 		cookies, _ := store.ReadCookies(filters...)
+		/*fmt.Println(store.FilePath()) // TODO rm
+		cookies, err := store.ReadCookies(filters...)
+		if err != nil {
+			fmt.Println(err)
+		}*/
+		// continue // TODO rm
 
 		if export != nil && len(*export) > 0 {
 			cookiesExport = append(cookiesExport, cookies...)
@@ -92,8 +98,7 @@ func main() {
 					trimStr(cookie.Name, trimLen),
 					// be careful about raw bytes
 					trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-					// cookie.Expires.Format(`2006.01.02 15:04:05`),
-					cookie.Creation.Format(`2006.01.02 15:04:05`),
+					cookie.Expires.Format(`2006.01.02 15:04:05`),
 				)
 			}
 		}
@@ -114,3 +119,5 @@ func trimStr(str string, length int) string {
 	}
 	return str[:length]
 }
+
+// TODO: "kooky -b firefox -o /dev/stdout | head" hangs

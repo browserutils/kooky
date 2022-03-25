@@ -35,7 +35,7 @@ func FindCookieStoreFiles(rootsFunc func() ([]string, error), browserName, fileN
 		iniFile := filepath.Join(root, `profiles.ini`)
 		profIni, err := ini.Load(iniFile)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		var defaultProfileFolder string
 		for _, sec := range profIni.SectionStrings() {

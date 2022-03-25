@@ -1,4 +1,4 @@
-//+build !windows,!darwin,!plan9,!android,!js,!aix
+//go:build !windows && !darwin && !plan9 && !android && !js && !aix
 
 package find
 
@@ -12,5 +12,8 @@ func firefoxRoots() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []string{filepath.Join(home, `.mozilla`, `firefox`)}, nil
+	return []string{
+		filepath.Join(home, `snap`, `firefox`, `common`, `.mozilla`, `firefox`), // Ubuntu 21.10 (snap)
+		filepath.Join(home, `.mozilla`, `firefox`),
+	}, nil
 }
