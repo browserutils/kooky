@@ -1,6 +1,7 @@
 package kooky
 
 import (
+	"net/http"
 	"sync"
 )
 
@@ -8,6 +9,8 @@ import (
 //
 // Call CookieStore.Close() after using any of its methods.
 type CookieStore interface {
+	http.CookieJar
+	SubJar(filters ...Filter) (http.CookieJar, error)
 	ReadCookies(...Filter) ([]*Cookie, error)
 	Browser() string
 	Profile() string

@@ -1,4 +1,4 @@
-//+build !windows,!darwin,!plan9,!android,!js,!aix
+//go:build !windows && !darwin && !plan9 && !android && !ios && !js && !aix
 
 package find
 

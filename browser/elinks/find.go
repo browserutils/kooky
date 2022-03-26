@@ -16,20 +16,21 @@ func init() {
 	kooky.RegisterFinder(`elinks`, &elinksFinder{})
 }
 
-func (s *elinksFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *elinksFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 
-	var ret = []kooky.CookieStore{
-		&elinksCookieStore{
-			DefaultCookieStore: internal.DefaultCookieStore{
-				BrowserStr:           `elinks`,
-				IsDefaultProfileBool: true,
-				FileNameStr:          filepath.Join(home, `.elinks`, `cookies`),
-			},
-		},
+	var s elinksCookieStore
+	d := internal.DefaultCookieStore{
+		BrowserStr:           `elinks`,
+		IsDefaultProfileBool: true,
+		FileNameStr:          filepath.Join(home, `.elinks`, `cookies`),
 	}
+	internal.SetCookieStore(&d, &s)
+	s.DefaultCookieStore = d
+	var ret = []kooky.CookieStore{&s}
+
 	return ret, nil
 }

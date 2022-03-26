@@ -2,6 +2,7 @@ package kooky
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -12,15 +13,25 @@ import (
 type Filter func(*Cookie) bool
 
 // FilterCookies() applies "filters" in order to the "cookies".
-func FilterCookies(cookies []*Cookie, filters ...Filter) []*Cookie {
-	var ret = make([]*Cookie, 0, len(cookies))
+func FilterCookies[T Cookie | http.Cookie](cookies []*T, filters ...Filter) []*T {
+	var ret = make([]*T, 0, len(cookies))
+
 cookieLoop:
 	for _, cookie := range cookies {
 		if cookie == nil {
 			continue
 		}
+
+		var c *Cookie
+		switch cookieTyp := any(cookie).(type) {
+		case *http.Cookie:
+			c = &Cookie{Cookie: *cookieTyp}
+		case *Cookie:
+			c = cookieTyp
+		}
+
 		for _, filter := range filters {
-			if !filter(cookie) {
+			if !filter(c) {
 				continue cookieLoop
 			}
 		}
@@ -30,12 +41,21 @@ cookieLoop:
 }
 
 // FilterCookie() tells if a "cookie" passes all "filters".
-func FilterCookie(cookie *Cookie, filters ...Filter) bool {
+func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 	if cookie == nil {
 		return false
 	}
+
+	var c *Cookie
+	switch cookieTyp := any(cookie).(type) {
+	case *http.Cookie:
+		c = &Cookie{Cookie: *cookieTyp}
+	case *Cookie:
+		c = cookieTyp
+	}
+
 	for _, filter := range filters {
-		if !filter(cookie) {
+		if !filter(c) {
 			return false
 		}
 	}

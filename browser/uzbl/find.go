@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 package uzbl
 
@@ -19,7 +20,7 @@ func init() {
 	kooky.RegisterFinder(`uzbl`, &uzblFinder{})
 }
 
-func (s *uzblFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *uzblFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	roots, err := uzblRoots()
 	if err != nil {
 		return nil, err
@@ -29,15 +30,14 @@ func (s *uzblFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	for _, root := range roots {
 		for _, filename := range []string{`session-cookies.txt`, `cookies.txt`} {
-			ret = append(
-				ret,
-				&netscape.CookieStore{
-					DefaultCookieStore: internal.DefaultCookieStore{
-						BrowserStr:  `uzbl`,
-						FileNameStr: filepath.Join(root, `uzbl`, filename),
-					},
-				},
-			)
+			var s netscape.CookieStore
+			d := internal.DefaultCookieStore{
+				BrowserStr:  `uzbl`,
+				FileNameStr: filepath.Join(root, `uzbl`, filename),
+			}
+			internal.SetCookieStore(&d, &s)
+			s.DefaultCookieStore = d
+			ret = append(ret, &s)
 		}
 	}
 

@@ -18,7 +18,7 @@ func init() {
 	kooky.RegisterFinder(`epiphany`, &epiphanyFinder{})
 }
 
-func (s *epiphanyFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *epiphanyFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	roots, err := epiphanyRoots()
 	if err != nil {
 		return nil, err
@@ -27,15 +27,14 @@ func (s *epiphanyFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	var ret []kooky.CookieStore
 
 	for _, root := range roots {
-		ret = append(
-			ret,
-			&epiphanyCookieStore{
-				DefaultCookieStore: internal.DefaultCookieStore{
-					BrowserStr:  `epiphany`,
-					FileNameStr: filepath.Join(root, `cookies.sqlite`),
-				},
-			},
-		)
+		var s epiphanyCookieStore
+		d := internal.DefaultCookieStore{
+			BrowserStr:  `epiphany`,
+			FileNameStr: filepath.Join(root, `cookies.sqlite`),
+		}
+		internal.SetCookieStore(&d, &s)
+		s.DefaultCookieStore = d
+		ret = append(ret, &s)
 	}
 
 	if len(ret) > 0 {

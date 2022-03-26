@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 // unix only
 
@@ -23,7 +24,7 @@ func init() {
 	kooky.RegisterFinder(`lynx`, &lynxFinder{})
 }
 
-func (s *lynxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *lynxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -95,29 +96,28 @@ configFileLoop:
 			continue
 		}
 		cookieMap[cookieFile] = struct{}{}
-		ret = append(
-			ret,
-			&netscape.CookieStore{
-				DefaultCookieStore: internal.DefaultCookieStore{
-					BrowserStr:           `lynx`,
-					IsDefaultProfileBool: cookieFile == primCookieFile,
-					FileNameStr:          cookieFile,
-				},
-			},
-		)
+
+		var s netscape.CookieStore
+		d := internal.DefaultCookieStore{
+			BrowserStr:           `lynx`,
+			IsDefaultProfileBool: cookieFile == primCookieFile,
+			FileNameStr:          cookieFile,
+		}
+		internal.SetCookieStore(&d, &s)
+		s.DefaultCookieStore = d
+		ret = append(ret, &s)
 	}
 
 	// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
-	ret = append(
-		ret,
-		&netscape.CookieStore{
-			DefaultCookieStore: internal.DefaultCookieStore{
-				BrowserStr:           `lynx`,
-				IsDefaultProfileBool: true,
-				FileNameStr:          filepath.Join(home, `.lynx_cookies`),
-			},
-		},
-	)
+	var s netscape.CookieStore
+	d := internal.DefaultCookieStore{
+		BrowserStr:           `lynx`,
+		IsDefaultProfileBool: true,
+		FileNameStr:          filepath.Join(home, `.lynx_cookies`),
+	}
+	internal.SetCookieStore(&d, &s)
+	s.DefaultCookieStore = d
+	ret = append(ret, &s)
 
 	// last one probably overwrites earlier configuration
 	if len(primCookieFile) == 0 {

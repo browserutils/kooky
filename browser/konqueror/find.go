@@ -1,4 +1,5 @@
-//+build !windows
+//go:build !windows
+// +build !windows
 
 package konqueror
 
@@ -18,7 +19,7 @@ func init() {
 	kooky.RegisterFinder(`konqueror`, &konquerorFinder{})
 }
 
-func (s *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	roots, err := konquerorRoots()
 	if err != nil {
 		return nil, err
@@ -27,15 +28,14 @@ func (s *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	var ret []kooky.CookieStore
 
 	for _, root := range roots {
-		ret = append(
-			ret,
-			&konquerorCookieStore{
-				DefaultCookieStore: internal.DefaultCookieStore{
-					BrowserStr:  `konqueror`,
-					FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
-				},
-			},
-		)
+		var s konquerorCookieStore
+		d := internal.DefaultCookieStore{
+			BrowserStr:  `konqueror`,
+			FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
+		}
+		internal.SetCookieStore(&d, &s)
+		s.DefaultCookieStore = d
+		ret = append(ret, &s)
 	}
 
 	if len(ret) > 0 {

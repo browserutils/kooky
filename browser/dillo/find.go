@@ -17,7 +17,7 @@ func init() {
 	kooky.RegisterFinder(`dillo`, &dilloFinder{})
 }
 
-func (s *dilloFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *dilloFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	// https://www.dillo.org/FAQ.html#q16
 	// https://www.dillo.org/Cookies.txt
 
@@ -26,14 +26,15 @@ func (s *dilloFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var ret = []kooky.CookieStore{
-		&netscape.CookieStore{
-			DefaultCookieStore: internal.DefaultCookieStore{
-				BrowserStr:           `dillo`,
-				IsDefaultProfileBool: true,
-				FileNameStr:          filepath.Join(home, `.dillo`, `cookies.txt`),
-			},
-		},
+	var s netscape.CookieStore
+	d := internal.DefaultCookieStore{
+		BrowserStr:           `dillo`,
+		IsDefaultProfileBool: true,
+		FileNameStr:          filepath.Join(home, `.dillo`, `cookies.txt`),
 	}
+	internal.SetCookieStore(&d, &s)
+	s.DefaultCookieStore = d
+	var ret = []kooky.CookieStore{&s}
+
 	return ret, nil
 }

@@ -15,7 +15,7 @@ func init() {
 	kooky.RegisterFinder(`chrome`, &chromeFinder{})
 }
 
-func (s *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	files, err := find.FindChromeCookieStoreFiles()
 	if err != nil {
 		return nil, err
@@ -23,18 +23,17 @@ func (s *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret []kooky.CookieStore
 	for _, file := range files {
-		ret = append(
-			ret,
-			&chrome.CookieStore{
-				DefaultCookieStore: internal.DefaultCookieStore{
-					BrowserStr:           file.Browser,
-					ProfileStr:           file.Profile,
-					OSStr:                file.OS,
-					IsDefaultProfileBool: file.IsDefaultProfile,
-					FileNameStr:          file.Path,
-				},
-			},
-		)
+		var s chrome.CookieStore
+		d := internal.DefaultCookieStore{
+			BrowserStr:           file.Browser,
+			ProfileStr:           file.Profile,
+			OSStr:                file.OS,
+			IsDefaultProfileBool: file.IsDefaultProfile,
+			FileNameStr:          file.Path,
+		}
+		internal.SetCookieStore(&d, &s)
+		s.DefaultCookieStore = d
+		ret = append(ret, &s)
 	}
 
 	return ret, nil

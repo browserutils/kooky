@@ -12,7 +12,7 @@ const httpOnlyPrefix = `#HttpOnly_`
 // ExportCookies() export "cookies" in the Netscape format.
 //
 // curl, wget, ... use this format.
-func ExportCookies[T ~*Cookie | ~*http.Cookie](w io.Writer, cookies []T) {
+func ExportCookies[T Cookie | http.Cookie](w io.Writer, cookies []*T) {
 	if len(cookies) < 1 {
 		return
 	}

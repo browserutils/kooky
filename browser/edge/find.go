@@ -21,7 +21,7 @@ func init() {
 	kooky.RegisterFinder(`edge`, &edgeFinder{})
 }
 
-func (s *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	locApp := os.Getenv(`LocalAppData`)
 	if len(locApp) == 0 {
 		return nil, errors.New(`%LocalAppData% is empty`)
@@ -30,15 +30,14 @@ func (s *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	var cookiesFiles []kooky.CookieStore
 
 	// old versions
-	cookiesFiles = append(
-		cookiesFiles,
-		&edgeCookieStore{
-			DefaultCookieStore: internal.DefaultCookieStore{
-				BrowserStr:  `edge`,
-				FileNameStr: filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
-			},
-		},
-	)
+	var se edgeCookieStore
+	d := internal.DefaultCookieStore{
+		BrowserStr:  `edge`,
+		FileNameStr: filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
+	}
+	internal.SetCookieStore(&d, &se)
+	se.DefaultCookieStore = d
+	cookiesFiles = append(cookiesFiles, &se)
 
 	// Blink based
 	newRoot := func() ([]string, error) {
@@ -49,18 +48,17 @@ func (s *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 	for _, cookiesFile := range blinkCookiesFiles {
-		cookiesFiles = append(
-			cookiesFiles,
-			&chrome.CookieStore{
-				DefaultCookieStore: internal.DefaultCookieStore{
-					BrowserStr:           cookiesFile.Browser,
-					ProfileStr:           cookiesFile.Profile,
-					OSStr:                cookiesFile.OS,
-					IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
-					FileNameStr:          cookiesFile.Path,
-				},
-			},
-		)
+		var sc chrome.CookieStore
+		d := internal.DefaultCookieStore{
+			BrowserStr:           cookiesFile.Browser,
+			ProfileStr:           cookiesFile.Profile,
+			OSStr:                cookiesFile.OS,
+			IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
+			FileNameStr:          cookiesFile.Path,
+		}
+		internal.SetCookieStore(&d, &sc)
+		sc.DefaultCookieStore = d
+		cookiesFiles = append(cookiesFiles, &sc)
 	}
 
 	return cookiesFiles, nil
