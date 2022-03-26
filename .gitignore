@@ -10,6 +10,10 @@ go.work.sum
 # Test binary, build with `go test -c`
 *.test
 
+# cli binary
+kooky
+kooky.exe
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
