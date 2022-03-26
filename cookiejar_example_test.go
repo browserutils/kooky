@@ -22,6 +22,7 @@ func Example_cookieJar() {
 		s = store
 		break
 	}
+	// jar := s
 	// only store cookies relevant for the target website in the cookie jar
 	jar, _ := s.SubJar(kooky.Domain(`github.com`))
 

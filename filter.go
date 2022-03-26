@@ -23,6 +23,7 @@ cookieLoop:
 		}
 
 		var c *Cookie
+		// https://github.com/golang/go/issues/45380#issuecomment-1014950980
 		switch cookieTyp := any(cookie).(type) {
 		case *http.Cookie:
 			c = &Cookie{Cookie: *cookieTyp}
@@ -47,6 +48,7 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 	}
 
 	var c *Cookie
+	// https://github.com/golang/go/issues/45380#issuecomment-1014950980
 	switch cookieTyp := any(cookie).(type) {
 	case *http.Cookie:
 		c = &Cookie{Cookie: *cookieTyp}
