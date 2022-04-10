@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"unsafe"
 
@@ -71,8 +72,17 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		return s.KeyringPasswordBytes, nil
 	}
 
+	var stateFilePosition string
+
+	stateFilePosition = filepath.Join(filepath.Dir(filepath.Dir(s.FileNameStr)), `Local State`)
+	_, err := os.Stat(stateFilePosition)
+	if err != nil {
+		// chrome cookie file position changed, relative path need change too
+		stateFilePosition = filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(s.FileNameStr))), `Local State`)
+	}
+
 	// the "Local State" json file is normally one directory above the "Cookies" database
-	stateFile, err := filepath.Abs(filepath.Join(filepath.Dir(filepath.Dir(s.FileNameStr)), `Local State`))
+	stateFile, err := filepath.Abs(stateFilePosition)
 	if err != nil {
 		return nil, err
 	}
