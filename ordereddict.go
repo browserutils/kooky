@@ -2,7 +2,6 @@ package ordereddict
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Velocidex/json"
 	"github.com/Velocidex/yaml/v2"
 )
 
@@ -440,7 +440,8 @@ func (self *Dict) MarshalJSON() ([]byte, error) {
 	self.Lock()
 	defer self.Unlock()
 
-	result := "{"
+	buf := &bytes.Buffer{}
+	buf.Write([]byte("{"))
 	for _, k := range self.keys {
 
 		// add key
@@ -458,19 +459,22 @@ func (self *Dict) MarshalJSON() ([]byte, error) {
 			continue
 		}
 
-		result += string(kEscaped) + ":"
+		buf.Write(kEscaped)
+		buf.Write([]byte(":"))
+
 		vBytes, err := json.Marshal(v)
 		if err == nil {
-			result += string(vBytes) + ","
+			buf.Write(vBytes)
+			buf.Write([]byte(","))
 		} else {
-			result += "null,"
+			buf.Write([]byte("null,"))
 		}
 	}
 	if len(self.keys) > 0 {
-		result = result[0 : len(result)-1]
+		buf.Truncate(buf.Len() - 1)
 	}
-	result = result + "}"
-	return []byte(result), nil
+	buf.Write([]byte("}"))
+	return buf.Bytes(), nil
 }
 
 func (self *Dict) MarshalYAML() (interface{}, error) {
