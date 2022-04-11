@@ -7,10 +7,6 @@ import (
 	_ "github.com/zellyn/kooky/browser/all" // register cookiestore finders
 )
 
-var filters = []kooky.Filter{
-	kooky.Valid, // remove expired cookies
-}
-
 func ExampleFindAllCookieStores() {
 	cookieStores := kooky.FindAllCookieStores()
 
