@@ -2,75 +2,55 @@ package opera
 
 import (
 	"errors"
-	"fmt"
+	"io"
 	"os"
-	"path/filepath"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/chrome"
-
-	"github.com/go-sqlite/sqlite3"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type operaCookieStore struct {
-	chrome.CookieStore
+	cookies.CookieStore
 }
 
-var _ kooky.CookieStore = (*operaCookieStore)(nil)
+var _ cookies.CookieStore = (*operaCookieStore)(nil)
 
-func (s *operaCookieStore) Open() error {
+type operaPrestoCookieStore struct {
+	cookies.DefaultCookieStore
+}
+
+var _ cookies.CookieStore = (*operaPrestoCookieStore)(nil)
+
+func (s *operaPrestoCookieStore) Open() error {
 	if s == nil {
 		return errors.New(`cookie store is nil`)
 	}
 	if s.File != nil {
-		s.File.Seek(0, 0)
+		s.File.Seek(0, io.SeekStart)
 		return nil
 	}
-	if len(s.FileNameStr) < 1 {
+	if len(s.FileNameStr) == 0 {
 		return nil
 	}
 
-	// TODO use file type detection
-
-	if filepath.Base(s.FileNameStr) == `cookies4.dat` {
-		f, err := os.Open(s.FileNameStr)
-		if err != nil {
-			return err
-		}
-		s.File = f
-	} else {
-		db, err := sqlite3.Open(s.FileNameStr)
-		if err != nil {
-			return err
-		}
-		s.Database = db
+	f, err := os.Open(s.FileNameStr)
+	if err != nil {
+		return err
 	}
+	s.File = f
 
 	return nil
 }
 
-func (s *operaCookieStore) Close() error {
+func (s *operaPrestoCookieStore) Close() error {
 	if s == nil {
 		return errors.New(`cookie store is nil`)
 	}
 
-	var err, errFile, errDB error
+	var err error
 
 	if s.File != nil {
-		errFile = s.File.Close()
+		err = s.File.Close()
 		s.File = nil
-	}
-	if s.Database != nil {
-		errDB = s.Database.Close()
-		s.File = nil
-	}
-
-	if errFile != nil && errDB == nil {
-		err = errFile
-	} else if errFile == nil && errDB != nil {
-		err = errDB
-	} else if errFile != nil && errDB != nil {
-		err = fmt.Errorf("os.File.Close() error \"%v\" and github.com/go-sqlite/sqlite3.DbFile.Close() error \"%v\" occurred", errFile, errDB)
 	}
 
 	return err

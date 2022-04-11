@@ -1,3 +1,5 @@
+//go:build linux || freebsd || openbsd || netbsd || dragonfly || solaris
+
 package elinks
 
 import (
@@ -5,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type elinksFinder struct{}
@@ -22,15 +24,17 @@ func (f *elinksFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var s elinksCookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `elinks`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          filepath.Join(home, `.elinks`, `cookies`),
+	var ret = []kooky.CookieStore{
+		&cookies.CookieJar{
+			CookieStore: &elinksCookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `elinks`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(home, `.elinks`, `cookies`),
+				},
+			},
+		},
 	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
-	var ret = []kooky.CookieStore{&s}
 
 	return ret, nil
 }

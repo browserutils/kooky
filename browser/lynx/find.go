@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 	"github.com/zellyn/kooky/internal/netscape"
 )
 
@@ -30,6 +30,21 @@ func (f *lynxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 	var ret []kooky.CookieStore
+
+	// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
+	ret = append(
+		ret,
+		&cookies.CookieJar{
+			CookieStore: &netscape.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `lynx`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(home, `.lynx_cookies`),
+				},
+			},
+		},
+	)
+
 	// parse config files so that we don't have to execute lynx -show_cfg
 	configFiles := []string{
 		filepath.Join(`/etc`, `lynx.cfg`),
@@ -96,33 +111,26 @@ configFileLoop:
 			continue
 		}
 		cookieMap[cookieFile] = struct{}{}
-
-		var s netscape.CookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:           `lynx`,
-			IsDefaultProfileBool: cookieFile == primCookieFile,
-			FileNameStr:          cookieFile,
-		}
-		internal.SetCookieStore(&d, &s)
-		s.DefaultCookieStore = d
-		ret = append(ret, &s)
 	}
 
-	// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
-	var s netscape.CookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `lynx`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          filepath.Join(home, `.lynx_cookies`),
-	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
-	ret = append(ret, &s)
-
-	// last one probably overwrites earlier configuration
-	if len(primCookieFile) == 0 {
-		if cs, ok := ret[len(ret)-1].(*netscape.CookieStore); ok {
-			cs.IsDefaultProfileBool = true
+	{
+		last := len(cookieMap) - 1
+		i := 0
+		for cookieFile := range cookieMap {
+			ret = append(
+				ret,
+				&cookies.CookieJar{
+					CookieStore: &netscape.CookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr: `lynx`,
+							// last one probably overwrites earlier configuration
+							IsDefaultProfileBool: cookieFile == primCookieFile || i == last,
+							FileNameStr:          cookieFile,
+						},
+					},
+				},
+			)
+			i++
 		}
 	}
 

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 	"github.com/zellyn/kooky/internal/netscape"
 )
 
@@ -25,25 +25,25 @@ func (f *uzblFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 	if err != nil {
 		return nil, err
 	}
+	files := []string{`session-cookies.txt`, `cookies.txt`}
 
 	var ret []kooky.CookieStore
-
-	for _, root := range roots {
-		for _, filename := range []string{`session-cookies.txt`, `cookies.txt`} {
-			var s netscape.CookieStore
-			d := internal.DefaultCookieStore{
-				BrowserStr:  `uzbl`,
-				FileNameStr: filepath.Join(root, `uzbl`, filename),
-			}
-			internal.SetCookieStore(&d, &s)
-			s.DefaultCookieStore = d
-			ret = append(ret, &s)
-		}
-	}
-
-	if len(ret) > 0 {
-		if cookieStore, ok := ret[len(ret)-1].(*netscape.CookieStore); ok {
-			cookieStore.IsDefaultProfileBool = true
+	lastRoot := len(roots) - 1
+	lastFile := len(files) - 1
+	for i, root := range roots {
+		for j, filename := range files {
+			ret = append(
+				ret,
+				&cookies.CookieJar{
+					CookieStore: &netscape.CookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:           `uzbl`,
+							IsDefaultProfileBool: i == lastRoot && j == lastFile,
+							FileNameStr:          filepath.Join(root, `uzbl`, filename),
+						},
+					},
+				},
+			)
 		}
 	}
 

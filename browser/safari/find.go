@@ -4,7 +4,7 @@ package safari
 
 import (
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type safariFinder struct{}
@@ -21,15 +21,17 @@ func (f *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var s safariCookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `safari`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          fileStr,
+	var ret = []kooky.CookieStore{
+		&cookies.CookieJar{
+			CookieStore: &safariCookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `safari`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          fileStr,
+				},
+			},
+		},
 	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
 
-	var ret = []kooky.CookieStore{&s}
 	return ret, nil
 }

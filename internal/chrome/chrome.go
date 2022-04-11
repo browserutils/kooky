@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/timex"
 	"github.com/zellyn/kooky/internal/utils"
 )
 
@@ -36,7 +37,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 	}
 	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
 		cookie := &kooky.Cookie{
-			Creation: utils.FromFILETIME(*rowID * 10),
+			Creation: timex.FromFILETIME(*rowID * 10),
 		}
 
 		var err error
@@ -59,7 +60,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		if expires_utc, err := row.Int64(`expires_utc`); err == nil {
 			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
 			if expires_utc != 0 {
-				cookie.Expires = utils.FromFILETIME(expires_utc * 10)
+				cookie.Expires = timex.FromFILETIME(expires_utc * 10)
 			}
 		} else {
 			return err

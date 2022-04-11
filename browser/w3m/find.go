@@ -1,3 +1,5 @@
+//go:build linux || freebsd || openbsd || netbsd || dragonfly || solaris
+
 package w3m
 
 import (
@@ -5,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type w3mFinder struct{}
@@ -22,15 +24,17 @@ func (f *w3mFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var s w3mCookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `w3m`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          filepath.Join(home, `.w3m`, `cookie`),
+	var ret = []kooky.CookieStore{
+		&cookies.CookieJar{
+			CookieStore: &w3mCookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `w3m`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(home, `.w3m`, `cookie`),
+				},
+			},
+		},
 	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
 
-	var ret = []kooky.CookieStore{&s}
 	return ret, nil
 }

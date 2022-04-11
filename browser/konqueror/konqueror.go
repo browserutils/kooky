@@ -3,27 +3,28 @@ package konqueror
 import (
 	"bufio"
 	"errors"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 
 	"golang.org/x/text/encoding/charmap"
 )
 
 type konquerorCookieStore struct {
-	internal.DefaultCookieStore
+	cookies.DefaultCookieStore
 }
 
-var _ kooky.CookieStore = (*konquerorCookieStore)(nil)
+var _ cookies.CookieStore = (*konquerorCookieStore)(nil)
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s := &konquerorCookieStore{}
-	s.FileNameStr = filename
-	s.BrowserStr = `konqueror`
-
+	s, err := cookieStore(filename, filters...)
+	if err != nil {
+		return nil, err
+	}
 	defer s.Close()
 
 	return s.ReadCookies(filters...)
@@ -144,6 +145,36 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 		ret = append(ret, cookie)
 	}
 	return ret, nil
+}
+
+// CookieJar returns an initiated http.CookieJar based on the cookies stored by
+// the Konqueror browser. Set cookies are memory stored and do not modify any
+// browser files.
+//
+func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
+	j, err := cookieStore(filename, filters...)
+	if err != nil {
+		return nil, err
+	}
+	defer j.Close()
+	if err := j.InitJar(); err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
+// CookieStore has to be closed with CookieStore.Close() after use.
+//
+func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
+	return cookieStore(filename, filters...)
+}
+
+func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
+	s := &konquerorCookieStore{}
+	s.FileNameStr = filename
+	s.BrowserStr = `konqueror`
+
+	return &cookies.CookieJar{CookieStore: s}, nil
 }
 
 /*

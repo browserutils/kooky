@@ -29,7 +29,7 @@ func ExampleFilter_regex() {
 }
 
 func ValueRegexMatch(re *regexp.Regexp) kooky.Filter {
-	return func(cookie *kooky.Cookie) bool {
+	return kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
 		return cookie != nil && re != nil && re.Match([]byte(cookie.Value))
-	}
+	})
 }

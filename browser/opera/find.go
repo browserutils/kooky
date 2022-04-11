@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/chrome"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type operaFinder struct{}
@@ -23,15 +24,20 @@ func (f *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 	for _, root := range roots {
-		var s operaCookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:           `opera`,
-			IsDefaultProfileBool: true,
-			FileNameStr:          filepath.Join(root, `cookies4.dat`),
-		}
-		internal.SetCookieStore(&d, &s)
-		s.DefaultCookieStore = d
-		ret = append(ret, &s)
+		ret = append(
+			ret,
+			&cookies.CookieJar{
+				CookieStore: &operaCookieStore{
+					CookieStore: &operaPrestoCookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:           `opera`,
+							IsDefaultProfileBool: true,
+							FileNameStr:          filepath.Join(root, `cookies4.dat`),
+						},
+					},
+				},
+			},
+		)
 	}
 
 	roots, err = operaBlinkRoots()
@@ -39,15 +45,20 @@ func (f *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 	for _, root := range roots {
-		var s operaCookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:           `opera`,
-			IsDefaultProfileBool: true,
-			FileNameStr:          filepath.Join(root, `Cookies`),
-		}
-		internal.SetCookieStore(&d, &s)
-		s.DefaultCookieStore = d
-		ret = append(ret, &s)
+		ret = append(
+			ret,
+			&cookies.CookieJar{
+				CookieStore: &operaCookieStore{
+					CookieStore: &chrome.CookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:           `opera`,
+							IsDefaultProfileBool: true,
+							FileNameStr:          filepath.Join(root, `Cookies`),
+						},
+					},
+				},
+			},
+		)
 	}
 
 	return ret, nil

@@ -8,10 +8,14 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
 	"github.com/zellyn/kooky/internal/chrome"
 	"github.com/zellyn/kooky/internal/chrome/find"
+	"github.com/zellyn/kooky/internal/cookies"
+	"github.com/zellyn/kooky/internal/ie"
+	_ "github.com/zellyn/kooky/internal/ie/find"
 )
+
+// TODO !windows platforms
 
 type edgeFinder struct{}
 
@@ -29,16 +33,6 @@ func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var cookiesFiles []kooky.CookieStore
 
-	// old versions
-	var se edgeCookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:  `edge`,
-		FileNameStr: filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
-	}
-	internal.SetCookieStore(&d, &se)
-	se.DefaultCookieStore = d
-	cookiesFiles = append(cookiesFiles, &se)
-
 	// Blink based
 	newRoot := func() ([]string, error) {
 		return []string{filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`)}, nil
@@ -48,17 +42,22 @@ func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 	for _, cookiesFile := range blinkCookiesFiles {
-		var sc chrome.CookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:           cookiesFile.Browser,
-			ProfileStr:           cookiesFile.Profile,
-			OSStr:                cookiesFile.OS,
-			IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
-			FileNameStr:          cookiesFile.Path,
-		}
-		internal.SetCookieStore(&d, &sc)
-		sc.DefaultCookieStore = d
-		cookiesFiles = append(cookiesFiles, &sc)
+		cookiesFiles = append(
+			cookiesFiles,
+			&cookies.CookieJar{
+				CookieStore: &ie.CookieStore{
+					CookieStore: &chrome.CookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:           cookiesFile.Browser,
+							ProfileStr:           cookiesFile.Profile,
+							OSStr:                cookiesFile.OS,
+							IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
+							FileNameStr:          cookiesFile.Path,
+						},
+					},
+				},
+			},
+		)
 	}
 
 	return cookiesFiles, nil

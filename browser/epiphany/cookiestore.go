@@ -4,16 +4,15 @@ import (
 	"errors"
 
 	"github.com/go-sqlite/sqlite3"
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type epiphanyCookieStore struct {
-	internal.DefaultCookieStore
+	cookies.DefaultCookieStore
 	Database *sqlite3.DbFile
 }
 
-var _ kooky.CookieStore = (*epiphanyCookieStore)(nil)
+var _ cookies.CookieStore = (*epiphanyCookieStore)(nil)
 
 func (s *epiphanyCookieStore) Open() error {
 	if s == nil {

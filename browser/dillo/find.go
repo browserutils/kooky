@@ -1,3 +1,5 @@
+//go:build linux || freebsd || openbsd || netbsd || dragonfly || solaris
+
 package dillo
 
 import (
@@ -5,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 	"github.com/zellyn/kooky/internal/netscape"
 )
 
@@ -26,15 +28,16 @@ func (f *dilloFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var s netscape.CookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `dillo`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          filepath.Join(home, `.dillo`, `cookies.txt`),
-	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
-	var ret = []kooky.CookieStore{&s}
+	var ret = []kooky.CookieStore{
+		&cookies.CookieJar{
+			CookieStore: &netscape.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `dillo`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(home, `.dillo`, `cookies.txt`),
+				},
+			},
+		}}
 
 	return ret, nil
 }

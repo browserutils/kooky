@@ -6,16 +6,17 @@ import (
 	"path/filepath"
 
 	"github.com/go-sqlite/sqlite3"
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type CookieStore struct {
-	internal.DefaultCookieStore
+	cookies.DefaultCookieStore
 	Database   *sqlite3.DbFile
 	Containers map[int]string
 	contFile   *os.File
 }
+
+var _ cookies.CookieStore = (*CookieStore)(nil)
 
 func (s *CookieStore) Open() error {
 	if s == nil {
@@ -57,5 +58,3 @@ func (s *CookieStore) Close() error {
 
 	return err
 }
-
-var _ kooky.CookieStore = (*CookieStore)(nil)

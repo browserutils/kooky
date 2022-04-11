@@ -3,8 +3,9 @@
 extracted with sqlitebrowser
 
 ```sql
--- Firefox 91 ESR Linux
-CREATE TABLE moz_cookies (id INTEGER PRIMARY KEY,
+-- Firefox 91 ESR Linux, Firefox 98.0.2 Windows 7
+CREATE TABLE moz_cookies (
+    id INTEGER PRIMARY KEY,
     originAttributes TEXT NOT NULL DEFAULT '',
     name TEXT,
     value TEXT,

@@ -1,3 +1,5 @@
+//go:build linux || freebsd || openbsd || netbsd || dragonfly || solaris
+
 package browsh
 
 import (
@@ -5,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 	"github.com/zellyn/kooky/internal/firefox"
 )
 
@@ -23,15 +25,17 @@ func (f *browshFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		return nil, err
 	}
 
-	var s firefox.CookieStore
-	d := internal.DefaultCookieStore{
-		BrowserStr:           `browsh`,
-		IsDefaultProfileBool: true,
-		FileNameStr:          filepath.Join(dotConfig, `browsh`, `firefox_profile`, `cookies.sqlite`),
+	var ret = []kooky.CookieStore{
+		&cookies.CookieJar{
+			CookieStore: &firefox.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `browsh`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(dotConfig, `browsh`, `firefox_profile`, `cookies.sqlite`),
+				},
+			},
+		},
 	}
-	internal.SetCookieStore(&d, &s)
-	s.DefaultCookieStore = d
-	var ret = []kooky.CookieStore{&s}
 
 	return ret, nil
 }

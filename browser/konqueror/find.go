@@ -1,5 +1,4 @@
 //go:build !windows
-// +build !windows
 
 package konqueror
 
@@ -8,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type konquerorFinder struct{}
@@ -27,21 +26,20 @@ func (f *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret []kooky.CookieStore
 
-	for _, root := range roots {
-		var s konquerorCookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:  `konqueror`,
-			FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
-		}
-		internal.SetCookieStore(&d, &s)
-		s.DefaultCookieStore = d
-		ret = append(ret, &s)
-	}
-
-	if len(ret) > 0 {
-		if cookieStore, ok := ret[len(ret)-1].(*konquerorCookieStore); ok {
-			cookieStore.IsDefaultProfileBool = true
-		}
+	last := len(roots) - 1
+	for i, root := range roots {
+		ret = append(
+			ret,
+			&cookies.CookieJar{
+				CookieStore: &konquerorCookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           `konqueror`,
+						IsDefaultProfileBool: i == last,
+						FileNameStr:          filepath.Join(root, `kcookiejar`, `cookies`),
+					},
+				},
+			},
+		)
 	}
 
 	return ret, nil

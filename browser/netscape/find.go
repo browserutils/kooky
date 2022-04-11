@@ -2,7 +2,7 @@ package netscape
 
 import (
 	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 	"github.com/zellyn/kooky/internal/firefox/find"
 	"github.com/zellyn/kooky/internal/netscape"
 )
@@ -23,16 +23,19 @@ func (f *netscapeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 
 	var ret []kooky.CookieStore
 	for _, file := range files {
-		var s netscape.CookieStore
-		d := internal.DefaultCookieStore{
-			BrowserStr:           file.Browser,
-			ProfileStr:           file.Profile,
-			IsDefaultProfileBool: file.IsDefaultProfile,
-			FileNameStr:          file.Path,
-		}
-		internal.SetCookieStore(&d, &s)
-		s.DefaultCookieStore = d
-		ret = append(ret, &s)
+		ret = append(
+			ret,
+			&cookies.CookieJar{
+				CookieStore: &netscape.CookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           file.Browser,
+						ProfileStr:           file.Profile,
+						IsDefaultProfileBool: file.IsDefaultProfile,
+						FileNameStr:          file.Path,
+					},
+				},
+			},
+		)
 	}
 
 	return ret, nil
