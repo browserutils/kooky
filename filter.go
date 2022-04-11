@@ -25,28 +25,36 @@ func (f FilterFunc) Filter(c *Cookie) bool {
 func FilterCookies[T Cookie | http.Cookie](cookies []*T, filters ...Filter) []*T {
 	var ret = make([]*T, 0, len(cookies))
 
-cookieLoop:
-	for _, cookie := range cookies {
-		if cookie == nil {
-			continue
-		}
-
-		var c *Cookie
-		// https://github.com/golang/go/issues/45380#issuecomment-1014950980
-		switch cookieTyp := any(cookie).(type) {
-		case *http.Cookie:
-			c = &Cookie{Cookie: *cookieTyp}
-		case *Cookie:
-			c = cookieTyp
-		}
-
-		for _, filter := range filters {
-			if !filter.Filter(c) {
-				continue cookieLoop
+	// https://github.com/golang/go/issues/45380#issuecomment-1014950980
+	switch cookiesTyp := any(cookies).(type) {
+	case []*http.Cookie:
+	cookieLoopHTTP:
+		for i, cookie := range cookiesTyp {
+			if cookie == nil {
+				continue
 			}
+			for _, filter := range filters {
+				if !filter.Filter(&Cookie{Cookie: *cookie}) {
+					continue cookieLoopHTTP
+				}
+			}
+			ret = append(ret, cookies[i])
 		}
-		ret = append(ret, cookie)
+	case []*Cookie:
+	cookieLoopKooky:
+		for i, cookie := range cookiesTyp {
+			if cookie == nil {
+				continue
+			}
+			for _, filter := range filters {
+				if !filter.Filter(cookie) {
+					continue cookieLoopKooky
+				}
+			}
+			ret = append(ret, cookies[i])
+		}
 	}
+
 	return ret
 }
 
