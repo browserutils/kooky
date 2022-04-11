@@ -25,13 +25,6 @@ func (s *DefaultCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 DefaultCookieStore also provides an Open() method
 */
 type DefaultCookieStore struct {
-	/*
-		*cookiejar.Jar
-		init    sync.Once
-		initErr error
-		store   kooky.CookieStore
-	*/
-
 	FileNameStr          string
 	File                 *os.File
 	BrowserStr           string
