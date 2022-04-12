@@ -52,7 +52,7 @@ func FromFATTIMEBytes(val []byte) (time.Time, error) {
 	// https://github.com/libyal/libmsiecf/blob/main/documentation/MSIE%20Cache%20File%20(index.dat)%20format.asciidoc#fat_date_time
 	date := binary.LittleEndian.Uint16(val[:2])
 	tm := binary.LittleEndian.Uint16(val[2:])
-	return time.Date(1980+int(date>>9), time.Month((date>>5)&15), int(date&31), int(tm>>11), int((tm>>5)&63), 2*int(tm&31), 0, time.Now().Location()), nil
+	return time.Date(1980+int(date>>9), time.Month((date>>5)&0b00001111), int(date&0b00011111), int(tm>>11), int((tm>>5)&0b00111111), 2*int(tm&0b00011111), 0, time.Now().Location()), nil
 }
 
 // FromSafariTime converts double seconds to a time.Time object,
