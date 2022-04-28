@@ -340,6 +340,10 @@ func (self *Dict) parseobject(dec *json.Decoder) (err error) {
 			return err
 		}
 		self.keys = append(self.keys, key)
+		if self.store == nil {
+			self.store = make(map[string]interface{})
+		}
+
 		self.store[key] = value
 		if self.case_map != nil {
 			self.case_map[strings.ToLower(key)] = key
