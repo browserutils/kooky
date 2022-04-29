@@ -3,6 +3,7 @@ package kooky
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 )
 
@@ -11,7 +12,7 @@ const httpOnlyPrefix = `#HttpOnly_`
 // ExportCookies() export "cookies" in the Netscape format.
 //
 // curl, wget, ... use this format.
-func ExportCookies(w io.Writer, cookies []*Cookie) {
+func ExportCookies[T Cookie | http.Cookie](w io.Writer, cookies []*T) {
 	if len(cookies) < 1 {
 		return
 	}
@@ -25,28 +26,42 @@ func ExportCookies(w io.Writer, cookies []*Cookie) {
 		break
 	}
 
-	for i := j; i < len(cookies); i++ {
-		if cookies[i] == nil {
-			continue
-		}
-
+	writeCookie := func(w io.Writer, cookie *http.Cookie) {
 		var domain string
-		if cookies[i].HttpOnly {
+		if cookie.HttpOnly {
 			domain = httpOnlyPrefix
 		}
-		domain += cookies[i].Domain
+		domain += cookie.Domain
 
 		fmt.Fprintf(
 			w,
 			"%s\t%s\t%s\t%s\t%d\t%s\t%s\n",
 			domain,
-			netscapeBool(strings.HasPrefix(cookies[i].Domain, `.`)),
-			cookies[i].Path,
-			netscapeBool(cookies[i].Secure),
-			cookies[i].Expires.Unix(),
-			cookies[i].Name,
-			cookies[i].Value,
+			netscapeBool(strings.HasPrefix(cookie.Domain, `.`)),
+			cookie.Path,
+			netscapeBool(cookie.Secure),
+			cookie.Expires.Unix(),
+			cookie.Name,
+			cookie.Value,
 		)
+	}
+
+	// https://github.com/golang/go/issues/45380#issuecomment-1014950980
+	switch cookiesTyp := any(cookies).(type) {
+	case []*http.Cookie:
+		for i := j; i < len(cookiesTyp); i++ {
+			if cookiesTyp[i] == nil {
+				continue
+			}
+			writeCookie(w, cookiesTyp[i])
+		}
+	case []*Cookie:
+		for i := j; i < len(cookiesTyp); i++ {
+			if cookiesTyp[i] == nil {
+				continue
+			}
+			writeCookie(w, &cookiesTyp[i].Cookie)
+		}
 	}
 }
 

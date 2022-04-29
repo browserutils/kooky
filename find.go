@@ -1,6 +1,7 @@
 package kooky
 
 import (
+	"net/http"
 	"sync"
 )
 
@@ -8,6 +9,8 @@ import (
 //
 // Call CookieStore.Close() after using any of its methods.
 type CookieStore interface {
+	http.CookieJar
+	SubJar(filters ...Filter) (http.CookieJar, error)
 	ReadCookies(...Filter) ([]*Cookie, error)
 	Browser() string
 	Profile() string
@@ -44,11 +47,11 @@ func RegisterFinder(browser string, finder CookieStoreFinder) {
 //
 // Register cookie store finders for all browsers like this:
 //
-//  import _ "github.com/zellyn/kooky/allbrowsers"
+//  import _ "github.com/zellyn/kooky/browser/all"
 //
 // Or only a specific browser:
 //
-//  import _ "github.com/zellyn/kooky/chrome"
+//  import _ "github.com/zellyn/kooky/browser/chrome"
 func FindAllCookieStores() []CookieStore {
 	var ret []CookieStore
 
@@ -90,11 +93,11 @@ func FindAllCookieStores() []CookieStore {
 //
 // Register cookie store finders for all browsers like this:
 //
-//  import _ "github.com/zellyn/kooky/allbrowsers"
+//  import _ "github.com/zellyn/kooky/browser/all"
 //
 // Or only a specific browser:
 //
-//  import _ "github.com/zellyn/kooky/chrome"
+//  import _ "github.com/zellyn/kooky/browser/chrome"
 func ReadCookies(filters ...Filter) []*Cookie {
 	var ret []*Cookie
 

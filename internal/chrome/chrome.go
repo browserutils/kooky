@@ -13,6 +13,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/zellyn/kooky"
+	"github.com/zellyn/kooky/internal/timex"
 	"github.com/zellyn/kooky/internal/utils"
 )
 
@@ -35,30 +36,8 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		"httponly": "is_httponly",
 	}
 	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
-		/*
-			-- taken from chrome 80's cookies' sqlite_master
-			CREATE TABLE cookies(
-				creation_utc INTEGER NOT NULL,
-				host_key TEXT NOT NULL,
-				name TEXT NOT NULL,
-				value TEXT NOT NULL,
-				path TEXT NOT NULL,
-				expires_utc INTEGER NOT NULL,
-				is_secure INTEGER NOT NULL,
-				is_httponly INTEGER NOT NULL,
-				last_access_utc INTEGER NOT NULL,
-				has_expires INTEGER NOT NULL DEFAULT 1,
-				is_persistent INTEGER NOT NULL DEFAULT 1,
-				priority INTEGER NOT NULL DEFAULT 1,
-				encrypted_value BLOB DEFAULT '',
-				samesite INTEGER NOT NULL DEFAULT -1,
-				source_scheme INTEGER NOT NULL DEFAULT 0,
-				UNIQUE (host_key, name, path)
-			)
-		*/
-
 		cookie := &kooky.Cookie{
-			Creation: utils.FromFILETIME(*rowID * 10),
+			Creation: timex.FromFILETIME(*rowID * 10),
 		}
 
 		var err error
@@ -81,7 +60,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		if expires_utc, err := row.Int64(`expires_utc`); err == nil {
 			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
 			if expires_utc != 0 {
-				cookie.Expires = utils.FromFILETIME(expires_utc * 10)
+				cookie.Expires = timex.FromFILETIME(expires_utc * 10)
 			}
 		} else {
 			return err
@@ -97,7 +76,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		encrypted_value, err := row.BlobOrFallback(`encrypted_value`, nil)
+		encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
 		if err != nil {
 			return err
 		} else if len(encrypted_value) > 0 {

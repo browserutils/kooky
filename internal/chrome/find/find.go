@@ -16,6 +16,8 @@ type chromeCookieStoreFile struct {
 	IsDefaultProfile bool
 }
 
+// chromeRoots and chromiumRoots could be put into the github.com/kooky/browser/{chrome,chromium} packages.
+// It might be better though to keep those 2 together here as they are based on the same source.
 func FindChromeCookieStoreFiles() ([]*chromeCookieStoreFile, error) {
 	return FindCookieStoreFiles(chromeRoots, `chrome`)
 }
@@ -49,13 +51,22 @@ func FindCookieStoreFiles(rootsFunc func() ([]string, error), browserName string
 			// fallback - json file exists, json structure unknown
 			files = append(
 				files,
-				&chromeCookieStoreFile{
-					Browser:          browserName,
-					Profile:          `Profile 1`,
-					IsDefaultProfile: true,
-					Path:             filepath.Join(root, `Default`, `Cookies`),
-					OS:               runtime.GOOS,
-				},
+				[]*chromeCookieStoreFile{
+					{
+						Browser:          browserName,
+						Profile:          `Profile 1`,
+						IsDefaultProfile: true,
+						Path:             filepath.Join(root, `Default`, `Network`, `Cookies`), // Chrome 96
+						OS:               runtime.GOOS,
+					},
+					{
+						Browser:          browserName,
+						Profile:          `Profile 1`,
+						IsDefaultProfile: true,
+						Path:             filepath.Join(root, `Default`, `Cookies`),
+						OS:               runtime.GOOS,
+					},
+				}...,
 			)
 			continue
 
@@ -63,13 +74,21 @@ func FindCookieStoreFiles(rootsFunc func() ([]string, error), browserName string
 		for profDir, profStr := range localState.Profile.InfoCache {
 			files = append(
 				files,
-				&chromeCookieStoreFile{
-					Browser:          browserName,
-					Profile:          profStr.Name,
-					IsDefaultProfile: profStr.IsUsingDefaultName,
-					Path:             filepath.Join(root, profDir, `Cookies`),
-					OS:               runtime.GOOS,
-				},
+				[]*chromeCookieStoreFile{
+					{
+						Browser:          browserName,
+						Profile:          profStr.Name,
+						IsDefaultProfile: profStr.IsUsingDefaultName,
+						Path:             filepath.Join(root, profDir, `Network`, `Cookies`), // Chrome 96
+						OS:               runtime.GOOS,
+					}, {
+						Browser:          browserName,
+						Profile:          profStr.Name,
+						IsDefaultProfile: profStr.IsUsingDefaultName,
+						Path:             filepath.Join(root, profDir, `Cookies`),
+						OS:               runtime.GOOS,
+					},
+				}...,
 			)
 		}
 	}

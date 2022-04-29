@@ -2,6 +2,7 @@ package kooky_test
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 
 	"github.com/zellyn/kooky"
@@ -11,7 +12,7 @@ import (
 var reBase64 = regexp.MustCompile(`^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$`)
 
 func ExampleFilter_regex() {
-	var cookies = []*kooky.Cookie{{Name: `test`, Value: `dGVzdA==`}}
+	var cookies = []*kooky.Cookie{{Cookie: http.Cookie{Name: `test`, Value: `dGVzdA==`}}}
 
 	cookies = kooky.FilterCookies(
 		cookies,
@@ -28,7 +29,7 @@ func ExampleFilter_regex() {
 }
 
 func ValueRegexMatch(re *regexp.Regexp) kooky.Filter {
-	return func(cookie *kooky.Cookie) bool {
+	return kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
 		return cookie != nil && re != nil && re.Match([]byte(cookie.Value))
-	}
+	})
 }

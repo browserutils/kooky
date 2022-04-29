@@ -2,16 +2,21 @@ package firefox
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 
 	"github.com/go-sqlite/sqlite3"
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type CookieStore struct {
-	internal.DefaultCookieStore
-	Database *sqlite3.DbFile
+	cookies.DefaultCookieStore
+	Database   *sqlite3.DbFile
+	Containers map[int]string
+	contFile   *os.File
 }
+
+var _ cookies.CookieStore = (*CookieStore)(nil)
 
 func (s *CookieStore) Open() error {
 	if s == nil {
@@ -27,6 +32,9 @@ func (s *CookieStore) Open() error {
 	}
 	s.Database = db
 
+	contFileName := filepath.Join(filepath.Dir(s.FileNameStr), `containers.json`)
+	s.contFile, _ = os.Open(contFileName)
+
 	return nil
 }
 
@@ -41,8 +49,12 @@ func (s *CookieStore) Close() error {
 	if err == nil {
 		s.Database = nil
 	}
+	if s.contFile != nil {
+		errCont := s.contFile.Close()
+		if errCont != nil && err == nil {
+			err = errCont
+		}
+	}
 
 	return err
 }
-
-var _ kooky.CookieStore = (*CookieStore)(nil)

@@ -9,7 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/zellyn/kooky"
-	_ "github.com/zellyn/kooky/allbrowsers"
+	_ "github.com/zellyn/kooky/browser/all"
 
 	"github.com/spf13/pflag"
 )
@@ -72,16 +72,27 @@ func main() {
 		}
 
 		cookies, _ := store.ReadCookies(filters...)
+		/*fmt.Println(store.FilePath()) // TODO rm
+		cookies, err := store.ReadCookies(filters...)
+		if err != nil {
+			fmt.Println(err)
+		}*/
+		// continue // TODO rm
 
 		if export != nil && len(*export) > 0 {
 			cookiesExport = append(cookiesExport, cookies...)
 		} else {
 			for _, cookie := range cookies {
+				container := cookie.Container
+				if len(container) > 0 {
+					container = ` [` + container + `]`
+				}
 				fmt.Fprintf(
 					w,
-					"%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 					store.Browser(),
 					store.Profile(),
+					container,
 					trimStr(store.FilePath(), trimLen),
 					trimStr(cookie.Domain, trimLen),
 					trimStr(cookie.Name, trimLen),
@@ -108,3 +119,5 @@ func trimStr(str string, length int) string {
 	}
 	return str[:length]
 }
+
+// TODO: "kooky -b firefox -o /dev/stdout | head" hangs

@@ -4,12 +4,12 @@ import (
 	"errors"
 
 	"github.com/go-sqlite/sqlite3"
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type CookieStore struct {
-	internal.DefaultCookieStore
+	cookies.DefaultCookieStore
 	Database             *sqlite3.DbFile
 	KeyringPasswordBytes []byte
 	PasswordBytes        []byte
@@ -48,7 +48,7 @@ func (s *CookieStore) Close() error {
 	return err
 }
 
-var _ kooky.CookieStore = (*CookieStore)(nil)
+var _ cookies.CookieStore = (*CookieStore)(nil)
 
 // returns the previous password for later restoration
 // used in tests

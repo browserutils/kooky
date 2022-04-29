@@ -1,12 +1,11 @@
 package netscape
 
 import (
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal"
+	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type CookieStore struct {
-	internal.DefaultCookieStore
+	cookies.DefaultCookieStore
 	IsStrictBool bool
 }
 
@@ -15,4 +14,4 @@ func (s *CookieStore) IsStrict() bool {
 	return s != nil && s.IsStrictBool
 }
 
-var _ kooky.CookieStore = (*CookieStore)(nil)
+var _ cookies.CookieStore = (*CookieStore)(nil)
