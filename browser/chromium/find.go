@@ -1,4 +1,4 @@
-package chrome
+package chromium
 
 import (
 	"github.com/zellyn/kooky"

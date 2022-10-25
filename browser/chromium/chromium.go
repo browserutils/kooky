@@ -1,4 +1,4 @@
-package chrome
+package chromium
 
 import (
 	"net/http"

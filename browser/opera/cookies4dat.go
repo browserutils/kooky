@@ -57,7 +57,8 @@ func (s *operaPrestoCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
-	return p.cookies, nil
+	cookies := kooky.FilterCookies(p.cookies, filters...)
+	return cookies, nil
 }
 
 type processor struct {
