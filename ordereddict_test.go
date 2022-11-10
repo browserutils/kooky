@@ -97,6 +97,28 @@ func TestDictDeserialization(t *testing.T) {
 	}
 }
 
+func TestTimestampDeserialization(t *testing.T) {
+	serialized := `{"Time":"2022-08-21T03:08:45.076884Z", "Time2":"2022-08-21T03:08:45.076884+07:00"}`
+	value := NewDict()
+	err := json.Unmarshal([]byte(serialized), value)
+	assert.NoError(t, err)
+
+	t1_any, pres := value.Get("Time")
+	assert.True(t, pres)
+
+	t1, ok := t1_any.(time.Time)
+	assert.True(t, ok)
+	assert.Equal(t, int64(1661051325), t1.Unix())
+
+	t2_any, pres := value.Get("Time2")
+	assert.True(t, pres)
+
+	t2, ok := t2_any.(time.Time)
+	assert.True(t, ok)
+	assert.Equal(t, int64(1661026125), t2.Unix())
+
+}
+
 func TestOrder(t *testing.T) {
 	test := NewDict().
 		Set("A", 1).

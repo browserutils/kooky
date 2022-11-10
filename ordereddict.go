@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Velocidex/json"
 	"github.com/Velocidex/yaml/v2"
@@ -413,6 +414,18 @@ func handledelim(token json.Token, dec *json.Decoder) (res interface{}, err erro
 		default:
 			return nil, fmt.Errorf("Unexpected delimiter: %q", t)
 		}
+
+	case string:
+		// does it look like a timestamp in RFC3339
+		if len(t) >= 20 && t[10] == 'T' {
+			// Attempt to convert it from timestamp.
+			parsed, err := time.Parse(time.RFC3339, t)
+			if err == nil {
+				return parsed, nil
+			}
+		}
+
+		return t, nil
 
 	case json.Number:
 		value_str := t.String()
