@@ -35,6 +35,13 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		"secure":   "is_secure",
 		"httponly": "is_httponly",
 	}
+	hasValueFilter := false
+	for _, filter := range filters {
+		if _, ok := filter.(kooky.ValueFilterFunc); ok {
+			hasValueFilter = true
+			break
+		}
+	}
 	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
 		cookie := &kooky.Cookie{
 			Creation: timex.FromFILETIME(*rowID * 10),
@@ -76,13 +83,6 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		hasValueFilter := false
-		for _, filter := range filters {
-			if _, ok := filter.(kooky.ValueFilterFunc); ok {
-				hasValueFilter = true
-				break
-			}
-		}
 		if hasValueFilter {
 			if err := getCookieValue(s, cookie, row); err != nil {
 				return err
