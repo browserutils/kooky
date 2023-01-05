@@ -21,6 +21,15 @@ func (f FilterFunc) Filter(c *Cookie) bool {
 	return f(c)
 }
 
+type ValueFilterFunc func(*Cookie) bool
+
+func (f ValueFilterFunc) Filter(c *Cookie) bool {
+	if f == nil {
+		return false
+	}
+	return f(c)
+}
+
 // FilterCookies() applies "filters" in order to the "cookies".
 func FilterCookies[T Cookie | http.Cookie](cookies []*T, filters ...Filter) []*T {
 	var ret = make([]*T, 0, len(cookies))
@@ -191,27 +200,27 @@ func PathDepth(depth int) Filter {
 // value filters
 
 func Value(value string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && cookie.Value == value
 	})
 }
 func ValueContains(substr string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.Contains(cookie.Value, substr)
 	})
 }
 func ValueHasPrefix(prefix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasPrefix(cookie.Value, prefix)
 	})
 }
 func ValueHasSuffix(suffix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasSuffix(cookie.Value, suffix)
 	})
 }
 func ValueLen(length int) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && len(cookie.Value) == length
 	})
 }
