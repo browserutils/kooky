@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/edge"
 	"github.com/browserutils/kooky/internal/ie"
 )
 
@@ -48,7 +48,7 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 	m := map[string]func(f *os.File, s *ie.CookieStore, browser string){
 		`sqlite`: func(f *os.File, s *ie.CookieStore, browser string) {
 			f.Close()
-			c := &chrome.CookieStore{}
+			c := &edge.CookieStore{}
 			c.FileNameStr = filename
 			c.BrowserStr = `edge`
 			s.CookieStore = c

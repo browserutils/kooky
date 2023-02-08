@@ -1,5 +1,3 @@
-//go:build windows
-
 package edge
 
 import (
@@ -7,8 +5,8 @@ import (
 	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/chrome/find"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/edge"
 	edgefind "github.com/browserutils/kooky/internal/edge/find"
-	_ "github.com/browserutils/kooky/internal/ie/find"
 )
 
 // TODO !windows platforms
@@ -32,13 +30,15 @@ func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		ret = append(
 			ret,
 			&cookies.CookieJar{
-				CookieStore: &chrome.CookieStore{
-					DefaultCookieStore: cookies.DefaultCookieStore{
-						BrowserStr:           file.Browser,
-						ProfileStr:           file.Profile,
-						OSStr:                file.OS,
-						IsDefaultProfileBool: file.IsDefaultProfile,
-						FileNameStr:          file.Path,
+				CookieStore: &edge.CookieStore{
+					CookieStore: chrome.CookieStore{
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:           file.Browser,
+							ProfileStr:           file.Profile,
+							OSStr:                file.OS,
+							IsDefaultProfileBool: file.IsDefaultProfile,
+							FileNameStr:          file.Path,
+						},
 					},
 				},
 			},
