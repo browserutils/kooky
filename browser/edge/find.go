@@ -3,15 +3,11 @@
 package edge
 
 import (
-	"errors"
-	"os"
-	"path/filepath"
-
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/chrome/find"
 	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/ie"
+	edgefind "github.com/browserutils/kooky/internal/edge/find"
 	_ "github.com/browserutils/kooky/internal/ie/find"
 )
 
@@ -26,41 +22,29 @@ func init() {
 }
 
 func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	locApp := os.Getenv(`LocalAppData`)
-	if len(locApp) == 0 {
-		return nil, errors.New(`%LocalAppData% is empty`)
-	}
-
-	var cookiesFiles []kooky.CookieStore
-
-	// Blink based
-	newRoot := func() ([]string, error) {
-		return []string{filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`)}, nil
-	}
-	blinkCookiesFiles, err := find.FindCookieStoreFiles(newRoot, `edge`)
+	files, err := find.FindCookieStoreFiles(edgefind.GetEdgeRoots(), `edge`)
 	if err != nil {
 		return nil, err
 	}
-	for _, cookiesFile := range blinkCookiesFiles {
-		cookiesFiles = append(
-			cookiesFiles,
+
+	var ret []kooky.CookieStore
+	for _, file := range files {
+		ret = append(
+			ret,
 			&cookies.CookieJar{
-				CookieStore: &ie.CookieStore{
-					CookieStore: &chrome.CookieStore{
-						DefaultCookieStore: cookies.DefaultCookieStore{
-							BrowserStr:           cookiesFile.Browser,
-							ProfileStr:           cookiesFile.Profile,
-							OSStr:                cookiesFile.OS,
-							IsDefaultProfileBool: cookiesFile.IsDefaultProfile,
-							FileNameStr:          cookiesFile.Path,
-						},
+				CookieStore: &chrome.CookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           file.Browser,
+						ProfileStr:           file.Profile,
+						OSStr:                file.OS,
+						IsDefaultProfileBool: file.IsDefaultProfile,
+						FileNameStr:          file.Path,
 					},
 				},
 			},
 		)
 	}
-
-	return cookiesFiles, nil
+	return ret, nil
 }
 
 /*

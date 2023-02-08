@@ -21,8 +21,6 @@ require (
 require (
 	github.com/Velocidex/json v0.0.0-20220224052537-92f3c0326e5a // indirect
 	github.com/Velocidex/yaml/v2 v2.2.8 // indirect
-	github.com/alessio/shellescape v1.4.1 // indirect
-	github.com/danieljoos/wincred v1.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gonuts/binary v0.2.0 // indirect
