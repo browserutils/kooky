@@ -5,11 +5,8 @@ import (
 	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/chrome/find"
 	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/edge"
 	edgefind "github.com/browserutils/kooky/internal/edge/find"
 )
-
-// TODO !windows platforms
 
 type edgeFinder struct{}
 
@@ -30,15 +27,13 @@ func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 		ret = append(
 			ret,
 			&cookies.CookieJar{
-				CookieStore: &edge.CookieStore{
-					CookieStore: chrome.CookieStore{
-						DefaultCookieStore: cookies.DefaultCookieStore{
-							BrowserStr:           file.Browser,
-							ProfileStr:           file.Profile,
-							OSStr:                file.OS,
-							IsDefaultProfileBool: file.IsDefaultProfile,
-							FileNameStr:          file.Path,
-						},
+				CookieStore: &chrome.CookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           file.Browser,
+						ProfileStr:           file.Profile,
+						OSStr:                file.OS,
+						IsDefaultProfileBool: file.IsDefaultProfile,
+						FileNameStr:          file.Path,
 					},
 				},
 			},
