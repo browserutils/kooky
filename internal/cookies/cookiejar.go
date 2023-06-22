@@ -96,7 +96,7 @@ func kookies2cookies(kookies []*kooky.Cookie, filters ...kooky.Filter) []*http.C
 }
 
 func setAllCookies(jar http.CookieJar, cookies []*http.Cookie) {
-	cookieMap := make(map[*url.URL][]*http.Cookie)
+	cookieMap := make(map[url.URL][]*http.Cookie)
 
 	for _, c := range cookies {
 		if c == nil {
@@ -109,7 +109,7 @@ func setAllCookies(jar http.CookieJar, cookies []*http.Cookie) {
 		} else {
 			scheme = `http`
 		}
-		u := &url.URL{
+		u := url.URL{
 			Scheme: scheme,
 			Host:   c.Domain,
 			Path:   c.Path,
@@ -123,6 +123,6 @@ func setAllCookies(jar http.CookieJar, cookies []*http.Cookie) {
 	}
 
 	for u, cs := range cookieMap {
-		jar.SetCookies(u, cs)
+		jar.SetCookies(&u, cs)
 	}
 }
