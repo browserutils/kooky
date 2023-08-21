@@ -44,7 +44,7 @@ func Decompress7BitCompression(buf []byte) string {
 		}
 	}
 
-	return strings.TrimSuffix(string(result), "\x00")
+	return strings.Split(string(result), "\x00")[0]
 }
 
 func ParseLongText(buf []byte, flag uint32) string {
@@ -56,8 +56,8 @@ func ParseLongText(buf []byte, flag uint32) string {
 	leading_byte := buf[0]
 	if leading_byte != 0 && leading_byte != 1 && leading_byte != 8 &&
 		leading_byte != 3 && leading_byte != 0x18 {
-		return strings.TrimSuffix(
-			UTF16BytesToUTF8(buf, binary.LittleEndian), "\x00")
+		return strings.Split(
+			UTF16BytesToUTF8(buf, binary.LittleEndian), "\x00")[0]
 
 	}
 	// fmt.Printf("Inline Flags %v\n", flag)
@@ -65,7 +65,7 @@ func ParseLongText(buf []byte, flag uint32) string {
 	// Lzxpress compression - not supported right now.
 	if leading_byte == 0x18 {
 		fmt.Printf("LZXPRESS compression not supported currently\n")
-		return string(buf)
+		return strings.Split(string(buf), "\x00")[0]
 	}
 
 	// The following is either 7 bit compressed or utf16 encoded. Its
@@ -74,8 +74,7 @@ func ParseLongText(buf []byte, flag uint32) string {
 	var result string
 	if len(buf) >= 3 && buf[2] == 0 {
 		// Probably UTF16 encoded
-		result = strings.TrimSuffix(
-			UTF16BytesToUTF8(buf[1:], binary.LittleEndian), "\x00")
+		result = UTF16BytesToUTF8(buf[1:], binary.LittleEndian)
 
 	} else {
 		// Probably 7bit compressed
@@ -83,7 +82,7 @@ func ParseLongText(buf []byte, flag uint32) string {
 	}
 
 	//fmt.Printf("returned %v\n", result)
-	return result
+	return strings.Split(result, "\x00")[0]
 }
 
 func ParseText(reader io.ReaderAt, offset int64, len int64, flags uint32) string {
@@ -108,5 +107,5 @@ func ParseText(reader io.ReaderAt, offset int64, len int64, flags uint32) string
 	} else {
 		str = UTF16BytesToUTF8(data, binary.LittleEndian)
 	}
-	return strings.TrimSuffix(str, "\x00")
+	return strings.Split(str, "\x00")[0]
 }
