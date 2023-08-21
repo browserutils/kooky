@@ -7,3 +7,7 @@ var (
 	// Debugging during walk
 	DebugWalk = false
 )
+
+func DlvDebug() {
+
+}
