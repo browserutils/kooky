@@ -120,7 +120,7 @@ There are three types of columns:
 - Fixed size (e.g. integers) have a known size.
 - Variable size (e.g. Strings) have a variable size.
 - Tagged data - these columns are often null and therefore may not be
-  present. The database stored these with their column ID as a map.
+  present. The database stores these with their column ID as a map.
 
 Therefore within the tag for each column, there are three distinct
 storage areas. You can see how each record is parsed using the --debug flag:
