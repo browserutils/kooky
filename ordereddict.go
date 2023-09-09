@@ -125,6 +125,10 @@ func (self *Dict) set(key string, value interface{}) *Dict {
 		self.keys = append(self.keys, key)
 	}
 
+	if self.store == nil {
+		self.store = make(map[string]interface{})
+	}
+
 	self.store[key] = value
 
 	if self.case_map != nil {
@@ -279,6 +283,22 @@ func (self *Dict) String() string {
 
 func (self *Dict) GoString() string {
 	return self.String()
+}
+
+func (self *Dict) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	m := yaml.MapSlice{}
+	err := unmarshal(&m)
+	if err != nil {
+		return err
+	}
+
+	for _, item := range m {
+		key, ok := item.Key.(string)
+		if ok {
+			self.Set(key, item.Value)
+		}
+	}
+	return nil
 }
 
 // this implements type json.Unmarshaler interface, so can be called
