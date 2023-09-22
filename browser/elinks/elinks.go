@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/cookies"
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/cookies"
 )
 
 type elinksCookieStore struct {
@@ -77,7 +77,6 @@ func (s *elinksCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cooki
 // CookieJar returns an initiated http.CookieJar based on the cookies stored by
 // the ELinks browser. Set cookies are memory stored and do not modify any
 // browser files.
-//
 func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
 	j, err := cookieStore(filename, filters...)
 	if err != nil {
@@ -91,7 +90,6 @@ func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
-//
 func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
 	return cookieStore(filename, filters...)
 }

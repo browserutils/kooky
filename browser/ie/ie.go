@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/cookies"
-	"github.com/zellyn/kooky/internal/ie"
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/ie"
 )
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
@@ -22,7 +22,6 @@ func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, err
 // CookieJar returns an initiated http.CookieJar based on the cookies stored by
 // the Internet Explorer browser. Set cookies are memory stored and do not modify any
 // browser files.
-//
 func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
 	j, err := cookieStore(filename, filters...)
 	if err != nil {
@@ -36,7 +35,6 @@ func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
-//
 func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
 	return cookieStore(filename, filters...)
 }

@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/zellyn/kooky"
-	_ "github.com/zellyn/kooky/browser/firefox"
+	"github.com/browserutils/kooky"
+	_ "github.com/browserutils/kooky/browser/firefox"
 )
 
 func Example_cookieJar() {

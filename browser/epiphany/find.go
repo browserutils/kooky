@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/cookies"
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/cookies"
 )
 
 type epiphanyFinder struct{}

@@ -3,8 +3,8 @@ package epiphany
 import (
 	"errors"
 
+	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/go-sqlite/sqlite3"
-	"github.com/zellyn/kooky/internal/cookies"
 )
 
 type epiphanyCookieStore struct {

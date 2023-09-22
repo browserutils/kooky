@@ -1,7 +1,7 @@
 package netscape
 
 import (
-	"github.com/zellyn/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/cookies"
 )
 
 type CookieStore struct {

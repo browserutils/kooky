@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/zellyn/kooky"
+	"github.com/browserutils/kooky"
 )
 
 var cookieFile = `cookies.txt`

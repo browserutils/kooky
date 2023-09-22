@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/bytesx"
-	"github.com/zellyn/kooky/internal/cookies"
-	"github.com/zellyn/kooky/internal/timex"
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/bytesx"
+	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/timex"
 )
 
 // index.dat parser

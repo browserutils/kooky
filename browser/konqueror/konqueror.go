@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zellyn/kooky"
-	"github.com/zellyn/kooky/internal/cookies"
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/cookies"
 
 	"golang.org/x/text/encoding/charmap"
 )
@@ -150,7 +150,6 @@ func (s *konquerorCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Co
 // CookieJar returns an initiated http.CookieJar based on the cookies stored by
 // the Konqueror browser. Set cookies are memory stored and do not modify any
 // browser files.
-//
 func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
 	j, err := cookieStore(filename, filters...)
 	if err != nil {
@@ -164,7 +163,6 @@ func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
-//
 func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
 	return cookieStore(filename, filters...)
 }

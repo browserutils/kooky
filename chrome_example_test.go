@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/zellyn/kooky/browser/chrome"
+	"github.com/browserutils/kooky/browser/chrome"
 )
 
-//on macOS:
+// on macOS:
 var cookieStorePath = "/Google/Chrome/Default/Cookies"
 
 func Example_chromeSimpleMacOS() {
