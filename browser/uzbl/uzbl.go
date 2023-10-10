@@ -3,9 +3,9 @@ package uzbl
 import (
 	"net/http"
 
-	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/netscape"
+	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/netscape"
 )
 
 func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {

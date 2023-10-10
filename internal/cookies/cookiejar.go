@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/publicsuffix"
 
-	"github.com/browserutils/kooky"
+	"github.com/xiazemin/kooky"
 )
 
 var (

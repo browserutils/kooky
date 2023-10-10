@@ -1,6 +1,6 @@
 # kooky
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/browserutils/kooky)](https://pkg.go.dev/github.com/browserutils/kooky)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/xiazemin/kooky)](https://pkg.go.dev/github.com/xiazemin/kooky)
 [![Go Report Card](https://goreportcard.com/badge/zellyn/kooky)](https://goreportcard.com/report/zellyn/kooky)
 ![Lines of code](https://img.shields.io/tokei/lines/github/zellyn/kooky)
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
@@ -49,8 +49,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/browserutils/kooky"
-	_ "github.com/browserutils/kooky/browser/all" // register cookie store finders!
+	"github.com/xiazemin/kooky"
+	_ "github.com/xiazemin/kooky/browser/all" // register cookie store finders!
 )
 
 func main() {
@@ -74,7 +74,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/browserutils/kooky/browser/chrome"
+	"github.com/xiazemin/kooky/browser/chrome"
 )
 
 func main() {
@@ -100,7 +100,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/browserutils/kooky/browser/safari"
+	"github.com/xiazemin/kooky/browser/safari"
 )
 
 func main() {

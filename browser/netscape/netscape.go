@@ -3,9 +3,9 @@ package netscape
 import (
 	"net/http"
 
-	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/netscape"
+	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/netscape"
 )
 
 // This ReadCookies() function returns an additional boolean "strict" telling

@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/ie"
+	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/ie"
 )
 
 type finder struct {

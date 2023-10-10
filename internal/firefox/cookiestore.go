@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/go-sqlite/sqlite3"
+	"github.com/xiazemin/kooky/internal/cookies"
 )
 
 type CookieStore struct {

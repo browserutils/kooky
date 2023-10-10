@@ -1,10 +1,10 @@
 package firefox
 
 import (
-	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
-	"github.com/browserutils/kooky/internal/firefox"
-	"github.com/browserutils/kooky/internal/firefox/find"
+	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/firefox"
+	"github.com/xiazemin/kooky/internal/firefox/find"
 )
 
 type firefoxFinder struct{}

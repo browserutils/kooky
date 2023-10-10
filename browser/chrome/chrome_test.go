@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/chrome"
-	"github.com/browserutils/kooky/internal/testutils"
+	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/chrome"
+	"github.com/xiazemin/kooky/internal/testutils"
 )
 
 // d18f6247db68045dfbab126d814baf2cf1512141391
