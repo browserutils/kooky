@@ -76,26 +76,15 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
-		if err != nil {
-			return err
-		} else if len(encrypted_value) > 0 {
-			if decrypted, err := s.decrypt(encrypted_value); err == nil {
-				cookie.Value = string(decrypted)
-			} else {
-				return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
-			}
-		} else {
-			cookie.Value, err = row.String(`value`)
-			if err != nil {
-				return err
-			}
-		}
-
 		if kooky.FilterCookie(cookie, filters...) {
 			cookies = append(cookies, cookie)
 		}
 
+		for _, cookie := range cookies {
+			if err := getCookieValue(s, cookie, row); err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -103,6 +92,29 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 	}
 
 	return cookies, nil
+}
+
+func getCookieValue(s *CookieStore, cookie *kooky.Cookie, row utils.TableRow) error {
+	if cookie.Value != "" {
+		return nil
+	}
+
+	encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
+	if err != nil {
+		return err
+	} else if len(encrypted_value) > 0 {
+		if decrypted, err := s.decrypt(encrypted_value); err == nil {
+			cookie.Value = string(decrypted)
+		} else {
+			return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
+		}
+	} else {
+		cookie.Value, err = row.String(`value`)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // "mock_password" from https://github.com/chromium/chromium/blob/34f6b421d6d255b27e01d82c3c19f49a455caa06/crypto/mock_apple_keychain.cc#L75

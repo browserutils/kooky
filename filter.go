@@ -188,34 +188,6 @@ func PathDepth(depth int) Filter {
 	})
 }
 
-// value filters
-
-func Value(value string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
-		return cookie != nil && cookie.Value == value
-	})
-}
-func ValueContains(substr string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
-		return cookie != nil && strings.Contains(cookie.Value, substr)
-	})
-}
-func ValueHasPrefix(prefix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
-		return cookie != nil && strings.HasPrefix(cookie.Value, prefix)
-	})
-}
-func ValueHasSuffix(suffix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
-		return cookie != nil && strings.HasSuffix(cookie.Value, suffix)
-	})
-}
-func ValueLen(length int) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
-		return cookie != nil && len(cookie.Value) == length
-	})
-}
-
 // secure filter
 
 var Secure Filter = FilterFunc(func(cookie *Cookie) bool {
