@@ -9,8 +9,6 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/utils"
-
-	"github.com/bobesa/go-domain-util/domainutil"
 )
 
 func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
@@ -48,7 +46,7 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			if host, err := row.String(`host`); err != nil {
 				return err
 			} else {
-				cookie.Domain = domainutil.Domain(host)
+				cookie.Domain = host
 			}
 		} else {
 			// handle databases prior v78 ESR
