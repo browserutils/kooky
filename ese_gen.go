@@ -97,29 +97,38 @@ type ESEProfile struct {
     Off_JET_LOGTIME_Year int64
     Off_JET_SIGNATURE_Creation int64
     Off_JET_SIGNATURE_CreatorMachine int64
+    Off_LVKEY32_Lid int64
+    Off_LVKEY32_SegmentOffset int64
+    Off_LVKEY64_Lid int64
+    Off_LVKEY64_SegmentOffset int64
+    Off_LVKEY_BUFFER_PrefixLength int64
+    Off_LVKEY_BUFFER_SuffixLength int64
+    Off_LVKEY_BUFFER_KeyBuffer int64
     Off_Misc_Misc int64
     Off_Misc_Misc2 int64
     Off_Misc_Misc3 int64
     Off_Misc_Misc5 int64
     Off_Misc_Misc4 int64
-    Off_PageHeader_LastModified int64
-    Off_PageHeader_PreviousPageNumber int64
-    Off_PageHeader_NextPageNumber int64
-    Off_PageHeader_FatherPage int64
-    Off_PageHeader_AvailableDataSize int64
-    Off_PageHeader_AvailableDataOffset int64
-    Off_PageHeader_AvailablePageTag int64
-    Off_PageHeader_Flags int64
+    Off_PageHeader__LastModified int64
+    Off_PageHeader__PreviousPageNumber int64
+    Off_PageHeader__NextPageNumber int64
+    Off_PageHeader__FatherPage int64
+    Off_PageHeader__AvailableDataSize int64
+    Off_PageHeader__AvailableDataOffset int64
+    Off_PageHeader__AvailablePageTag int64
+    Off_PageHeader__Flags int64
     Off_RecordTag_Identifier int64
     Off_RecordTag_DataOffset int64
     Off_RecordTag_Flags int64
     Off_Tag__ValueSize int64
     Off_Tag__ValueOffset int64
+    Off_Tag_Flags_ int64
+    Off_Tag_Flags int64
 }
 
 func NewESEProfile() *ESEProfile {
     // Specific offsets can be tweaked to cater for slight version mismatches.
-    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,4,6,8,0,1,2,3,4,5,4,12,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,2,0,2}
+    self := &ESEProfile{0,4,8,12,0,4,8,12,0,4,8,12,0,4,0,2,4,0,0,0,4,6,10,10,10,10,0,1,2,0,-2,0,0,0,4,8,12,0,0,0,4,8,232,12,16,24,236,0,4,6,8,0,1,2,3,4,5,4,12,0,4,0,8,0,2,4,0,0,0,0,0,8,16,20,24,28,32,34,36,0,2,2,0,2,2,2}
     return self
 }
 
@@ -199,12 +208,24 @@ func (self *ESEProfile) JET_SIGNATURE(reader io.ReaderAt, offset int64) *JET_SIG
     return &JET_SIGNATURE{Reader: reader, Offset: offset, Profile: self}
 }
 
+func (self *ESEProfile) LVKEY32(reader io.ReaderAt, offset int64) *LVKEY32 {
+    return &LVKEY32{Reader: reader, Offset: offset, Profile: self}
+}
+
+func (self *ESEProfile) LVKEY64(reader io.ReaderAt, offset int64) *LVKEY64 {
+    return &LVKEY64{Reader: reader, Offset: offset, Profile: self}
+}
+
+func (self *ESEProfile) LVKEY_BUFFER(reader io.ReaderAt, offset int64) *LVKEY_BUFFER {
+    return &LVKEY_BUFFER{Reader: reader, Offset: offset, Profile: self}
+}
+
 func (self *ESEProfile) Misc(reader io.ReaderAt, offset int64) *Misc {
     return &Misc{Reader: reader, Offset: offset, Profile: self}
 }
 
-func (self *ESEProfile) PageHeader(reader io.ReaderAt, offset int64) *PageHeader {
-    return &PageHeader{Reader: reader, Offset: offset, Profile: self}
+func (self *ESEProfile) PageHeader_(reader io.ReaderAt, offset int64) *PageHeader_ {
+    return &PageHeader_{Reader: reader, Offset: offset, Profile: self}
 }
 
 func (self *ESEProfile) RecordTag(reader io.ReaderAt, offset int64) *RecordTag {
@@ -548,8 +569,8 @@ func (self *ESENT_DATA_DEFINITION_HEADER) Size() int {
     return 4
 }
 
-func (self *ESENT_DATA_DEFINITION_HEADER) LastFixedType() int8 {
-   return ParseInt8(self.Reader, self.Profile.Off_ESENT_DATA_DEFINITION_HEADER_LastFixedType + self.Offset)
+func (self *ESENT_DATA_DEFINITION_HEADER) LastFixedType() byte {
+   return ParseUint8(self.Reader, self.Profile.Off_ESENT_DATA_DEFINITION_HEADER_LastFixedType + self.Offset)
 }
 
 func (self *ESENT_DATA_DEFINITION_HEADER) LastVariableDataType() byte {
@@ -601,8 +622,9 @@ func (self *ESENT_LEAF_ENTRY) CommonPageKeySize() uint16 {
    return ParseUint16(self.Reader, self.Profile.Off_ESENT_LEAF_ENTRY_CommonPageKeySize + self.Offset)
 }
 
-func (self *ESENT_LEAF_ENTRY) LocalPageKeySize() uint16 {
-   return ParseUint16(self.Reader, self.Profile.Off_ESENT_LEAF_ENTRY_LocalPageKeySize + self.Offset)
+func (self *ESENT_LEAF_ENTRY) LocalPageKeySize() uint64 {
+   value := ParseUint16(self.Reader, self.Profile.Off_ESENT_LEAF_ENTRY_LocalPageKeySize + self.Offset)
+   return (uint64(value) & 0x1fff) >> 0x0
 }
 func (self *ESENT_LEAF_ENTRY) DebugString() string {
     result := fmt.Sprintf("struct ESENT_LEAF_ENTRY @ %#x:\n", self.Offset)
@@ -881,6 +903,84 @@ func (self *JET_SIGNATURE) DebugString() string {
     return result
 }
 
+type LVKEY32 struct {
+    Reader io.ReaderAt
+    Offset int64
+    Profile *ESEProfile
+}
+
+func (self *LVKEY32) Size() int {
+    return 8
+}
+
+func (self *LVKEY32) Lid() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_LVKEY32_Lid + self.Offset)
+}
+
+func (self *LVKEY32) SegmentOffset() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_LVKEY32_SegmentOffset + self.Offset)
+}
+func (self *LVKEY32) DebugString() string {
+    result := fmt.Sprintf("struct LVKEY32 @ %#x:\n", self.Offset)
+    result += fmt.Sprintf("  Lid: %#0x\n", self.Lid())
+    result += fmt.Sprintf("  SegmentOffset: %#0x\n", self.SegmentOffset())
+    return result
+}
+
+type LVKEY64 struct {
+    Reader io.ReaderAt
+    Offset int64
+    Profile *ESEProfile
+}
+
+func (self *LVKEY64) Size() int {
+    return 12
+}
+
+func (self *LVKEY64) Lid() uint64 {
+    return ParseUint64(self.Reader, self.Profile.Off_LVKEY64_Lid + self.Offset)
+}
+
+func (self *LVKEY64) SegmentOffset() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_LVKEY64_SegmentOffset + self.Offset)
+}
+func (self *LVKEY64) DebugString() string {
+    result := fmt.Sprintf("struct LVKEY64 @ %#x:\n", self.Offset)
+    result += fmt.Sprintf("  Lid: %#0x\n", self.Lid())
+    result += fmt.Sprintf("  SegmentOffset: %#0x\n", self.SegmentOffset())
+    return result
+}
+
+type LVKEY_BUFFER struct {
+    Reader io.ReaderAt
+    Offset int64
+    Profile *ESEProfile
+}
+
+func (self *LVKEY_BUFFER) Size() int {
+    return 0
+}
+
+func (self *LVKEY_BUFFER) PrefixLength() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_LVKEY_BUFFER_PrefixLength + self.Offset)
+}
+
+func (self *LVKEY_BUFFER) SuffixLength() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_LVKEY_BUFFER_SuffixLength + self.Offset)
+}
+
+
+func (self *LVKEY_BUFFER) KeyBuffer() string {
+  return ParseString(self.Reader, self.Profile.Off_LVKEY_BUFFER_KeyBuffer + self.Offset, 12)
+}
+func (self *LVKEY_BUFFER) DebugString() string {
+    result := fmt.Sprintf("struct LVKEY_BUFFER @ %#x:\n", self.Offset)
+    result += fmt.Sprintf("  PrefixLength: %#0x\n", self.PrefixLength())
+    result += fmt.Sprintf("  SuffixLength: %#0x\n", self.SuffixLength())
+    result += fmt.Sprintf("  KeyBuffer: %v\n", string(self.KeyBuffer()))
+    return result
+}
+
 type Misc struct {
     Reader io.ReaderAt
     Offset int64
@@ -900,7 +1000,7 @@ func (self *Misc) Misc2() int16 {
 }
 
 func (self *Misc) Misc3() int64 {
-    return int64(ParseUint64(self.Reader, self.Profile.Off_Misc_Misc3 + self.Offset))
+    return ParseInt64(self.Reader, self.Profile.Off_Misc_Misc3 + self.Offset)
 }
 
 func (self *Misc) Misc5() uint64 {
@@ -921,46 +1021,46 @@ func (self *Misc) DebugString() string {
     return result
 }
 
-type PageHeader struct {
+type PageHeader_ struct {
     Reader io.ReaderAt
     Offset int64
     Profile *ESEProfile
 }
 
-func (self *PageHeader) Size() int {
+func (self *PageHeader_) Size() int {
     return 0
 }
 
-func (self *PageHeader) LastModified() *DBTime {
-    return self.Profile.DBTime(self.Reader, self.Profile.Off_PageHeader_LastModified + self.Offset)
+func (self *PageHeader_) LastModified() *DBTime {
+    return self.Profile.DBTime(self.Reader, self.Profile.Off_PageHeader__LastModified + self.Offset)
 }
 
-func (self *PageHeader) PreviousPageNumber() uint32 {
-   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_PreviousPageNumber + self.Offset)
+func (self *PageHeader_) PreviousPageNumber() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_PageHeader__PreviousPageNumber + self.Offset)
 }
 
-func (self *PageHeader) NextPageNumber() uint32 {
-   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_NextPageNumber + self.Offset)
+func (self *PageHeader_) NextPageNumber() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_PageHeader__NextPageNumber + self.Offset)
 }
 
-func (self *PageHeader) FatherPage() uint32 {
-   return ParseUint32(self.Reader, self.Profile.Off_PageHeader_FatherPage + self.Offset)
+func (self *PageHeader_) FatherPage() uint32 {
+   return ParseUint32(self.Reader, self.Profile.Off_PageHeader__FatherPage + self.Offset)
 }
 
-func (self *PageHeader) AvailableDataSize() uint16 {
-   return ParseUint16(self.Reader, self.Profile.Off_PageHeader_AvailableDataSize + self.Offset)
+func (self *PageHeader_) AvailableDataSize() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_PageHeader__AvailableDataSize + self.Offset)
 }
 
-func (self *PageHeader) AvailableDataOffset() uint16 {
-   return ParseUint16(self.Reader, self.Profile.Off_PageHeader_AvailableDataOffset + self.Offset)
+func (self *PageHeader_) AvailableDataOffset() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_PageHeader__AvailableDataOffset + self.Offset)
 }
 
-func (self *PageHeader) AvailablePageTag() uint16 {
-   return ParseUint16(self.Reader, self.Profile.Off_PageHeader_AvailablePageTag + self.Offset)
+func (self *PageHeader_) AvailablePageTag() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_PageHeader__AvailablePageTag + self.Offset)
 }
 
-func (self *PageHeader) Flags() *Flags {
-   value := ParseUint32(self.Reader, self.Profile.Off_PageHeader_Flags + self.Offset)
+func (self *PageHeader_) Flags() *Flags {
+   value := ParseUint32(self.Reader, self.Profile.Off_PageHeader__Flags + self.Offset)
    names := make(map[string]bool)
 
 
@@ -995,8 +1095,8 @@ func (self *PageHeader) Flags() *Flags {
    return &Flags{Value: uint64(value), Names: names}
 }
 
-func (self *PageHeader) DebugString() string {
-    result := fmt.Sprintf("struct PageHeader @ %#x:\n", self.Offset)
+func (self *PageHeader_) DebugString() string {
+    result := fmt.Sprintf("struct PageHeader_ @ %#x:\n", self.Offset)
     result += fmt.Sprintf("  LastModified: {\n%v}\n", indent(self.LastModified().DebugString()))
     result += fmt.Sprintf("  PreviousPageNumber: %#0x\n", self.PreviousPageNumber())
     result += fmt.Sprintf("  NextPageNumber: %#0x\n", self.NextPageNumber())
@@ -1046,7 +1146,7 @@ type Tag struct {
 }
 
 func (self *Tag) Size() int {
-    return 8
+    return 4
 }
 
 func (self *Tag) _ValueSize() uint16 {
@@ -1056,10 +1156,37 @@ func (self *Tag) _ValueSize() uint16 {
 func (self *Tag) _ValueOffset() uint16 {
    return ParseUint16(self.Reader, self.Profile.Off_Tag__ValueOffset + self.Offset)
 }
+
+func (self *Tag) Flags_() uint16 {
+   return ParseUint16(self.Reader, self.Profile.Off_Tag_Flags_ + self.Offset)
+}
+
+func (self *Tag) Flags() *Flags {
+   value := ParseUint16(self.Reader, self.Profile.Off_Tag_Flags + self.Offset)
+   names := make(map[string]bool)
+
+
+   if value & 8192 != 0 {
+      names["fNDVersion"] = true
+   }
+
+   if value & 16384 != 0 {
+      names["fNDDeleted"] = true
+   }
+
+   if value & 32768 != 0 {
+      names["fNDCompressed"] = true
+   }
+
+   return &Flags{Value: uint64(value), Names: names}
+}
+
 func (self *Tag) DebugString() string {
     result := fmt.Sprintf("struct Tag @ %#x:\n", self.Offset)
     result += fmt.Sprintf("  _ValueSize: %#0x\n", self._ValueSize())
     result += fmt.Sprintf("  _ValueOffset: %#0x\n", self._ValueOffset())
+    result += fmt.Sprintf("  Flags_: %#0x\n", self.Flags_())
+    result += fmt.Sprintf("  Flags: %v\n", self.Flags().DebugString())
     return result
 }
 
@@ -1140,15 +1267,6 @@ func ParseInt64(reader io.ReaderAt, offset int64) int64 {
     return int64(binary.LittleEndian.Uint64(data))
 }
 
-func ParseInt8(reader io.ReaderAt, offset int64) int8 {
-    result := make([]byte, 1)
-    _, err := reader.ReadAt(result, offset)
-    if err != nil {
-       return 0
-    }
-    return int8(result[0])
-}
-
 func ParseUint16(reader io.ReaderAt, offset int64) uint16 {
     data := make([]byte, 2)
     _, err := reader.ReadAt(data, offset)
@@ -1219,7 +1337,10 @@ func ParseTerminatedUTF16String(reader io.ReaderAt, offset int64) string {
    if idx < 0 {
       idx = n-1
    }
-   return UTF16BytesToUTF8(data[0:idx+1], binary.LittleEndian)
+   if idx%2 != 0 {
+      idx += 1
+   }
+   return UTF16BytesToUTF8(data[0:idx], binary.LittleEndian)
 }
 
 func ParseUTF16String(reader io.ReaderAt, offset int64, length int64) string {

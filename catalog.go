@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/Velocidex/ordereddict"
@@ -15,6 +16,9 @@ import (
 
 const (
 	CATALOG_PAGE_NUMBER = 4
+
+	// https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/inc/node.hxx#L226
+	fNDCompressed = 4 << 13
 )
 
 // Store a simple struct of column spec for speed.
@@ -34,7 +38,7 @@ type Table struct {
 	Name                 string
 	Columns              []*ColumnSpec
 	Indexes              *ordereddict.Dict
-	LongValues           *ordereddict.Dict
+	LongValueLookup      LongValueLookup
 }
 
 // The tag contains a single row.
@@ -77,22 +81,23 @@ type Table struct {
 // Then the tagged values are consumed
 // Column RDomain Identifier 256 Type Long Text
 
-func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
-	tag := NewESENT_LEAF_ENTRY(self.ctx, value)
-
+func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Dict {
 	if Debug {
 		fmt.Printf("Processing row in Tag @ %d %#x (%#x)",
-			value.Tag.Offset, value.Tag.ValueOffset(self.ctx),
+			value.Tag.Offset,
+			value.Tag.ValueOffsetInPage(self.ctx, header),
 			value.Tag.ValueSize(self.ctx))
-		spew.Dump(value.Buffer)
-		tag.Dump()
+		spew.Dump(value.GetBuffer())
 	}
 
 	result := ordereddict.NewDict()
 
 	var taggedItems map[uint32][]byte
 
-	dd_header := self.ctx.Profile.ESENT_DATA_DEFINITION_HEADER(tag.Reader, tag.EntryData())
+	reader := value.Reader()
+
+	tag := NewESENT_LEAF_ENTRY(self.ctx, value)
+	dd_header := self.ctx.Profile.ESENT_DATA_DEFINITION_HEADER(reader, tag.EntryData())
 
 	// Start to parse immediately after the dd_header
 	offset := dd_header.Offset + int64(dd_header.Size())
@@ -120,44 +125,44 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 			switch column.Type {
 			case "Boolean":
 				if column.SpaceUsage == 1 {
-					result.Set(column.Name, ParseUint8(tag.Reader, offset) > 0)
+					result.Set(column.Name, ParseUint8(reader, offset) > 0)
 				}
 
 			case "Signed byte":
 				if column.SpaceUsage == 1 {
-					result.Set(column.Name, ParseUint8(tag.Reader, offset))
+					result.Set(column.Name, ParseUint8(reader, offset))
 				}
 
 			case "Signed short":
 				if column.SpaceUsage == 2 {
-					result.Set(column.Name, ParseInt16(tag.Reader, offset))
+					result.Set(column.Name, ParseInt16(reader, offset))
 				}
 
 			case "Unsigned short":
 				if column.SpaceUsage == 2 {
-					result.Set(column.Name, ParseUint16(tag.Reader, offset))
+					result.Set(column.Name, ParseUint16(reader, offset))
 				}
 
 			case "Signed long":
 				if column.SpaceUsage == 4 {
-					result.Set(column.Name, ParseInt32(tag.Reader, offset))
+					result.Set(column.Name, ParseInt32(reader, offset))
 				}
 
 			case "Unsigned long":
 				if column.SpaceUsage == 4 {
-					result.Set(column.Name, ParseUint32(tag.Reader, offset))
+					result.Set(column.Name, ParseUint32(reader, offset))
 				}
 
 			case "Single precision FP":
 				if column.SpaceUsage == 4 {
 					result.Set(column.Name, math.Float32frombits(
-						ParseUint32(tag.Reader, offset)))
+						ParseUint32(reader, offset)))
 				}
 
 			case "Double precision FP":
 				if column.SpaceUsage == 8 {
 					result.Set(column.Name, math.Float64frombits(
-						ParseUint64(tag.Reader, offset)))
+						ParseUint64(reader, offset)))
 				}
 
 			case "DateTime":
@@ -165,13 +170,13 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 					switch column.Flags {
 					case 1:
 						// A more modern way of encoding
-						result.Set(column.Name, WinFileTime64(tag.Reader, offset))
+						result.Set(column.Name, WinFileTime64(reader, offset))
 
 					case 0:
 						// Some hair brained time serialization method
 						// https://docs.microsoft.com/en-us/windows/win32/extensible-storage-engine/jet-coltyp
 
-						value_int := ParseUint64(tag.Reader, offset)
+						value_int := ParseUint64(reader, offset)
 						days_since_1900 := math.Float64frombits(value_int)
 
 						// In python time.mktime((1900,1,1,0,0,0,0,365,0))
@@ -203,25 +208,38 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 
 					default:
 						// We have no idea
-						result.Set(column.Name, ParseUint64(tag.Reader, offset))
+						result.Set(column.Name, ParseUint64(reader, offset))
+					}
+				}
+
+			case "Long Text", "Text":
+				if column.SpaceUsage < 2000 {
+					data := make([]byte, column.SpaceUsage)
+					n, err := reader.ReadAt(data, offset)
+
+					if err == nil {
+
+						// Flags can be given as the first char or in the
+						// column definition.
+						result.Set(column.Name, ParseLongText(data[:n], column.Flags))
 					}
 				}
 
 			case "Long long", "Currency":
 				if column.SpaceUsage == 8 {
-					result.Set(column.Name, ParseUint64(tag.Reader, offset))
+					result.Set(column.Name, ParseUint64(reader, offset))
 				}
 
 			case "GUID":
 				if column.SpaceUsage == 16 {
 					result.Set(column.Name,
-						self.Header.Profile.GUID(tag.Reader, offset).AsString())
+						self.Header.Profile.GUID(reader, offset).AsString())
 				}
 
 			case "Binary":
 				if column.SpaceUsage < 1024 {
 					data := make([]byte, column.SpaceUsage)
-					n, err := tag.Reader.ReadAt(data, offset)
+					n, err := reader.ReadAt(data, offset)
 					if err == nil {
 						result.Set(column.Name, data[:n])
 					}
@@ -245,7 +263,7 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 
 			// Variable data type
 			index := int64(column.Identifier) - 127 - 1
-			itemLen := int64(ParseUint16(tag.Reader, variableSizeOffset+index*2))
+			itemLen := int64(ParseUint16(reader, variableSizeOffset+index*2))
 
 			if itemLen&0x8000 > 0 {
 				// Empty Item
@@ -256,12 +274,12 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 				switch column.Type {
 				case "Binary":
 					result.Set(column.Name, hex.EncodeToString([]byte(
-						ParseString(tag.Reader,
+						ParseString(reader,
 							variableSizeOffset+variableDataBytesProcessed,
 							itemLen-prevItemLen))))
 
 				case "Text":
-					result.Set(column.Name, ParseText(tag.Reader,
+					result.Set(column.Name, ParseText(reader,
 						variableSizeOffset+variableDataBytesProcessed,
 						itemLen-prevItemLen, column.Flags))
 
@@ -285,26 +303,47 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 				if Debug {
 					fmt.Printf("Slice is %#x-%#x %x\n",
 						variableDataBytesProcessed+variableSizeOffset,
-						len(value.Buffer), getSlice(value.Buffer,
-							uint64(variableDataBytesProcessed+
-								variableSizeOffset),
-							uint64(len(value.Buffer)+1)))
+						value.BufferSize,
+						getValueSlice(value, uint64(variableDataBytesProcessed+
+							variableSizeOffset), uint64(value.BufferSize)))
 				}
 				taggedItems = ParseTaggedValues(
-					self.ctx, getSlice(value.Buffer,
-						uint64(variableDataBytesProcessed+
-							variableSizeOffset),
-						uint64(len(value.Buffer)+1)))
+					self.ctx, getValueSlice(value,
+						uint64(variableDataBytesProcessed+variableSizeOffset),
+						uint64(value.BufferSize)))
 			}
 
 			buf, pres := taggedItems[column.Identifier]
 			if pres {
 				reader := &BufferReaderAt{buf}
 				switch column.Type {
-				case "Binary", "Long Binary":
+				case "Binary":
+					result.Set(column.Name, hex.EncodeToString(buf))
+
+				case "Long Binary":
+					// If the buf is key size (4 or 8 bytes) then we
+					// can look it up in the LV cache. Otherwise it is
+					// stored literally.
+					if len(buf) == 4 || len(buf) == 8 {
+						data, pres := self.LongValueLookup.GetLid(buf)
+						if pres {
+							buf = data
+						}
+					}
+
 					result.Set(column.Name, hex.EncodeToString(buf))
 
 				case "Long Text":
+					// If the buf is key size (4 or 8 bytes) then we
+					// can look it up in the LV cache. Otherwise it is
+					// stored literally.
+					if len(buf) == 4 || len(buf) == 8 {
+						data, pres := self.LongValueLookup.GetLid(buf)
+						if pres {
+							buf = data
+						}
+					}
+
 					// Flags can be given as the first char or in the
 					// column definition.
 					result.Set(column.Name, ParseLongText(buf, column.Flags))
@@ -378,13 +417,13 @@ func (self *Table) tagToRecord(value *Value) *ordereddict.Dict {
 
 				case "Long long", "Currency":
 					if column.SpaceUsage == 8 {
-						result.Set(column.Name, ParseUint64(tag.Reader, 0))
+						result.Set(column.Name, ParseUint64(reader, 0))
 					}
 
 				case "GUID":
 					if column.SpaceUsage == 16 {
 						result.Set(column.Name,
-							self.Header.Profile.GUID(tag.Reader, 0).AsString())
+							self.Header.Profile.GUID(reader, 0).AsString())
 					}
 
 				default:
@@ -404,39 +443,33 @@ func (self *RecordTag) FlagSkip() uint64 {
 	return 1
 }
 
-func getSlice(buffer []byte, start, end uint64) []byte {
+func getValueSlice(value *Value, start, end uint64) []byte {
 	if end < start {
 		return nil
 	}
 
-	length := uint64(len(buffer))
-
-	if start < 0 {
-		start = 0
+	length := end - start
+	if length > 1*1024*1024 {
+		return nil
 	}
 
-	if start > length {
-		start = length
-	}
+	buffer := make([]byte, length)
+	value.reader.ReadAt(buffer, value.BufferOffset+int64(start))
 
-	if end > length {
-		end = length
-	}
-
-	return buffer[start:end]
+	return buffer
 }
 
 // working slice to reassemble data
 type tagBuffer struct {
-	identifier uint32
-	start, end uint64
-	flags      uint64
+	identifier    uint32
+	start, length uint64
+	flags         uint64
 }
 
 /*
   Tagged values are used to store sparse values.
 
-  The consist of an array of RecordTag, each RecordTag has an
+  They consist of an array of RecordTag, each RecordTag has an
   Identifier and an offset to the start of its data. The length of the
   data in each record is determine by the start of the next record.
 
@@ -488,6 +521,18 @@ func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32][]byte {
 			start += 1
 		}
 
+		if start > uint64(len(buffer)) {
+			start = uint64(len(buffer))
+		}
+
+		if end > uint64(len(buffer)) {
+			end = uint64(len(buffer))
+		}
+
+		if end < start {
+			end = start
+		}
+
 		result[tag.identifier] = buffer[start:end]
 		if Debug {
 			fmt.Printf("Consumed %#x bytes of TAGGED space from %#x to %#x for tag %#x\n",
@@ -511,7 +556,11 @@ func (self *Catalog) DumpTable(name string, cb func(row *ordereddict.Dict) error
 		func(header *PageHeader, id int64, value *Value) error {
 			// Each tag stores a single row - all the
 			// columns in the row are encoded in this tag.
-			return cb(table.tagToRecord(value))
+			row := table.tagToRecord(value, header)
+			if len(row.Keys()) == 0 {
+				return nil
+			}
+			return cb(row)
 		})
 	if err != nil {
 		return err
@@ -544,6 +593,8 @@ func parseItemName(dd_header *ESENT_DATA_DEFINITION_HEADER) string {
 			2*numEntries, int64(itemLen))
 }
 
+// Walking over each LINE in the catalog tree, we parse the data
+// definitions.
 func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error {
 	leaf_entry := NewESENT_LEAF_ENTRY(self.ctx, value)
 	dd_header := self.ctx.Profile.ESENT_DATA_DEFINITION_HEADER(
@@ -563,7 +614,8 @@ func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error
 			Name:                 itemName,
 			FatherDataPageNumber: catalog.Table().FatherDataPageNumber(),
 			Indexes:              ordereddict.NewDict(),
-			LongValues:           ordereddict.NewDict()}
+			LongValueLookup:      NewLongValueLookup(),
+		}
 		self.currentTable = table
 		self.Tables.Set(itemName, table)
 
@@ -588,14 +640,67 @@ func (self *Catalog) __addItem(header *PageHeader, id int64, value *Value) error
 		}
 
 		self.currentTable.Indexes.Set(itemName, catalog)
-	case "CATALOG_TYPE_LONG_VALUE":
 
+	case "CATALOG_TYPE_LONG_VALUE":
+		if Debug {
+			fmt.Printf("Catalog name %v for table %v\n", itemName, self.currentTable.Name)
+		}
+		lv := catalog.LongValue()
+
+		WalkPages(self.ctx, int64(lv.FatherDataPageNumber()),
+			func(header *PageHeader, id int64, value *Value) error {
+				// Ignore tags that are too small to contain a key
+				if value.BufferSize < 8 {
+					return nil
+				}
+
+				lv := self.ctx.Profile.LVKEY_BUFFER(value.reader, value.BufferOffset)
+				key := lv.ParseKey(self.ctx, header, value)
+
+				long_value := &LongValue{
+					Value:  value,
+					header: header,
+					Key:    key,
+				}
+
+				self.currentTable.LongValueLookup[key.Key()] = long_value
+
+				if Debug {
+					size := int(value.Tag._ValueSize())
+					if size > 100 {
+						size = 100
+					}
+					buffer := make([]byte, size)
+					value.Reader().ReadAt(buffer, 0)
+
+					lv_buffer := long_value.Buffer()
+					if len(lv_buffer) > 100 {
+						lv_buffer = lv_buffer[:100]
+					}
+
+					fmt.Printf("------\nPage header %v\nID %v Tag %v\nPageID %v Flags %v\nKey %v \nLVBuffer %02x\nBuffer %02x \nTagLookup %v\n",
+						DebugPageHeader(self.ctx, header), id,
+						DebugTag(self.ctx, value.Tag, header),
+						value.PageID,
+						value.Flags,
+						long_value.Key.DebugString(),
+						lv_buffer, buffer,
+						len(self.currentTable.LongValueLookup))
+				}
+				return nil
+			})
 	}
 
 	return nil
 }
 
-func (self *Catalog) Dump() string {
+type DumpOptions struct {
+	LongValueTables bool
+	Indexes         bool
+	Tables          bool
+}
+
+func (self *Catalog) Dump(options DumpOptions) string {
 	result := ""
 
 	for _, name := range self.Tables.Keys() {
@@ -610,11 +715,40 @@ func (self *Catalog) Dump() string {
 				column.Name, column.Type, column.Flags)
 		}
 
-		result += fmt.Sprintf("%sIndexes\n", space)
-		for _, index := range table.Indexes.Keys() {
-			result += fmt.Sprintf("%s%s%v:\n", space, space, index)
+		if options.Indexes {
+			result += fmt.Sprintf("%sIndexes\n", space)
+			for _, index := range table.Indexes.Keys() {
+				result += fmt.Sprintf("%s%s%v:\n", space, space, index)
+			}
+			result += "\n"
 		}
-		result += "\n"
+
+		if options.LongValueTables && len(table.LongValueLookup) > 0 {
+			result += fmt.Sprintf("%sLongValues\n", space)
+			values := []*LongValue{}
+			for _, lv := range table.LongValueLookup {
+				values = append(values, lv)
+			}
+
+			sort.Slice(values, func(i, j int) bool {
+				return values[i].Key.Key() < values[j].Key.Key()
+			})
+
+			for _, lv := range values {
+				buffer := lv.Buffer()
+				size := len(buffer)
+				if size > 100 {
+					buffer = buffer[:100]
+				}
+				result += fmt.Sprintf("%s%s%02x: \"%02x\"\n",
+					space, space,
+					lv.Key.Key(),
+					//lv.Key.DebugString(),
+					buffer)
+			}
+			result += "\n"
+		}
+
 	}
 
 	return result

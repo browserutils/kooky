@@ -3,11 +3,14 @@ Profile: ESEProfile
 Filename: ese_profile.json
 GenerateDebugString: true
 Structs:
+  # https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/inc/daedef.hxx#L2695
   - FileHeader
   - DBTime
   - JET_LOGTIME
   - JET_SIGNATURE
-  - PageHeader
+
+  # https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/inc/cpage.hxx#L887
+  - PageHeader_
   - Tag
   - ESENT_ROOT_HEADER
   - ESENT_BRANCH_HEADER
@@ -26,6 +29,15 @@ Structs:
   - ESENT_CATALOG_DATA_DEFINITION_ENTRY
   - RecordTag
   - GUID
+  - LongValueHeader
+
+  # https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/inc/lv.hxx#L37
+  - LVKEY64
+  - LVKEY32
+  - LVKEY_BUFFER
 
   # This one is here to include some utility functions we might need.
   - Misc
+
+  # some helpers
+  - CompressedKey

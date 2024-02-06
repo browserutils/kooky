@@ -9,21 +9,40 @@ const (
 	TAG_COMMON = 4
 )
 
+// TODO: This is called LINE in the MS code. It represents a single
+// node in the page. Depending on the page type it needs to be further
+// parsed.
 type Value struct {
 	Tag    *Tag
 	PageID int64
-	Buffer []byte
 	Flags  uint64
+
+	reader       io.ReaderAt
+	BufferOffset int64
+	BufferSize   int64
+}
+
+func (self *Value) GetBuffer() []byte {
+	result := make([]byte, self.BufferSize)
+	self.reader.ReadAt(result, self.BufferOffset)
+	return result
 }
 
 func (self *Value) Reader() io.ReaderAt {
-	return &BufferReaderAt{self.Buffer}
+	return NewOffsetReader(self.reader,
+		self.BufferOffset, self.BufferSize)
 }
 
-func NewValue(ctx *ESEContext, tag *Tag, PageID int64, buffer []byte) *Value {
-	result := &Value{Tag: tag, PageID: PageID, Buffer: buffer}
+func NewReaderValue(ctx *ESEContext, tag *Tag, PageID int64,
+	reader io.ReaderAt, start, length int64) *Value {
+	result := &Value{Tag: tag, PageID: PageID, reader: reader,
+		BufferOffset: start, BufferSize: length}
 	if ctx.Version == 0x620 && ctx.Revision >= 17 &&
-		ctx.PageSize > 8192 && len(buffer) > 0 {
+		ctx.PageSize > 8192 && length > 0 {
+
+		buffer := make([]byte, 4)
+		reader.ReadAt(buffer, start)
+
 		result.Flags = uint64(buffer[1] >> 5)
 		buffer[1] &= 0x1f
 	} else {
@@ -32,15 +51,26 @@ func NewValue(ctx *ESEContext, tag *Tag, PageID int64, buffer []byte) *Value {
 	return result
 }
 
-func (self *Tag) ValueOffset(ctx *ESEContext) uint16 {
+func (self *Tag) valueOffset(ctx *ESEContext) uint16 {
 	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
 		return self._ValueOffset() & 0x7FFF
 	}
 	return self._ValueOffset() & 0x1FFF
 }
 
+func (self *Tag) ValueOffsetInPage(ctx *ESEContext, page *PageHeader) int64 {
+	return int64(self.valueOffset(ctx)) + page.EndOffset(ctx)
+}
+
+func (self *Tag) FFlags() uint16 {
+	// CPAGE::TAG::FFlags
+	// https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/ese/cpage.cxx#1212
+	return (self._ValueOffset() & 0x1fff) >> 13
+}
+
 func (self *Tag) ValueSize(ctx *ESEContext) uint16 {
-	if ctx.Version == 0x620 && ctx.Revision >= 17 && ctx.PageSize > 8192 {
+	if ctx.Version == 0x620 && ctx.Revision >= 17 &&
+		!IsSmallPage(ctx.PageSize) {
 		return self._ValueSize() & 0x7FFF
 	}
 	return self._ValueSize() & 0x1FFF
@@ -49,17 +79,20 @@ func (self *Tag) ValueSize(ctx *ESEContext) uint16 {
 func GetPageValues(ctx *ESEContext, header *PageHeader, id int64) []*Value {
 	result := []*Value{}
 
-	// Tags are written from the end of the page
+	// Tags are written from the end of the page. Sizeof(Tag) = 4
 	offset := ctx.PageSize + header.Offset - 4
+
+	// Skip the external value tag because it is fetched using a
+	// dedicated call to PageHeader.ExternalValue()
+	offset -= 4
 
 	for tag_count := header.AvailablePageTag(); tag_count > 0; tag_count-- {
 		tag := ctx.Profile.Tag(ctx.Reader, offset)
-		value_offset := header.EndOffset(ctx) + int64(tag.ValueOffset(ctx))
 
-		buffer := make([]byte, int(tag.ValueSize(ctx)))
-		ctx.Reader.ReadAt(buffer, value_offset)
-
-		result = append(result, NewValue(ctx, tag, id, buffer))
+		result = append(result, NewReaderValue(
+			ctx, tag, id, ctx.Reader,
+			tag.ValueOffsetInPage(ctx, header),
+			int64(tag.ValueSize(ctx))))
 		offset -= 4
 	}
 
@@ -77,6 +110,33 @@ func GetBranch(ctx *ESEContext, value *Value) *ESENT_BRANCH_HEADER {
 	return ctx.Profile.ESENT_BRANCH_HEADER(value.Reader(), 0)
 }
 
+type PageHeader struct {
+	*PageHeader_
+
+	// The value pointed to by tag 0
+	external_value_bytes []byte
+}
+
+func (self *PageHeader) ExternalValueBytes(ctx *ESEContext) []byte {
+	if self.external_value_bytes != nil {
+		return self.external_value_bytes
+	}
+
+	self.external_value_bytes = self.ExternalValue(ctx).GetBuffer()
+	return self.external_value_bytes
+}
+
+// The External value is the zero'th tag
+func (self *PageHeader) ExternalValue(ctx *ESEContext) *Value {
+	offset := ctx.PageSize + self.Offset - 4
+	tag := self.Profile.Tag(self.Reader, offset)
+
+	return NewReaderValue(
+		ctx, tag, 0, ctx.Reader,
+		tag.ValueOffsetInPage(ctx, self),
+		int64(tag.ValueSize(ctx)))
+}
+
 func (self *PageHeader) IsBranch() bool {
 	return !self.Flags().IsSet("Leaf")
 }
@@ -86,15 +146,14 @@ func (self *PageHeader) IsLeaf() bool {
 }
 
 func (self *PageHeader) EndOffset(ctx *ESEContext) int64 {
-	// Common size
 	size := int64(40)
 
-	// Depending on version, the size of the header is different.
-	if ctx.Version == 0x620 && ctx.Revision >= 0x11 && ctx.PageSize > 8192 {
-		// Windows 7 and later
-		size += 5 * 8
+	// The header is larger when the pagesize is bigger (PGHDR2 vs
+	// PGHDR)
+	// https://github.com/microsoft/Extensible-Storage-Engine/blob/933dc839b5a97b9a5b3e04824bdd456daf75a57d/dev/ese/src/inc/cpage.hxx#L885
+	if !IsSmallPage(ctx.PageSize) {
+		size = 80
 	}
-
 	return self.Offset + size
 }
 
@@ -110,7 +169,8 @@ func DumpPage(ctx *ESEContext, id int64) {
 
 	for i, value := range values {
 		fmt.Printf("Tag %v @ %#x offset %#x length %#x\n",
-			i, value.Tag.Offset, value.Tag.ValueOffset(ctx),
+			i, value.Tag.Offset,
+			value.Tag.ValueOffsetInPage(ctx, header),
 			value.Tag.ValueSize(ctx))
 	}
 
@@ -126,7 +186,7 @@ func DumpPage(ctx *ESEContext, id int64) {
 		// SpaceTree header
 	} else if flags.IsSet("SpaceTree") {
 		ctx.Profile.ESENT_SPACE_TREE_HEADER(
-			&BufferReaderAt{values[0].Buffer}, 0).Dump()
+			ctx.Reader, values[0].BufferOffset).Dump()
 
 		// Leaf header
 	} else if header.IsLeaf() {
@@ -238,21 +298,21 @@ func _walkPages(ctx *ESEContext,
 	}
 	seen[id] = true
 
-	if DebugWalk {
-		fmt.Printf("Walking page %v\n", id)
-	}
-
 	header := ctx.GetPage(id)
 	values := GetPageValues(ctx, header, id)
+	if DebugWalk {
+		fmt.Printf("Walking page %v %v\n", id, header.DebugString())
+	}
 
 	// No more records.
 	if len(values) == 0 {
 		return nil
 	}
 
-	for _, value := range values[1:] {
+	for _, value := range values {
 		if header.IsLeaf() {
-			// Allow the callback to return early (e.g. in case of cancellation)
+			// Allow the callback to return early (e.g. in case of
+			// cancellation)
 			err := cb(header, id, value)
 			if err != nil {
 				return err

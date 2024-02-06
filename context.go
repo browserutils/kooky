@@ -42,7 +42,10 @@ func NewESEContext(reader io.ReaderAt) (*ESEContext, error) {
 }
 
 func (self *ESEContext) GetPage(id int64) *PageHeader {
-	// First file page is file header, second page is backup of file header.
-	result := self.Profile.PageHeader(self.Reader, (id+1)*self.PageSize)
-	return result
+	// First file page is file header, second page is backup of file
+	// header.
+	return &PageHeader{
+		PageHeader_: self.Profile.PageHeader_(
+			self.Reader, (id+1)*self.PageSize),
+	}
 }
