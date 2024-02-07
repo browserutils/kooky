@@ -86,7 +86,7 @@ func GetPageValues(ctx *ESEContext, header *PageHeader, id int64) []*Value {
 	// dedicated call to PageHeader.ExternalValue()
 	offset -= 4
 
-	for tag_count := header.AvailablePageTag(); tag_count > 0; tag_count-- {
+	for tag_count := header.AvailablePageTag() - 1; tag_count > 0; tag_count-- {
 		tag := ctx.Profile.Tag(ctx.Reader, offset)
 
 		result = append(result, NewReaderValue(
