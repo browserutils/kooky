@@ -10,7 +10,7 @@ import (
 	keychain "github.com/keybase/go-keychain"
 )
 
-// getKeyringPassword retrieves the Chrome Safe Storage password,
+// getKeyringPassword retrieves the Chrome Safe Storage password or Microsoft Edge Safe Storage password,
 // caching it for future calls.
 func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	if s == nil {
@@ -27,9 +27,15 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		}
 	}
 
-	password, err := keychain.GetGenericPassword("Chrome Safe Storage", "Chrome", "", "")
+	var prefix string
+	if s.BrowserStr == `edge` {
+		prefix = "Microsoft Edge"
+	} else {
+		prefix = "Chrome"
+	}
+	password, err := keychain.GetGenericPassword(prefix+" Safe Storage", prefix, "", "")
 	if err != nil {
-		return nil, fmt.Errorf("error reading 'Chrome Safe Storage' keychain password: %w", err)
+		return nil, fmt.Errorf("error reading '%s Safe Storage' keychain password: %w", prefix, err)
 	}
 	s.KeyringPasswordBytes = password
 	keyringPasswordMap.set(kpmKey, password)
