@@ -3,7 +3,7 @@ package find
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
 )
@@ -35,7 +35,7 @@ func FindCookieStoreFiles(rootsFunc func() ([]string, error), browserName string
 		return nil, err
 	}
 	for _, root := range roots {
-		localStateBytes, err := ioutil.ReadFile(filepath.Join(root, `Local State`))
+		localStateBytes, err := os.ReadFile(filepath.Join(root, `Local State`))
 		if err != nil {
 			continue
 		}

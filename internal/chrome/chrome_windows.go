@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"unsafe"
 
@@ -88,7 +88,7 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		}
 	}
 
-	stateBytes, err := ioutil.ReadFile(stateFile)
+	stateBytes, err := os.ReadFile(stateFile)
 	if err != nil {
 		return nil, err
 	}

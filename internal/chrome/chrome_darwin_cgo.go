@@ -27,32 +27,12 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		}
 	}
 
-	localSafeStorage := describeSafeStorage(s.BrowserStr)
-	password, err := keychain.GetGenericPassword(localSafeStorage.name, localSafeStorage.account, "", "")
+	password, err := keychain.GetGenericPassword(s.safeStorageName(), s.safeStorageAccount(), "", "")
 	if err != nil {
-		return nil, fmt.Errorf(localSafeStorage.errorMsg, localSafeStorage.name, err)
+		return nil, fmt.Errorf(`error reading '%s' keychain password: %w`, s.safeStorageName(), err)
 	}
 	s.KeyringPasswordBytes = password
 	keyringPasswordMap.set(kpmKey, password)
 
 	return s.KeyringPasswordBytes, nil
-}
-
-type safeStorage struct {
-	name     string
-	account  string
-	errorMsg string
-}
-
-func describeSafeStorage(browserName string) safeStorage {
-	defaultStore := safeStorage{
-		name:     "Chrome Safe Storage",
-		account:  "Chrome",
-		errorMsg: "error reading '%s' keychain password: %w",
-	}
-	if browserName == `edge` {
-		defaultStore.name = "Microsoft Edge Safe Storage"
-		defaultStore.account = "Microsoft Edge"
-	}
-	return defaultStore
 }

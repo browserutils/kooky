@@ -1,13 +1,13 @@
-//go:build darwin
+//go:build darwin && !ios
 
-package find
+package edge
 
 import (
 	"os"
 	"path/filepath"
 )
 
-func edgeRoots() ([]string, error) {
+func edgeChromiumRoots() ([]string, error) {
 	// "$HOME/Library/Application Support"
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
