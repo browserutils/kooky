@@ -13,9 +13,9 @@ func cookieFiles() ([]string, error) {
 		return nil, err
 	}
 	paths := []string{
-		filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`),
 		// ~/Library/Containers/com.apple.Safari/Data/Library/Cookies
 		filepath.Join(home, `Library`, `Containers`, `com.apple.Safari`, `Data`, `Library`, `Cookies`, `Cookies.binarycookies`),
+		filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`),
 	}
 
 	return paths, nil
