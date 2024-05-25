@@ -1,8 +1,8 @@
 # kooky
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/browserutils/kooky)](https://pkg.go.dev/github.com/browserutils/kooky)
-[![Go Report Card](https://goreportcard.com/badge/zellyn/kooky)](https://goreportcard.com/report/zellyn/kooky)
-![Lines of code](https://img.shields.io/tokei/lines/github/zellyn/kooky)
+[![Go Report Card](https://goreportcard.com/badge/browserutils/kooky)](https://goreportcard.com/report/browserutils/kooky)
+![Lines of code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codetabs.com%2Fv1%2Floc%2F%3Fgithub%3Dbrowserutils%2Fkooky%26ignored%3Dvendor%2Ctestdata&query=%24%5B%3F(%40.language%3D%3D%22Go%22)%5D.linesOfCode&logo=Go&label=lines%20of%20code&cacheSeconds=3600)
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
