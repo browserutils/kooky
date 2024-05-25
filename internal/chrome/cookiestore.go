@@ -14,6 +14,7 @@ type CookieStore struct {
 	KeyringPasswordBytes []byte
 	PasswordBytes        []byte
 	DecryptionMethod     func(data, password []byte) ([]byte, error)
+	storage              safeStorage
 }
 
 func (s *CookieStore) Open() error {

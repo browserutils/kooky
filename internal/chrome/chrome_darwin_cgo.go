@@ -27,9 +27,9 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		}
 	}
 
-	password, err := keychain.GetGenericPassword("Chrome Safe Storage", "Chrome", "", "")
+	password, err := keychain.GetGenericPassword(s.safeStorageName(), s.safeStorageAccount(), "", "")
 	if err != nil {
-		return nil, fmt.Errorf("error reading 'Chrome Safe Storage' keychain password: %w", err)
+		return nil, fmt.Errorf(`error reading '%s' keychain password: %w`, s.safeStorageName(), err)
 	}
 	s.KeyringPasswordBytes = password
 	keyringPasswordMap.set(kpmKey, password)

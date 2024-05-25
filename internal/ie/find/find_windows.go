@@ -12,11 +12,11 @@ import (
 	"github.com/browserutils/kooky/internal/ie"
 )
 
-type finder struct {
-	browser string
+type IEFinder struct {
+	Browser string
 }
 
-var _ kooky.CookieStoreFinder = (*finder)(nil)
+var _ kooky.CookieStoreFinder = (*IEFinder)(nil)
 
 var registerOnce sync.Once
 
@@ -24,12 +24,12 @@ func init() {
 	browser := `ie+edge`
 	// don't register multiple times for files shared between ie and edge
 	registerOnce.Do(func() {
-		kooky.RegisterFinder(browser, &finder{browser: browser})
+		kooky.RegisterFinder(browser, &IEFinder{Browser: browser})
 	})
 }
 
-func (f *finder) FindCookieStores() ([]kooky.CookieStore, error) {
-	locApp := os.Getenv(`LOCALAPPDATA`)
+func (f *IEFinder) FindCookieStores() ([]kooky.CookieStore, error) {
+	locApp, _ := os.UserCacheDir()
 	home := os.Getenv(`USERPROFILE`)
 	windows := os.Getenv(`windir`)
 	appData, _ := os.UserConfigDir()
@@ -44,22 +44,22 @@ func (f *finder) FindCookieStores() ([]kooky.CookieStore, error) {
 		{
 			dir: windows,
 			paths: [][]string{
-				[]string{`Cookies`}, // IE 4.0
+				{`Cookies`}, // IE 4.0
 			},
 		},
 		{
 			dir: home,
 			paths: [][]string{
-				[]string{`Cookies`}, // XP, Vista
+				{`Cookies`}, // XP, Vista
 			},
 		},
 		{
 			dir: appData,
 			paths: [][]string{
-				[]string{`Microsoft`, `Windows`, `Cookies`},
-				[]string{`Microsoft`, `Windows`, `Cookies`, `Low`},
-				[]string{`Microsoft`, `Windows`, `Cookies`, `Low`},
-				[]string{`Microsoft`, `Windows`, `Internet Explorer`, `UserData`, `Low`},
+				{`Microsoft`, `Windows`, `Cookies`},
+				{`Microsoft`, `Windows`, `Cookies`, `Low`},
+				{`Microsoft`, `Windows`, `Cookies`, `Low`},
+				{`Microsoft`, `Windows`, `Internet Explorer`, `UserData`, `Low`},
 			},
 		},
 	}
@@ -76,7 +76,7 @@ func (f *finder) FindCookieStores() ([]kooky.CookieStore, error) {
 					CookieStore: &ie.CookieStore{
 						CookieStore: &ie.IECacheCookieStore{
 							DefaultCookieStore: cookies.DefaultCookieStore{
-								BrowserStr:           f.browser,
+								BrowserStr:           f.Browser,
 								IsDefaultProfileBool: true,
 								FileNameStr:          filepath.Join(append(append([]string{p.dir}, path...), `index.dat`)...),
 							},
@@ -93,7 +93,7 @@ func (f *finder) FindCookieStores() ([]kooky.CookieStore, error) {
 			CookieStore: &ie.CookieStore{
 				CookieStore: &ie.ESECookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
-						BrowserStr:           f.browser,
+						BrowserStr:           f.Browser,
 						IsDefaultProfileBool: true,
 						FileNameStr:          filepath.Join(locApp, `Microsoft`, `Windows`, `WebCache`, `WebCacheV01.dat`),
 					},

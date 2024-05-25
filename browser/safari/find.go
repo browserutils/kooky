@@ -16,21 +16,25 @@ func init() {
 }
 
 func (f *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	fileStr, err := cookieFile()
+	fileStrs, err := cookieFiles()
 	if err != nil {
 		return nil, err
 	}
 
-	var ret = []kooky.CookieStore{
-		&cookies.CookieJar{
-			CookieStore: &safariCookieStore{
-				DefaultCookieStore: cookies.DefaultCookieStore{
-					BrowserStr:           `safari`,
-					IsDefaultProfileBool: true,
-					FileNameStr:          fileStr,
+	var ret []kooky.CookieStore
+	for i, fileStr := range fileStrs {
+		ret = append(
+			ret,
+			&cookies.CookieJar{
+				CookieStore: &safariCookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           `safari`,
+						IsDefaultProfileBool: i == 0,
+						FileNameStr:          fileStr,
+					},
 				},
 			},
-		},
+		)
 	}
 
 	return ret, nil
