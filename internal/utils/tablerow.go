@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/go-sqlite/sqlite3"
 )
@@ -11,25 +12,12 @@ type TableRow struct {
 	record  *sqlite3.Record
 }
 
+func (row TableRow) String(columnName string) (string, error) { return Value[string](row, columnName) }
 func (row TableRow) BytesOrFallback(columnName string, fallback []byte) ([]byte, error) {
-	rawValue := row.ValueOrFallback(columnName, nil)
-	if value, ok := rawValue.([]byte); ok {
-		return value, nil
-	}
-	return nil, fmt.Errorf("expected column [%s] to be []byte; got %T with value %[2]v", columnName, rawValue)
+	return ValueOrFallback(row, columnName, fallback, false)
 }
 func (row TableRow) BytesStringOrFallback(columnName string, fallback []byte) ([]byte, error) {
-	rawValue := row.ValueOrFallback(columnName, nil)
-	if value, ok := rawValue.([]byte); ok {
-		return value, nil
-	}
-	switch value := rawValue.(type) {
-	case []byte:
-		return value, nil
-	case string:
-		return []byte(value), nil
-	}
-	return nil, fmt.Errorf("expected column [%s] to be []byte or string; got %T with value %[2]v", columnName, rawValue)
+	return ValueOrFallback(row, columnName, fallback, true)
 }
 
 func (row TableRow) Bool(columnName string) (bool, error) {
@@ -62,18 +50,7 @@ func (row TableRow) Int64(columnName string) (int64, error) {
 	}
 }
 
-func (row TableRow) String(columnName string) (string, error) {
-	rawValue, err := row.Value(columnName)
-	if err != nil {
-		return "", err
-	}
-	if value, ok := rawValue.(string); ok {
-		return value, nil
-	}
-	return "", fmt.Errorf("expected column [%s] to be string; got %T with value %[2]v", columnName, rawValue)
-}
-
-func (row TableRow) Value(columnName string) (interface{}, error) {
+func (row TableRow) Value(columnName string) (any, error) {
 	if index, ok := row.columns[columnName]; !ok {
 		return nil, fmt.Errorf("table doesn't have a column named [%s]", columnName)
 	} else if count := len(row.columns); count <= index {
@@ -83,9 +60,45 @@ func (row TableRow) Value(columnName string) (interface{}, error) {
 	}
 }
 
-func (row TableRow) ValueOrFallback(columnName string, fallback interface{}) interface{} {
+func (row TableRow) ValueOrFallback(columnName string, fallback any) any {
 	if index, ok := row.columns[columnName]; ok && index < len(row.columns) {
 		return row.record.Values[index]
 	}
 	return fallback
+}
+
+func Value[T any](row TableRow, columnName string) (T, error) {
+	var zero T
+	if index, ok := row.columns[columnName]; !ok {
+		return zero, fmt.Errorf("table doesn't have a column named [%s]", columnName)
+	} else if count := len(row.columns); count <= index {
+		return zero, fmt.Errorf("column named [%s] has index %d but row only has %d values", columnName, index, count)
+	} else if v, ok := row.record.Values[index].(T); !ok {
+		return zero, fmt.Errorf("expected column [%s] to be type %T; got type %[3]T with value %[3]v", columnName, zero, row.record.Values[index])
+	} else {
+		return v, nil
+	}
+}
+
+func ValueOrFallback[T any](row TableRow, columnName string, fallback T, tryConvert bool) (T, error) {
+	index, ok := row.columns[columnName]
+	if !ok || index >= len(row.columns) || index < 0 {
+		return fallback, fmt.Errorf("expected column [%s] does not exist", columnName)
+	}
+	v := row.record.Values[index]
+	vt, ok := v.(T)
+	if ok {
+		return vt, nil
+	}
+	var zero T
+	if !tryConvert {
+		var zero T
+		return fallback, fmt.Errorf("expected column [%s] to be type %T; got type %[3]T with value %[3]v", columnName, zero, v)
+	}
+	rv := reflect.ValueOf(v)
+	rt := reflect.TypeFor[T]()
+	if !rv.CanConvert(rt) {
+		return fallback, fmt.Errorf("expected column [%s] to be type %T; got type %[3]T with value %[3]v; using fallback: %v", columnName, zero, v, fallback)
+	}
+	return rv.Convert(rt).Interface().(T), nil
 }
