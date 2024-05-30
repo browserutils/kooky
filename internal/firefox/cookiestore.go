@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/utils"
 	"github.com/go-sqlite/sqlite3"
 )
 
@@ -26,14 +27,18 @@ func (s *CookieStore) Open() error {
 		return nil
 	}
 
-	db, err := sqlite3.Open(s.FileNameStr)
+	f, err := utils.OpenFile(s.FileNameStr)
+	if err != nil {
+		return err
+	}
+	db, err := sqlite3.OpenFrom(f)
 	if err != nil {
 		return err
 	}
 	s.Database = db
 
 	contFileName := filepath.Join(filepath.Dir(s.FileNameStr), `containers.json`)
-	s.contFile, _ = os.Open(contFileName)
+	s.contFile, _ = utils.OpenFile(contFileName)
 
 	return nil
 }
