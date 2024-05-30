@@ -8,6 +8,8 @@ import (
 )
 
 // Filter is used for filtering cokies in ReadCookies() functions.
+// Filter order might be changed for peformance reasons
+// (omission of value decryption of filtered out cookies, etc).
 //
 // A cookie passes the Filter if Filter.Filter returns true.
 type Filter interface{ Filter(*Cookie) bool }
@@ -96,6 +98,7 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 //
 // Position Debug after the filter you want to test.
 var Debug Filter = FilterFunc(func(cookie *Cookie) bool {
+	// TODO(srlehn): where should the Debug filter be positioned when the filter rearrangement happens?
 	fmt.Printf("%+#v\n", cookie)
 	return true
 })

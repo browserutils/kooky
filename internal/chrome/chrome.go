@@ -35,14 +35,17 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		"secure":   "is_secure",
 		"httponly": "is_httponly",
 	}
-	hasValueFilter := false
+
+	var valueFilters, nonValueFilters []kooky.Filter
 	for _, filter := range filters {
 		if _, ok := filter.(kooky.ValueFilterFunc); ok {
-			hasValueFilter = true
-			break
+			valueFilters = append(valueFilters, filter)
+		} else {
+			nonValueFilters = append(nonValueFilters, filter)
 		}
 	}
-	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
+
+	visitor := func(rowID *int64, row utils.TableRow) error {
 		cookie := &kooky.Cookie{
 			Creation: timex.FromFILETIME(*rowID * 10),
 		}
@@ -83,39 +86,36 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		if hasValueFilter {
-			if err := getCookieValue(s, cookie, row); err != nil {
-				return err
-			}
+		if !kooky.FilterCookie(cookie, nonValueFilters...) {
+			return nil // cookie filtered out
 		}
+		if err := s.saveCookieValue(cookie, row); err != nil {
+			return err
+		}
+		if !kooky.FilterCookie(cookie, valueFilters...) {
+			return nil // cookie filtered out
+		}
+		cookies = append(cookies, cookie)
 
-		if kooky.FilterCookie(cookie, filters...) {
-			cookies = append(cookies, cookie)
-		}
-
-		for _, cookie := range cookies {
-			if err := getCookieValue(s, cookie, row); err != nil {
-				return err
-			}
-		}
 		return nil
-	})
-	if err != nil {
+	}
+	if err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, visitor); err != nil {
 		return nil, err
 	}
 
 	return cookies, nil
 }
 
-func getCookieValue(s *CookieStore, cookie *kooky.Cookie, row utils.TableRow) error {
+// query, decrypt and store cookie value
+func (s *CookieStore) saveCookieValue(cookie *kooky.Cookie, row utils.TableRow) error {
 	if cookie.Value != "" {
 		return nil
 	}
-
 	encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
 	if err != nil {
 		return err
-	} else if len(encrypted_value) > 0 {
+	}
+	if len(encrypted_value) > 0 {
 		if decrypted, err := s.decrypt(encrypted_value); err == nil {
 			cookie.Value = string(decrypted)
 		} else {
