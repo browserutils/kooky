@@ -1,6 +1,6 @@
 // Parser based on https://github.com/SecureAuthCorp/impacket.git
 
-package parser
+package eseparser
 
 import (
 	"encoding/hex"
@@ -10,8 +10,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Velocidex/ordereddict"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/browserutils/kooky/internal/eseparser/ordereddict"
 )
 
 const (
@@ -82,14 +81,6 @@ type Table struct {
 // Column RDomain Identifier 256 Type Long Text
 
 func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Dict {
-	if Debug {
-		fmt.Printf("Processing row in Tag @ %d %#x (%#x)",
-			value.Tag.Offset,
-			value.Tag.ValueOffsetInPage(self.ctx, header),
-			value.Tag.ValueSize(self.ctx))
-		spew.Dump(value.GetBuffer())
-	}
-
 	result := ordereddict.NewDict()
 
 	var taggedItems map[uint32][]byte
@@ -467,22 +458,22 @@ type tagBuffer struct {
 }
 
 /*
-  Tagged values are used to store sparse values.
+Tagged values are used to store sparse values.
 
-  They consist of an array of RecordTag, each RecordTag has an
-  Identifier and an offset to the start of its data. The length of the
-  data in each record is determine by the start of the next record.
+They consist of an array of RecordTag, each RecordTag has an
+Identifier and an offset to the start of its data. The length of the
+data in each record is determine by the start of the next record.
 
-  Example:
+Example:
 
-  00000050  00 01 0c 40 a4 01 21 00  a5 01 23 00 01 6c 00 61  |...@..!...#..l.a|
-  00000060  00 62 00 5c 00 64 00 63  00 2d 00 31 00 24 00 00  |.b.\.d.c.-.1.$..|
-  00000070  00 3d 00 f9 00                                    |.=...|
+00000050  00 01 0c 40 a4 01 21 00  a5 01 23 00 01 6c 00 61  |...@..!...#..l.a|
+00000060  00 62 00 5c 00 64 00 63  00 2d 00 31 00 24 00 00  |.b.\.d.c.-.1.$..|
+00000070  00 3d 00 f9 00                                    |.=...|
 
-  Slice is 0x50-0x75 00010c40a4012100a5012300016c00610062005c00640063002d003100240000003d00f900
-  Consumed 0x15 bytes of TAGGED space from 0xc to 0x21 for tag 0x100
-  Consumed 0x2 bytes of TAGGED space from 0x21 to 0x23 for tag 0x1a4
-  Consumed 0x2 bytes of TAGGED space from 0x23 to 0x25 for tag 0x1a5
+Slice is 0x50-0x75 00010c40a4012100a5012300016c00610062005c00640063002d003100240000003d00f900
+Consumed 0x15 bytes of TAGGED space from 0xc to 0x21 for tag 0x100
+Consumed 0x2 bytes of TAGGED space from 0x21 to 0x23 for tag 0x1a4
+Consumed 0x2 bytes of TAGGED space from 0x23 to 0x25 for tag 0x1a5
 */
 func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32][]byte {
 	result := make(map[uint32][]byte)

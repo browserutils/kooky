@@ -7,9 +7,8 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/eseparser"
 	"github.com/browserutils/kooky/internal/utils"
-
-	"www.velocidex.com/golang/go-ese/parser"
 )
 
 type CookieStore struct {
@@ -44,7 +43,7 @@ var _ cookies.CookieStore = (*IECacheCookieStore)(nil)
 
 type ESECookieStore struct {
 	cookies.DefaultCookieStore
-	ESECatalog *parser.Catalog
+	ESECatalog *eseparser.Catalog
 }
 
 var _ cookies.CookieStore = (*ESECookieStore)(nil)
@@ -71,12 +70,12 @@ func (s *ESECookieStore) Open() error {
 		return err
 	}
 
-	ese_ctx, err := parser.NewESEContext(s.File)
+	ese_ctx, err := eseparser.NewESEContext(s.File)
 	if err != nil {
 		return err
 	}
 
-	catalog, err := parser.ReadCatalog(ese_ctx)
+	catalog, err := eseparser.ReadCatalog(ese_ctx)
 	if err != nil {
 		return err
 	}

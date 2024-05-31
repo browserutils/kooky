@@ -9,8 +9,8 @@ import (
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/timex"
 
-	"github.com/Velocidex/ordereddict"
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/browserutils/kooky/internal/eseparser"
+	"github.com/browserutils/kooky/internal/eseparser/ordereddict"
 )
 
 func (s *ESECookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
@@ -212,13 +212,13 @@ type webCacheContainer struct {
 	directory        string // Directory
 }
 
-func getEdgeCookieDirectories(catalog *parser.Catalog) ([]webCacheContainer, error) {
+func getEdgeCookieDirectories(catalog *eseparser.Catalog) ([]webCacheContainer, error) {
 	var cookiesContainers []webCacheContainer
 
 	cbContainers := func(row *ordereddict.Dict) error {
 		var name, directory string
 		if n, ok := row.GetString(`Name`); ok {
-			name = strings.TrimRight(parser.UTF16BytesToUTF8([]byte(n), binary.LittleEndian), "\x00")
+			name = strings.TrimRight(eseparser.UTF16BytesToUTF8([]byte(n), binary.LittleEndian), "\x00")
 		} else {
 			return nil
 		}
