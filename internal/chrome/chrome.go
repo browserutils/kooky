@@ -67,10 +67,10 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		if expires_utc, err := row.Int64(`expires_utc`); err == nil {
+		if expiresUTC, err := row.Int64(`expires_utc`); err == nil {
 			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
-			if expires_utc != 0 {
-				cookie.Expires = timex.FromFILETIME(expires_utc * 10)
+			if expiresUTC != 0 {
+				cookie.Expires = timex.FromFILETIME(expiresUTC * 10)
 			}
 		} else {
 			return err
@@ -111,12 +111,12 @@ func (s *CookieStore) saveCookieValue(cookie *kooky.Cookie, row utils.TableRow) 
 	if cookie.Value != "" {
 		return nil
 	}
-	encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
+	encryptedValue, err := row.BytesStringOrFallback(`encrypted_value`, nil)
 	if err != nil {
 		return err
 	}
-	if len(encrypted_value) > 0 {
-		if decrypted, err := s.decrypt(encrypted_value); err == nil {
+	if len(encryptedValue) > 0 {
+		if decrypted, err := s.decrypt(encryptedValue); err == nil {
 			cookie.Value = string(decrypted)
 		} else {
 			return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
