@@ -35,7 +35,17 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 		"secure":   "is_secure",
 		"httponly": "is_httponly",
 	}
-	err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, func(rowID *int64, row utils.TableRow) error {
+
+	var valueFilters, nonValueFilters []kooky.Filter
+	for _, filter := range filters {
+		if _, ok := filter.(kooky.ValueFilterFunc); ok {
+			valueFilters = append(valueFilters, filter)
+		} else {
+			nonValueFilters = append(nonValueFilters, filter)
+		}
+	}
+
+	visitor := func(rowID *int64, row utils.TableRow) error {
 		cookie := &kooky.Cookie{
 			Creation: timex.FromFILETIME(*rowID * 10),
 		}
@@ -57,10 +67,10 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		if expires_utc, err := row.Int64(`expires_utc`); err == nil {
+		if expiresUTC, err := row.Int64(`expires_utc`); err == nil {
 			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
-			if expires_utc != 0 {
-				cookie.Expires = timex.FromFILETIME(expires_utc * 10)
+			if expiresUTC != 0 {
+				cookie.Expires = timex.FromFILETIME(expiresUTC * 10)
 			}
 		} else {
 			return err
@@ -76,33 +86,48 @@ func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, err
 			return err
 		}
 
-		encrypted_value, err := row.BytesStringOrFallback(`encrypted_value`, nil)
-		if err != nil {
+		if !kooky.FilterCookie(cookie, nonValueFilters...) {
+			return nil // cookie filtered out
+		}
+		if err := s.saveCookieValue(cookie, row); err != nil {
 			return err
-		} else if len(encrypted_value) > 0 {
-			if decrypted, err := s.decrypt(encrypted_value); err == nil {
-				cookie.Value = string(decrypted)
-			} else {
-				return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
-			}
-		} else {
-			cookie.Value, err = row.String(`value`)
-			if err != nil {
-				return err
-			}
 		}
-
-		if kooky.FilterCookie(cookie, filters...) {
-			cookies = append(cookies, cookie)
+		if !kooky.FilterCookie(cookie, valueFilters...) {
+			return nil // cookie filtered out
 		}
+		cookies = append(cookies, cookie)
 
 		return nil
-	})
-	if err != nil {
+	}
+	if err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, visitor); err != nil {
 		return nil, err
 	}
 
 	return cookies, nil
+}
+
+// query, decrypt and store cookie value
+func (s *CookieStore) saveCookieValue(cookie *kooky.Cookie, row utils.TableRow) error {
+	if cookie.Value != "" {
+		return nil
+	}
+	encryptedValue, err := row.BytesStringOrFallback(`encrypted_value`, nil)
+	if err != nil {
+		return err
+	}
+	if len(encryptedValue) > 0 {
+		if decrypted, err := s.decrypt(encryptedValue); err == nil {
+			cookie.Value = string(decrypted)
+		} else {
+			return fmt.Errorf("decrypting cookie %v: %w", cookie, err)
+		}
+	} else {
+		cookie.Value, err = row.String(`value`)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // "mock_password" from https://github.com/chromium/chromium/blob/34f6b421d6d255b27e01d82c3c19f49a455caa06/crypto/mock_apple_keychain.cc#L75

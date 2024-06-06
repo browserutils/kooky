@@ -8,6 +8,8 @@ import (
 )
 
 // Filter is used for filtering cokies in ReadCookies() functions.
+// Filter order might be changed for peformance reasons
+// (omission of value decryption of filtered out cookies, etc).
 //
 // A cookie passes the Filter if Filter.Filter returns true.
 type Filter interface{ Filter(*Cookie) bool }
@@ -15,6 +17,15 @@ type Filter interface{ Filter(*Cookie) bool }
 type FilterFunc func(*Cookie) bool
 
 func (f FilterFunc) Filter(c *Cookie) bool {
+	if f == nil {
+		return false
+	}
+	return f(c)
+}
+
+type ValueFilterFunc func(*Cookie) bool
+
+func (f ValueFilterFunc) Filter(c *Cookie) bool {
 	if f == nil {
 		return false
 	}
@@ -87,6 +98,7 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 //
 // Position Debug after the filter you want to test.
 var Debug Filter = FilterFunc(func(cookie *Cookie) bool {
+	// TODO(srlehn): where should the Debug filter be positioned when the filter rearrangement happens?
 	fmt.Printf("%+#v\n", cookie)
 	return true
 })
@@ -191,27 +203,27 @@ func PathDepth(depth int) Filter {
 // value filters
 
 func Value(value string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && cookie.Value == value
 	})
 }
 func ValueContains(substr string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.Contains(cookie.Value, substr)
 	})
 }
 func ValueHasPrefix(prefix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasPrefix(cookie.Value, prefix)
 	})
 }
 func ValueHasSuffix(suffix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasSuffix(cookie.Value, suffix)
 	})
 }
 func ValueLen(length int) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && len(cookie.Value) == length
 	})
 }
