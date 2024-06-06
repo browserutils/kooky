@@ -2,7 +2,6 @@ package epiphany
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -66,42 +65,23 @@ func (s *epiphanyCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Coo
 		}
 
 		// Expires
-		var expiry int64
-		exp, err := row.Value(`expiry`)
+		expiry, err := utils.ValueOrFallback[int64](row, `expiry`, 0, true)
 		if err != nil {
 			return err
-		}
-		switch v := exp.(type) {
-		case int64:
-			expiry = v
-		case int32:
-			expiry = int64(v)
-		default:
-			return fmt.Errorf("got unexpected value for Expires %v (type %[1]T)", expiry)
 		}
 		cookie.Expires = time.Unix(expiry, 0)
 
 		// Secure
-		sec, err := row.Value(`isSecure`)
+		cookie.Secure, err = row.Bool(`isSecure`)
 		if err != nil {
 			return err
 		}
-		secInt, okSec := sec.(int)
-		if !okSec {
-			return fmt.Errorf("got unexpected value for Secure %v (type %[1]T)", sec)
-		}
-		cookie.Secure = secInt > 0
 
 		// HttpOnly
-		ho, err := row.Value(`isHttpOnly`)
+		cookie.HttpOnly, err = row.Bool(`isHttpOnly`)
 		if err != nil {
 			return err
 		}
-		hoInt, okHO := ho.(int)
-		if !okHO {
-			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", ho)
-		}
-		cookie.HttpOnly = hoInt > 0
 
 		if kooky.FilterCookie(&cookie, filters...) {
 			cookies = append(cookies, &cookie)
