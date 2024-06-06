@@ -24,15 +24,13 @@ func Example_cookieJar() {
 	}
 	// jar := s
 	// only store cookies relevant for the target website in the cookie jar
-	jar, _ := s.SubJar(kooky.Domain(`github.com`))
+	jar, _ := s.SubJar(kooky.FilterFunc(func(c *kooky.Cookie) bool {
+		return kooky.Domain(`github.com`).Filter(c) || kooky.Domain(`.github.com`).Filter(c)
+	}))
 
 	u, _ := url.Parse(`https://github.com/settings/profile`)
-	var loggedIn bool
 	cookies := kooky.FilterCookies(jar.Cookies(u), kooky.Name(`logged_in`))
-	if len(cookies) > 0 {
-		loggedIn = true
-	}
-	if !loggedIn {
+	if len(cookies) == 0 {
 		log.Fatal(`not logged in`)
 	}
 
