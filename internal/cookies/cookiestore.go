@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/utils"
 )
 
 // kooky.CookieStore without http.CookieJar and SubJar()
@@ -67,7 +68,7 @@ func (s *DefaultCookieStore) Open() error {
 		return nil
 	}
 
-	f, err := os.Open(s.FileNameStr)
+	f, err := utils.OpenFile(s.FileNameStr)
 	if err != nil {
 		return err
 	}
