@@ -2,7 +2,6 @@ package opera
 
 import (
 	"errors"
-	"net/http"
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
@@ -10,36 +9,15 @@ import (
 	"github.com/browserutils/kooky/internal/utils"
 )
 
-func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	return s.ReadCookies(filters...)
+func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStore, filename, filters...)
 }
 
-func (s *operaCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func (s *operaCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
-	return s.CookieStore.ReadCookies(filters...)
-}
-
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the Opera browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
+	return s.CookieStore.TraverseCookies(filters...)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
@@ -48,7 +26,7 @@ func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, e
 }
 
 func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
-	var s operaCookieStore
+	s := &operaCookieStore{}
 
 	f, typ, err := utils.DetectFileType(filename)
 	if err != nil {
@@ -79,5 +57,5 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 		return nil, errors.New(`unknown file type`)
 	}
 
-	return &cookies.CookieJar{CookieStore: &s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }

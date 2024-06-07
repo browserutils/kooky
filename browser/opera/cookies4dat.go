@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/cookies"
 )
 
 type fileHeader struct {
@@ -25,40 +26,52 @@ type record struct {
 }
 
 // "cookies4.dat" format
-func (s *operaPrestoCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
-	if err := s.Open(); err != nil {
-		return nil, err
-	}
-	if _, err := s.File.Seek(0, io.SeekStart); err != nil {
-		return nil, err
-	}
+	return func(yield func(*kooky.Cookie, error) bool) {
+		if err := s.Open(); err != nil {
+			yield(nil, err)
+			return
+		}
+		if _, err := s.File.Seek(0, io.SeekStart); err != nil {
+			yield(nil, err)
+			return
+		}
 
-	var hdr fileHeader
-	if err := binary.Read(s.File, binary.BigEndian, &hdr); err != nil {
-		return nil, err
-	}
-	fileFormatVersionMajor := hdr.FileVersionNumber >> 12
-	fileFormatVersionMinor := hdr.FileVersionNumber & 0xfff
-	if fileFormatVersionMajor != 1 || fileFormatVersionMinor != 0 {
-		return nil, fmt.Errorf(`unsupported file format version %d.%d`, fileFormatVersionMajor, fileFormatVersionMinor)
-	}
-	// appVersionMajor := hdr.AppVersionNumber >> 12
-	// appVersionMinor := hdr.AppVersionNumber & 0xfff
+		var hdr fileHeader
+		if err := binary.Read(s.File, binary.BigEndian, &hdr); err != nil {
+			yield(nil, err)
+			return
+		}
+		fileFormatVersionMajor := hdr.FileVersionNumber >> 12
+		fileFormatVersionMinor := hdr.FileVersionNumber & 0xfff
+		if fileFormatVersionMajor != 1 || fileFormatVersionMinor != 0 {
+			yield(nil, fmt.Errorf(`unsupported file format version %d.%d`, fileFormatVersionMajor, fileFormatVersionMinor))
+			return
+		}
+		// appVersionMajor := hdr.AppVersionNumber >> 12
+		// appVersionMinor := hdr.AppVersionNumber & 0xfff
 
-	p := &processor{
-		reader:       s.File,
-		idTagLength:  hdr.IDTagLength,
-		lengthLength: hdr.LengthLength,
+		p := &processor{
+			reader:       s.File,
+			idTagLength:  hdr.IDTagLength,
+			lengthLength: hdr.LengthLength,
+			filters:      filters,
+		}
+		_, err := p.process(yield)
+		if err != nil && err != io.EOF {
+			yield(nil, err)
+			return
+		}
+		if p.cookie != nil {
+			p.cookie.Browser = s
+		}
+		if !cookies.CookieFilterYield(p.cookie, nil, yield, p.filters...) {
+			return
+		}
 	}
-	_, err := p.process()
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-	cookies := kooky.FilterCookies(p.cookies, filters...)
-	return cookies, nil
 }
 
 type processor struct {
@@ -69,21 +82,25 @@ type processor struct {
 	payloadLength uint32
 	domainParts   []string
 	path          string
-	cookies       []*kooky.Cookie
+	cookie        *kooky.Cookie
+	filters       []kooky.Filter
 }
 
-func (p *processor) process() (int, error) {
+func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) {
 	if p.idTagLength < 1 || p.idTagLength > 4 || p.lengthLength < 1 || p.lengthLength > 4 {
-		return 0, errors.New(`unexpected byte length values`)
+		err := errors.New(`unexpected byte length values`)
+		yield(nil, err)
+		return 0, err
 	}
 
 	n, tagID, payloadLength, err := getRecord(p.reader, p.idTagLength, p.lengthLength)
-	isEOF := err == io.EOF
+	isEOF := errors.Is(err, io.EOF)
 	if isEOF {
 		p.tagID = tagID
 		p.payloadLength = payloadLength
 	}
 	if err != nil {
+		yield(nil, err)
 		return n, err
 	}
 	p.tagID = tagID
@@ -98,6 +115,7 @@ func (p *processor) process() (int, error) {
 			n2, err := p.reader.Read(payload)
 			n += n2
 			if err != nil {
+				yield(nil, err)
 				return n, err
 			}
 		}
@@ -115,7 +133,11 @@ func (p *processor) process() (int, error) {
 		}
 		c.Domain = domain
 		c.Path = p.path
-		p.cookies = append(p.cookies, c)
+
+		if !cookies.CookieFilterYield(p.cookie, nil, yield, p.filters...) {
+			return n, err
+		}
+		p.cookie = c
 	case tagIDDomainName:
 		p.domainParts = append(p.domainParts, string(payload))
 	case tagIDDomainEnd:
@@ -127,31 +149,22 @@ func (p *processor) process() (int, error) {
 	case tagIDPathStart, tagIDPathEnd:
 		p.path = ``
 	case tagIDCookieName:
-		if len(p.cookies) > 0 {
-			p.cookies[len(p.cookies)-1].Name = string(payload)
-		}
+		p.cookie.Name = string(payload)
 	case tagIDCookieValue:
-		if len(p.cookies) > 0 {
-			p.cookies[len(p.cookies)-1].Value = string(payload)
-		}
+		p.cookie.Value = string(payload)
 	case tagIDCookieDateExpiry:
 		if len(payload) != 8 {
 			return n, err
 		}
-		if len(p.cookies) > 1 {
-			p.cookies[len(p.cookies)-1].Expires = time.Unix(int64(binary.BigEndian.Uint64(payload)), 0)
-		}
+		p.cookie.Expires = time.Unix(int64(binary.BigEndian.Uint64(payload)), 0)
 	case tagIDCookieHTTPSOnly:
-		if len(p.cookies) > 1 {
-			p.cookies[len(p.cookies)-1].Secure = true
-		}
+		p.cookie.Secure = true
 	}
 
 	if !isEOF {
 		var n3 int
-		n3, err = p.process()
+		n3, err = p.process(yield)
 		n += n3
-
 	}
 
 	return n, err

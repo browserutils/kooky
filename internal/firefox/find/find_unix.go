@@ -7,13 +7,17 @@ import (
 	"path/filepath"
 )
 
-func firefoxRoots() ([]string, error) {
+func firefoxRoots(yield func(string, error) bool) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	return []string{
-		filepath.Join(home, `snap`, `firefox`, `common`, `.mozilla`, `firefox`), // Ubuntu 21.10 (snap)
-		filepath.Join(home, `.mozilla`, `firefox`),
-	}, nil
+	// Ubuntu 21.10 (snap)
+	if !yield(filepath.Join(home, `snap`, `firefox`, `common`, `.mozilla`, `firefox`), nil) {
+		return
+	}
+	if !yield(filepath.Join(home, `.mozilla`, `firefox`), nil) {
+		return
+	}
 }

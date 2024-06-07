@@ -17,41 +17,47 @@ func init() {
 	kooky.RegisterFinder(`edge`, &edgeFinder{})
 }
 
-func (f *edgeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	files, err := chromefind.FindCookieStoreFiles(edgeChromiumRoots, `edge`)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []kooky.CookieStore
-	for _, file := range files {
-		cookieStore := &chrome.CookieStore{
-			DefaultCookieStore: cookies.DefaultCookieStore{
-				BrowserStr:           file.Browser,
-				ProfileStr:           file.Profile,
-				OSStr:                file.OS,
-				IsDefaultProfileBool: file.IsDefaultProfile,
-				FileNameStr:          file.Path,
-			},
+func (f *edgeFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		for file, err := range chromefind.FindCookieStoreFiles(edgeChromiumRoots, `edge`) {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
+			if file == nil {
+				continue
+			}
+			cookieStore := &chrome.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           file.Browser,
+					ProfileStr:           file.Profile,
+					OSStr:                file.OS,
+					IsDefaultProfileBool: file.IsDefaultProfile,
+					FileNameStr:          file.Path,
+				},
+			}
+			cookieStore.SetSafeStorage(`Microsoft Edge`, ``)
+			if !yield(&cookies.CookieJar{CookieStore: cookieStore}, nil) {
+				return
+			}
 		}
-		cookieStore.SetSafeStorage(`Microsoft Edge`, ``)
-		ret = append(ret, &cookies.CookieJar{CookieStore: cookieStore})
-	}
 
-	var errRet error
-	if runtime.GOOS != `windows` || edgeOldCookieStores == nil {
-		goto skipNonChromium
-	}
-	{
-		oldCookieStores, err := edgeOldCookieStores() // ESE, text cookies
-		if err != nil {
-			errRet = err
+		if runtime.GOOS != `windows` || edgeOldCookieStores == nil {
+			return
 		}
-		ret = append(ret, oldCookieStores...)
+		for oldCookieStore, err := range edgeOldCookieStores { // ESE, text cookies
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			if !yield(oldCookieStore, nil) {
+				return
+			}
+		}
 	}
-
-skipNonChromium:
-	return ret, errRet
 }
 
-var edgeOldCookieStores func() ([]kooky.CookieStore, error)
+var edgeOldCookieStores kooky.CookieStoreSeq

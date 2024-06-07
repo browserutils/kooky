@@ -1,6 +1,7 @@
 package kooky_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -13,7 +14,8 @@ import (
 )
 
 func Example_cookieJar() {
-	stores := kooky.FindAllCookieStores()
+	ctx := context.TODO()
+	stores := kooky.FindAllCookieStores(ctx)
 	var s kooky.CookieStore
 	for _, store := range stores {
 		if store.Browser() != `firefox` || !store.IsDefaultProfile() {
@@ -24,15 +26,12 @@ func Example_cookieJar() {
 	}
 	// jar := s
 	// only store cookies relevant for the target website in the cookie jar
-	jar, _ := s.SubJar(kooky.Domain(`github.com`))
+	jar, _ := s.SubJar(ctx, kooky.Domain(`github.com`))
 
 	u, _ := url.Parse(`https://github.com/settings/profile`)
-	var loggedIn bool
-	cookies := kooky.FilterCookies(jar.Cookies(u), kooky.Name(`logged_in`))
-	if len(cookies) > 0 {
-		loggedIn = true
-	}
-	if !loggedIn {
+
+	cookies := kooky.FilterCookies(context.TODO(), jar.Cookies(u), kooky.Name(`logged_in`))
+	if len(cookies) == 0 {
 		log.Fatal(`not logged in`)
 	}
 

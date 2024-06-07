@@ -102,7 +102,7 @@ func (s *ESECookieStore) Close() error {
 }
 
 func GetCookieStore(filename, browser string, m map[string]func(f *os.File, s *CookieStore, browser string), filters ...kooky.Filter) (*cookies.CookieJar, error) {
-	var s CookieStore
+	s := &CookieStore{}
 
 	f, typ, err := utils.DetectFileType(filename)
 	if err != nil {
@@ -111,7 +111,7 @@ func GetCookieStore(filename, browser string, m map[string]func(f *os.File, s *C
 	if m != nil {
 		for name, fn := range m {
 			if f != nil && typ == name {
-				fn(f, &s, browser)
+				fn(f, s, browser)
 				goto end
 			}
 		}
@@ -135,5 +135,5 @@ func GetCookieStore(filename, browser string, m map[string]func(f *os.File, s *C
 	}
 end:
 
-	return &cookies.CookieJar{CookieStore: &s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }

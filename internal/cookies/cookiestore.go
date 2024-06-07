@@ -10,7 +10,7 @@ import (
 
 // kooky.CookieStore without http.CookieJar and SubJar()
 type CookieStore interface {
-	ReadCookies(...kooky.Filter) ([]*kooky.Cookie, error)
+	TraverseCookies(...kooky.Filter) kooky.CookieSeq
 	Browser() string
 	Profile() string
 	IsDefaultProfile() bool
@@ -20,7 +20,7 @@ type CookieStore interface {
 
 /*
 DefaultCookieStore implements most of the kooky.CookieStore interface except for the ReadCookies method
-func (s *DefaultCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error)
+func (s *DefaultCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq
 
 DefaultCookieStore also provides an Open() method
 */
@@ -89,4 +89,34 @@ func (s *DefaultCookieStore) Close() error {
 	}
 
 	return err
+}
+
+type JarCreator func(filename string, filters ...kooky.Filter) (*CookieJar, error)
+
+func SingleRead(jarCr JarCreator, filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	st, err := jarCr(filename, filters...)
+	if err != nil {
+		return ErrCookieSeq(err)
+	}
+	return ReadCookiesClose(st, filters...)
+}
+
+func ReadCookiesClose(store CookieStore, filters ...kooky.Filter) kooky.CookieSeq {
+	if store == nil {
+		return ErrCookieSeq(errors.New(`nil cookie store`))
+	}
+	seq := func(yield func(*kooky.Cookie, error) bool) {
+		defer func() {
+			if err := store.Close(); err != nil {
+				yield(nil, err)
+			}
+		}()
+		for cookie, err := range store.TraverseCookies(filters...) {
+			if !CookieFilterYield(cookie, err, yield, filters...) {
+				return
+			}
+		}
+
+	}
+	return seq
 }

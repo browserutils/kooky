@@ -1,6 +1,8 @@
 package kooky_test
 
 import (
+	"context"
+
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all" // register cookiestore finders
 )
@@ -11,6 +13,7 @@ func ExampleFilterCookies() {
 	cookies := kooky.ReadCookies() // automatic read
 
 	cookies = kooky.FilterCookies(
+		context.TODO(),
 		cookies,
 		kooky.Valid,                    // remove expired cookies
 		kooky.DomainContains(`google`), // cookie domain has to contain "google"

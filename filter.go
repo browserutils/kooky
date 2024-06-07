@@ -1,6 +1,8 @@
 package kooky
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -21,45 +23,105 @@ func (f FilterFunc) Filter(c *Cookie) bool {
 	return f(c)
 }
 
-// FilterCookies() applies "filters" in order to the "cookies".
-func FilterCookies[T Cookie | http.Cookie](cookies []*T, filters ...Filter) []*T {
-	var ret = make([]*T, 0, len(cookies))
+type ValueFilterFunc func(*Cookie) bool
 
+func (f ValueFilterFunc) Filter(c *Cookie) bool {
+	if f == nil {
+		return false
+	}
+	return f(c)
+}
+
+func FilterCookies[S CookieSeq | []*Cookie | []*http.Cookie](ctx context.Context, cookies S, filters ...Filter) S {
+	var ret S
 	// https://github.com/golang/go/issues/45380#issuecomment-1014950980
-	switch cookiesTyp := any(cookies).(type) {
+	switch cookiesTyped := any(cookies).(type) {
+	case CookieSeq:
+		ret = any(filterCookieSeq(ctx, cookiesTyped, filters...)).(S)
 	case []*http.Cookie:
-	cookieLoopHTTP:
-		for i, cookie := range cookiesTyp {
+		ret = any(filterCookieSlice(ctx, cookiesTyped, filters...)).(S)
+	case []*Cookie:
+		ret = any(filterCookieSlice(ctx, cookiesTyped, filters...)).(S)
+	}
+	return ret
+}
+
+func filterCookieSeq(ctx context.Context, cookies CookieSeq, filters ...Filter) CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
+		if cookies == nil {
+			yield(nil, errors.New(`nil receiver`))
+			return
+		}
+		for cookie, errCookie := range cookies {
+			if errCookie != nil {
+				if !yield(nil, errCookie) {
+					return
+				}
+				continue
+			}
 			if cookie == nil {
 				continue
 			}
-			for _, filter := range filters {
-				if !filter.Filter(&Cookie{Cookie: *cookie}) {
-					continue cookieLoopHTTP
-				}
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			if !FilterCookie(ctx, cookie, filters...) {
+				continue
+			}
+			if !yield(cookie, nil) {
+				return
+			}
+		}
+	}
+}
+
+func filterCookieSlice[S []*T, T Cookie | http.Cookie](ctx context.Context, cookies S, filters ...Filter) S {
+	if len(cookies) < 1 {
+		return nil
+	}
+	ret := make([]*T, 0, len(cookies))
+	switch cookiesTyped := any(cookies).(type) {
+	case []*http.Cookie:
+	cookieLoopHTTP:
+		for i, cookie := range cookiesTyped {
+			if cookie == nil {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				break cookieLoopHTTP
+			default:
+			}
+			if !FilterCookie(ctx, &Cookie{Cookie: *cookie}, filters...) {
+				continue
 			}
 			ret = append(ret, cookies[i])
 		}
+		return ret
 	case []*Cookie:
 	cookieLoopKooky:
-		for i, cookie := range cookiesTyp {
+		for i, cookie := range cookiesTyped {
 			if cookie == nil {
 				continue
 			}
-			for _, filter := range filters {
-				if !filter.Filter(cookie) {
-					continue cookieLoopKooky
-				}
+			select {
+			case <-ctx.Done():
+				break cookieLoopKooky
+			default:
+			}
+			if !FilterCookie(ctx, cookie, filters...) {
+				continue
 			}
 			ret = append(ret, cookies[i])
 		}
 	}
-
 	return ret
 }
 
 // FilterCookie() tells if a "cookie" passes all "filters".
-func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
+func FilterCookie[T Cookie | http.Cookie](ctx context.Context, cookie *T, filters ...Filter) bool {
 	if cookie == nil {
 		return false
 	}
@@ -74,6 +136,14 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 	}
 
 	for _, filter := range filters {
+		if filter == nil {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
 		if !filter.Filter(c) {
 			return false
 		}

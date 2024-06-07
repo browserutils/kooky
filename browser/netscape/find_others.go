@@ -5,6 +5,4 @@ package netscape
 
 import "errors"
 
-func netscapeRoots() ([]string, error) {
-	return nil, errors.New(`not implemented`)
-}
+func netscapeRoots(yield func(string, error) bool) { yield(``, errors.New(`not implemented`)) }

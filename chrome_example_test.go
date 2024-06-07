@@ -17,13 +17,11 @@ func Example_chromeSimpleMacOS() {
 
 	// read the cookies from the file
 	// decryption is handled automatically
-	cookies, err := chrome.ReadCookies(cookieStoreFile)
-	if err != nil {
-		// TODO: handle the error
-		return
-	}
-
-	for _, cookie := range cookies {
+	for cookie, err := range chrome.TraverseCookies(cookieStoreFile) {
+		if err != nil {
+			// TODO: handle errors
+			continue
+		}
 		fmt.Println(cookie)
 	}
 }

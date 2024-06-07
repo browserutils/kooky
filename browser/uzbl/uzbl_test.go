@@ -1,9 +1,13 @@
 package uzbl
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/browser/netscape"
 	"github.com/browserutils/kooky/internal/testutils"
 )
 
@@ -12,9 +16,15 @@ func TestReadCookies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
-	cookies, err := ReadCookies(testCookiesPath)
-	if err != nil {
-		t.Fatal(err)
+	var cookies []*kooky.Cookie
+	for cookie, err := range TraverseCookies(testCookiesPath) {
+		fmt.Println(cookie, err)
+		if err != nil && !errors.Is(err, netscape.ErrNotStrict) {
+			t.Fatal(err)
+		}
+		if cookie != nil {
+			cookies = append(cookies, cookie)
+		}
 	}
 	if len(cookies) != 2 {
 		t.Fatalf("got %d cookies, but expected 2", len(cookies))
@@ -51,9 +61,15 @@ func TestReadCookies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
-	cookies, err = ReadCookies(testCookiesPath)
-	if err != nil {
-		t.Fatal(err)
+	cookies = nil
+	for cookie, err := range TraverseCookies(testCookiesPath) {
+		fmt.Println(cookie, err)
+		if err != nil && !errors.Is(err, netscape.ErrNotStrict) {
+			t.Fatal(err)
+		}
+		if cookie != nil {
+			cookies = append(cookies, cookie)
+		}
 	}
 	if len(cookies) != 1 {
 		t.Fatalf("got %d cookies, but expected 1", len(cookies))

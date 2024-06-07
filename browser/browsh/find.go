@@ -19,14 +19,15 @@ func init() {
 	kooky.RegisterFinder(`browsh`, &browshFinder{})
 }
 
-func (f *browshFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	dotConfig, err := os.UserConfigDir()
-	if err != nil {
-		return nil, err
-	}
+func (f *browshFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		dotConfig, err := os.UserConfigDir()
+		if err != nil {
+			_ = yield(nil, err)
+			return
+		}
 
-	var ret = []kooky.CookieStore{
-		&cookies.CookieJar{
+		st := &cookies.CookieJar{
 			CookieStore: &firefox.CookieStore{
 				DefaultCookieStore: cookies.DefaultCookieStore{
 					BrowserStr:           `browsh`,
@@ -34,8 +35,9 @@ func (f *browshFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 					FileNameStr:          filepath.Join(dotConfig, `browsh`, `firefox_profile`, `cookies.sqlite`),
 				},
 			},
-		},
+		}
+		if !yield(st, nil) {
+			return
+		}
 	}
-
-	return ret, nil
 }

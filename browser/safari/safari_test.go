@@ -1,6 +1,7 @@
 package safari
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -15,14 +16,15 @@ func TestReadCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadCookies(testCookiesPath)
+	ctx := context.Background()
+	cookies, err := TraverseCookies(testCookiesPath).ReadAllCookies(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	domain := "news.ycombinator.com"
 	name := "user"
-	cookies = kooky.FilterCookies(cookies, kooky.Domain(domain), kooky.Name(name))
+	cookies = kooky.FilterCookies(ctx, cookies, kooky.Domain(domain), kooky.Name(name))
 	if len(cookies) == 0 {
 		t.Fatalf("Found no cookies with domain=%q, name=%q", domain, name)
 	}
