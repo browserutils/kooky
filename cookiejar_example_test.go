@@ -26,7 +26,9 @@ func Example_cookieJar() {
 	}
 	// jar := s
 	// only store cookies relevant for the target website in the cookie jar
-	jar, _ := s.SubJar(ctx, kooky.Domain(`github.com`))
+	jar, _ := s.SubJar(ctx, kooky.FilterFunc(func(c *kooky.Cookie) bool {
+		return kooky.Domain(`github.com`).Filter(c) || kooky.Domain(`.github.com`).Filter(c)
+	}))
 
 	u, _ := url.Parse(`https://github.com/settings/profile`)
 

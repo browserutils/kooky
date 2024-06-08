@@ -62,7 +62,7 @@ func (s *ESECookieStore) Open() error {
 	}
 	// TODO: create temporary copy of the file on Windows - a service on Windows has a permanent lock on it
 	// TODO: remove temporary copy in Close()
-	if f, err := os.Open(s.FileNameStr); err != nil {
+	if f, err := utils.OpenFile(s.FileNameStr); err != nil {
 		return err
 	} else {
 		s.File = f

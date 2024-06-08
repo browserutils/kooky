@@ -27,7 +27,7 @@ var signatures = map[string][]signature{
 }
 
 func DetectFileType(filename string) (f *os.File, typ string, e error) {
-	f, err := os.Open(filename)
+	f, err := OpenFile(filename)
 	if err != nil {
 		return nil, ``, err
 	}

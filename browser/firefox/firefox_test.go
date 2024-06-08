@@ -81,7 +81,7 @@ func TestReadCookies(t *testing.T) {
 	}
 
 	c = cookies[0]
-	if c.Domain != "google.de" {
+	if c.Domain != ".google.de" {
 		t.Errorf("c.Domain=%q", c.Domain)
 	}
 	if c.Name != "NID" {

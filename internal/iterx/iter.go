@@ -8,23 +8,21 @@ import (
 	"github.com/browserutils/kooky"
 )
 
-// func CookieFilterYield(cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
 func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
 	ret := true
 	if errCookie != nil {
 		ret = yield(nil, errCookie)
 	}
-	// ctx := context.Background()
 	if kooky.FilterCookie(ctx, cookie, filters...) {
 		ret = yield(cookie, nil)
 	}
 	return ret
 }
 
-func NewCookieFilterYielder(yield func(*kooky.Cookie, error) bool, valRetriever func(*kooky.Cookie) error, filters ...kooky.Filter) func(_ context.Context, _ *kooky.Cookie, errCookie error) bool {
+func NewCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ context.Context, yield func(*kooky.Cookie, error) bool, _ *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
 	// TODO use in internal/chrome/chrome.go, etc
 	var valueFilters, nonValueFilters []kooky.Filter
-	if valRetriever != nil {
+	if splitFilters {
 		for _, filter := range filters {
 			if _, ok := filter.(kooky.ValueFilterFunc); ok {
 				valueFilters = append(valueFilters, filter)
@@ -33,7 +31,7 @@ func NewCookieFilterYielder(yield func(*kooky.Cookie, error) bool, valRetriever 
 			}
 		}
 	}
-	return func(ctx context.Context, cookie *kooky.Cookie, errCookie error) bool {
+	return func(ctx context.Context, yield func(*kooky.Cookie, error) bool, cookie *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
 		if errCookie != nil {
 			return yield(nil, errCookie)
 		}

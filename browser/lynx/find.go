@@ -14,6 +14,7 @@ import (
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/netscape"
+	"github.com/browserutils/kooky/internal/utils"
 )
 
 type lynxFinder struct{}
@@ -61,7 +62,7 @@ func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
 
 		var includes, cookieFiles, cookieSaveFiles []string
 		parse := func(configFile string) error {
-			file, err := os.Open(configFile)
+			file, err := utils.OpenFile(configFile)
 			if err != nil {
 				return err
 			}

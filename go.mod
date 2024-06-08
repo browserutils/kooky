@@ -4,7 +4,6 @@ go 1.22.3
 
 require (
 	github.com/Velocidex/ordereddict v0.0.0-20230909174157-2aa49cc5d11d
-	github.com/bobesa/go-domain-util v0.0.0-20190911083921-4033b5f7dd89
 	github.com/go-ini/ini v1.67.0
 	github.com/go-sqlite/sqlite3 v0.0.0-20180313105335-53dd8e640ee7
 	github.com/keybase/go-keychain v0.0.0-20231219164618-57a3676c3af6

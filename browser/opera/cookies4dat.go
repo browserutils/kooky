@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"math/bits"
+	"strconv"
 	"time"
 
 	"github.com/browserutils/kooky"
@@ -49,27 +49,29 @@ func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.
 		fileFormatVersionMajor := hdr.FileVersionNumber >> 12
 		fileFormatVersionMinor := hdr.FileVersionNumber & 0xfff
 		if fileFormatVersionMajor != 1 || fileFormatVersionMinor != 0 {
-			yield(nil, fmt.Errorf(`unsupported file format version %d.%d`, fileFormatVersionMajor, fileFormatVersionMinor))
+			yield(nil, errors.New(`unsupported file format version `+
+				strconv.Itoa(int(fileFormatVersionMajor))+`.`+strconv.Itoa(int(fileFormatVersionMinor))))
 			return
 		}
 		// appVersionMajor := hdr.AppVersionNumber >> 12
 		// appVersionMinor := hdr.AppVersionNumber & 0xfff
 
 		p := &processor{
+			browser:      s,
 			reader:       s.File,
 			idTagLength:  hdr.IDTagLength,
 			lengthLength: hdr.LengthLength,
 			filters:      filters,
 		}
-		_, err := p.process(yield)
+		yld := func(cookie *kooky.Cookie, err error) bool {
+			return iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...)
+		}
+		_, err := p.process(yld)
 		if err != nil && err != io.EOF {
-			yield(nil, err)
+			_ = yld(nil, err)
 			return
 		}
-		if p.cookie != nil {
-			p.cookie.Browser = s
-		}
-		if !iterx.CookieFilterYield(context.Background(), p.cookie, nil, yield, p.filters...) {
+		if !yld(p.cookie, nil) {
 			return
 		}
 	}
@@ -85,6 +87,7 @@ type processor struct {
 	path          string
 	cookie        *kooky.Cookie
 	filters       []kooky.Filter
+	browser       kooky.BrowserInfo
 }
 
 func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) {
@@ -101,7 +104,6 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		p.payloadLength = payloadLength
 	}
 	if err != nil {
-		yield(nil, err)
 		return n, err
 	}
 	p.tagID = tagID
@@ -116,7 +118,6 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 			n2, err := p.reader.Read(payload)
 			n += n2
 			if err != nil {
-				yield(nil, err)
 				return n, err
 			}
 		}
@@ -134,8 +135,8 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		}
 		c.Domain = domain
 		c.Path = p.path
-
-		if !iterx.CookieFilterYield(context.Background(), p.cookie, nil, yield, p.filters...) {
+		c.Browser = p.browser
+		if !yield(p.cookie, nil) {
 			return n, err
 		}
 		p.cookie = c

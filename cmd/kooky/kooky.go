@@ -10,10 +10,10 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/spf13/pflag"
+
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
-
-	"github.com/spf13/pflag"
 )
 
 var (
