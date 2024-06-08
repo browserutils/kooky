@@ -10,6 +10,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 
 	"golang.org/x/text/encoding/charmap"
 )
@@ -30,7 +31,7 @@ func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
 
 func (s *konquerorCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 
 	return func(yield func(*kooky.Cookie, error) bool) {
@@ -137,7 +138,7 @@ func (s *konquerorCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Co
 			cookie.HttpOnly = sec&httpOnly != 0
 			cookie.Browser = s
 
-			if !cookies.CookieFilterYield(cookie, nil, yield, filters...) {
+			if !iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...) {
 				return
 			}
 		}

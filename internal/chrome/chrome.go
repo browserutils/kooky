@@ -2,6 +2,7 @@ package chrome
 
 import (
 	"bytes"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha1"
@@ -13,7 +14,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 	"github.com/browserutils/kooky/internal/utils"
 )
@@ -22,12 +23,12 @@ import (
 
 func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return cookies.ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	} else if s.Database == nil {
-		return cookies.ErrCookieSeq(errors.New(`database is nil`))
+		return iterx.ErrCookieSeq(errors.New(`database is nil`))
 	}
 
 	headerMappings := map[string]string{
@@ -93,8 +94,8 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 			}
 			cookie.Browser = s
 
-			if !cookies.CookieFilterYield(cookie, nil, yield, filters...) {
-				return cookies.ErrYieldEnd
+			if !iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...) {
+				return iterx.ErrYieldEnd
 			}
 
 			return nil
@@ -102,7 +103,7 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
 		err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, visitor(yield))
-		if !errors.Is(err, cookies.ErrYieldEnd) {
+		if !errors.Is(err, iterx.ErrYieldEnd) {
 			yield(nil, err)
 		}
 	}

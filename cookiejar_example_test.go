@@ -30,7 +30,7 @@ func Example_cookieJar() {
 
 	u, _ := url.Parse(`https://github.com/settings/profile`)
 
-	cookies := kooky.FilterCookies(context.TODO(), jar.Cookies(u), kooky.Name(`logged_in`))
+	cookies := kooky.FilterCookies(ctx, jar.Cookies(u), kooky.Name(`logged_in`)).Collect(ctx)
 	if len(cookies) == 0 {
 		log.Fatal(`not logged in`)
 	}

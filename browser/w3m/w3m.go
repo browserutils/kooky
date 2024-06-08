@@ -10,6 +10,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
 type w3mCookieStore struct {
@@ -31,12 +32,12 @@ func (s *w3mCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 	// https://github.com/tats/w3m/blob/169789b1480710712d587d5859fab9d93eb952a2/cookie.c#L429
 
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return cookies.ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	} else if s.File == nil {
-		return cookies.ErrCookieSeq(errors.New(`file is nil`))
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
 	return func(yield func(*kooky.Cookie, error) bool) {
@@ -77,7 +78,7 @@ func (s *w3mCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 			// sp[7] // port list
 			cookie.Browser = s
 
-			if !cookies.CookieFilterYield(cookie, nil, yield, filters...) {
+			if !iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...) {
 				return
 			}
 		}

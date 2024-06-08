@@ -1,13 +1,14 @@
 package ie
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"strings"
 
 	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 
 	"github.com/Velocidex/ordereddict"
@@ -16,28 +17,28 @@ import (
 
 func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return cookies.ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	} else if s.File == nil {
-		return cookies.ErrCookieSeq(errors.New(`file is nil`))
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
 	if s.ESECatalog == nil {
-		return cookies.ErrCookieSeq(errors.New(`ESE catalog is nil`))
+		return iterx.ErrCookieSeq(errors.New(`ESE catalog is nil`))
 	}
 
 	tables := s.ESECatalog.Tables
 	if tables == nil {
-		return cookies.ErrCookieSeq(errors.New(`catalog.Tables is nil`))
+		return iterx.ErrCookieSeq(errors.New(`catalog.Tables is nil`))
 	}
 
 	cbCookieEntries := func(yield func(*kooky.Cookie, error) bool) func(row *ordereddict.Dict) error {
 		return func(row *ordereddict.Dict) error {
 			if row == nil {
 				if !yield(nil, errors.New(`row is nil`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -47,7 +48,7 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 				cookieEntry.entryID = uint64(e)
 			} else {
 				if !yield(nil, errors.New(`no int64 EntryId`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -55,7 +56,7 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 				cookieEntry.minimizedRDomainLength = uint64(e)
 			} else {
 				if !yield(nil, errors.New(`no int64 MinimizedRDomainLength`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -63,7 +64,7 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 				cookieEntry.flags = uint32(e)
 			} else {
 				if !yield(nil, errors.New(`no int64 Flags`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -71,7 +72,7 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 				cookieEntry.expires = e
 			} else {
 				if !yield(nil, errors.New(`no int64 Expires`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -79,7 +80,7 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 				cookieEntry.lastModified = e
 			} else {
 				if !yield(nil, errors.New(`no int64 LastModified`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
@@ -87,41 +88,41 @@ func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSe
 			cookieEntry.cookieHash, ok = row.GetString(`CookieHash`)
 			if !ok {
 				if !yield(nil, errors.New(`no string CookieHash`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
 			cookieEntry.rDomain, ok = row.GetString(`RDomain`)
 			if !ok {
 				if !yield(nil, errors.New(`no string RDomain`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
 			cookieEntry.path, ok = row.GetString(`Path`)
 			if !ok {
 				if !yield(nil, errors.New(`no string Path`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
 			cookieEntry.name, ok = row.GetString(`Name`)
 			if !ok {
 				if !yield(nil, errors.New(`no string Name`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
 			cookieEntry.value, ok = row.GetString(`Value`)
 			if !ok {
 				if !yield(nil, errors.New(`no string Value`)) {
-					return cookies.ErrYieldEnd
+					return iterx.ErrYieldEnd
 				}
 				return nil
 			}
 
 			cookie, errCookie := convertCookieEntry(&cookieEntry, s)
-			if !cookies.CookieFilterYield(cookie, errCookie, yield, filters...) {
+			if !iterx.CookieFilterYield(context.Background(), cookie, errCookie, yield, filters...) {
 				return nil
 			}
 

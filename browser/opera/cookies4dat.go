@@ -1,6 +1,7 @@
 package opera
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 	"time"
 
 	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
 type fileHeader struct {
@@ -28,7 +29,7 @@ type record struct {
 // "cookies4.dat" format
 func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	return func(yield func(*kooky.Cookie, error) bool) {
 		if err := s.Open(); err != nil {
@@ -68,7 +69,7 @@ func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.
 		if p.cookie != nil {
 			p.cookie.Browser = s
 		}
-		if !cookies.CookieFilterYield(p.cookie, nil, yield, p.filters...) {
+		if !iterx.CookieFilterYield(context.Background(), p.cookie, nil, yield, p.filters...) {
 			return
 		}
 	}
@@ -134,7 +135,7 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		c.Domain = domain
 		c.Path = p.path
 
-		if !cookies.CookieFilterYield(p.cookie, nil, yield, p.filters...) {
+		if !iterx.CookieFilterYield(context.Background(), p.cookie, nil, yield, p.filters...) {
 			return n, err
 		}
 		p.cookie = c

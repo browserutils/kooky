@@ -21,7 +21,7 @@ func ExampleFindAllCookieStores() {
 			kooky.Valid, // remove expired cookies
 		}
 
-		for cookie := range store.TraverseCookies(filters...).OnlyCookies() {
+		for cookie, _ := range store.TraverseCookies(filters...).OnlyCookies() {
 			fmt.Printf(
 				"%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				store.Browser(),

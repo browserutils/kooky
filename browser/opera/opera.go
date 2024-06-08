@@ -6,6 +6,7 @@ import (
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/cookies"
+"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/utils"
 )
 
@@ -15,7 +16,7 @@ func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
 
 func (s *operaCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	return s.CookieStore.TraverseCookies(filters...)
 }

@@ -1,11 +1,13 @@
 package cookies
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
 // kooky.CookieStore without http.CookieJar and SubJar()
@@ -96,14 +98,14 @@ type JarCreator func(filename string, filters ...kooky.Filter) (*CookieJar, erro
 func SingleRead(jarCr JarCreator, filename string, filters ...kooky.Filter) kooky.CookieSeq {
 	st, err := jarCr(filename, filters...)
 	if err != nil {
-		return ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	}
 	return ReadCookiesClose(st, filters...)
 }
 
 func ReadCookiesClose(store CookieStore, filters ...kooky.Filter) kooky.CookieSeq {
 	if store == nil {
-		return ErrCookieSeq(errors.New(`nil cookie store`))
+		return iterx.ErrCookieSeq(errors.New(`nil cookie store`))
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
 		defer func() {
@@ -112,7 +114,7 @@ func ReadCookiesClose(store CookieStore, filters ...kooky.Filter) kooky.CookieSe
 			}
 		}()
 		for cookie, err := range store.TraverseCookies(filters...) {
-			if !CookieFilterYield(cookie, err, yield, filters...) {
+			if !iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...) {
 				return
 			}
 		}

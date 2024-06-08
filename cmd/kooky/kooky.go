@@ -70,26 +70,55 @@ func main() {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0) // for printing
 
 	trimLen := 45
-	for cookie := range seq.OnlyCookies() {
-		container := cookie.Container
-		if len(container) > 0 {
-			container = ` [` + container + `]`
-		}
-		fmt.Fprintf(
-			w,
-			"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-			cookie.Browser.Browser(),
-			cookie.Browser.Profile(),
-			container,
-			trimStr(cookie.Browser.FilePath(), trimLen),
-			trimStr(cookie.Domain, trimLen),
-			trimStr(cookie.Name, trimLen),
-			// be careful about raw bytes
-			trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-			cookie.Expires.Format(`2006.01.02 15:04:05`),
-		)
+	// use channel so that tabwriter won't panic
+	for cookie := range seq.Chan(ctx) {
+		prCookieLine(w, cookie, trimLen)
 	}
 	w.Flush()
+}
+
+func prCookieLine(w io.Writer, cookie *kooky.Cookie, trimLen int) {
+	if cookie == nil {
+		return
+	}
+	container := cookie.Container
+	if len(container) > 0 {
+		container = ` [` + container + `]`
+	}
+	fmt.Fprintf(
+		w,
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		prBrowser(cookie),
+		prProfile(cookie),
+		container,
+		trimStr(prFilePath(cookie), trimLen),
+		trimStr(cookie.Domain, trimLen),
+		trimStr(cookie.Name, trimLen),
+		// be careful about raw bytes
+		trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
+		cookie.Expires.Format(`2006.01.02 15:04:05`),
+	)
+}
+
+func prBrowser(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.Browser()
+}
+
+func prProfile(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.Profile()
+}
+
+func prFilePath(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.FilePath()
 }
 
 var storeFilter = kooky.FilterFunc(func(cookie *kooky.Cookie) bool {

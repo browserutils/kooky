@@ -23,7 +23,7 @@ type CookieJar struct {
 	init    sync.Once
 	initErr error
 	filters []kooky.Filter
-	cookies []*kooky.Cookie // duplicate storage required for SubJar()
+	cookies kooky.Cookies // duplicate storage required for SubJar()
 	CookieStore
 }
 
@@ -69,7 +69,7 @@ func (s *CookieJar) InitJar() error {
 				return
 			}
 		} else {
-			kookies = kooky.FilterCookies(ctx, s.cookies, s.filters...)
+			kookies = kooky.FilterCookies(ctx, s.cookies, s.filters...).Collect(ctx)
 		}
 		jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 		if err != nil {
@@ -95,7 +95,7 @@ func (s *CookieJar) SubJar(ctx context.Context, filters ...kooky.Filter) (http.C
 	if err := s.InitJar(); err != nil {
 		return nil, err
 	}
-	kookies := kooky.FilterCookies(ctx, s.cookies, filters...)
+	kookies := kooky.FilterCookies(ctx, s.cookies, filters...).Collect(ctx)
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (s *CookieJar) SubJar(ctx context.Context, filters ...kooky.Filter) (http.C
 }
 
 func kookies2cookies(ctx context.Context, kookies []*kooky.Cookie, filters ...kooky.Filter) []*http.Cookie {
-	filteredKookies := kooky.FilterCookies(ctx, kookies, filters...)
+	filteredKookies := kooky.FilterCookies(ctx, kookies, filters...).Collect(ctx)
 	cookies := make([]*http.Cookie, 0, len(filteredKookies))
 	for _, k := range filteredKookies {
 		cookies = append(cookies, &k.Cookie)

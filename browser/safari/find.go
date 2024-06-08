@@ -5,6 +5,7 @@ package safari
 import (
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+"github.com/browserutils/kooky/internal/iterx"
 )
 
 type safariFinder struct{}

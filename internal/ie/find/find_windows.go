@@ -9,6 +9,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/ie"
 )
 

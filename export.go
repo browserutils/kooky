@@ -88,7 +88,7 @@ func exportCookieSlice[S []*T, T Cookie | http.Cookie](ctx context.Context, w io
 
 func exportCookieSeq(ctx context.Context, w io.Writer, seq CookieSeq) {
 	var init bool
-	for cookie := range seq.OnlyCookies() {
+	for cookie, _ := range seq.OnlyCookies() {
 		select {
 		case <-ctx.Done():
 			return

@@ -2,6 +2,7 @@ package netscape
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,20 +11,20 @@ import (
 	"time"
 
 	"github.com/browserutils/kooky"
-	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
 const httpOnlyPrefix = `#HttpOnly_`
 
 func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return cookies.ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	}
 	if s.File == nil {
-		return cookies.ErrCookieSeq(errors.New(`file is nil`))
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
 	seq, str := TraverseCookies(s.File, s, filters...)
@@ -91,7 +92,7 @@ func TraverseCookies(file io.Reader, bi kooky.BrowserInfo, filters ...kooky.Filt
 		cookie.Expires = time.Unix(exp, 0)
 		cookie.Browser = bi
 
-		return cookies.CookieFilterYield(cookie, nil, yield, filters...)
+		return iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...)
 	}
 
 	var strict bool

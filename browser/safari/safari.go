@@ -14,6 +14,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 )
 
@@ -109,7 +110,7 @@ func (s *safariCookieStore) readPage(f io.Reader, page int, pageSize int32, yiel
 		if e != nil {
 			e = fmt.Errorf("error reading page %d: %w", page, e)
 		}
-		return cookies.CookieFilterYield(c, e, yield, filters...)
+		return iterx.CookieFilterYield(context.Background(), c, e, yield, filters...)
 	}
 
 	bb := make([]byte, pageSize)

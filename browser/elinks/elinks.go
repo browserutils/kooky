@@ -11,6 +11,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
 type elinksCookieStore struct {
@@ -29,7 +30,7 @@ func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
 
 func (s *elinksCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 
 	colCnt := 8
@@ -77,7 +78,7 @@ func (s *elinksCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cooki
 			if err != nil {
 				err = fmt.Errorf(`row %d: `, lineNr)
 			}
-			if !cookies.CookieFilterYield(cookie, err, yield, filters...) {
+			if !iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...) {
 				return
 			}
 		}

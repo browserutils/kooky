@@ -20,20 +20,20 @@ func init() {
 
 func (f *konquerorFinder) FindCookieStores() kooky.CookieStoreSeq {
 	return func(yield func(kooky.CookieStore, error) bool) {
-		var stInner *cookies.DefaultCookieStore
-		defer func() {
+		//var stInner *cookies.DefaultCookieStore
+		/*defer func() {
 			if stInner == nil {
 				return
 			}
 			stInner.IsDefaultProfileBool = true
-		}()
+		}()*/
 		for root, err := range konquerorRoots {
 			if err != nil {
 				if !yield(nil, err) {
 					return
 				}
 			}
-			stInner = &cookies.DefaultCookieStore{
+			stInner := &cookies.DefaultCookieStore{
 				BrowserStr:  `konqueror`,
 				FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
 			}

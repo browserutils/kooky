@@ -10,14 +10,18 @@ import (
 var cookieName = `NID`
 
 func ExampleFilterCookies() {
-	cookies := kooky.ReadCookies() // automatic read
+	ctx := context.TODO()
 
-	cookies = kooky.FilterCookies(
-		context.TODO(),
-		cookies,
-		kooky.Valid,                    // remove expired cookies
-		kooky.DomainContains(`google`), // cookie domain has to contain "google"
-		kooky.Name(cookieName),         // cookie name is "NID"
-		kooky.Debug,                    // print cookies after applying previous filter
-	)
+	cookies := kooky.AllCookies(). // automatic read
+					Seq().
+					Filter(
+			ctx,
+			kooky.Valid,                    // remove expired cookies
+			kooky.DomainContains(`google`), // cookie domain has to contain "google"
+			kooky.Name(cookieName),         // cookie name is "NID"
+			kooky.Debug,                    // print cookies after applying previous filter
+		).
+		Collect(ctx) // iterate and collect in a slice
+
+	_ = cookies // do something
 }

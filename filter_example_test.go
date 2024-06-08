@@ -21,7 +21,7 @@ func ExampleFilter_regex() {
 		cookies,
 		ValueRegexMatch(reBase64), // filter cookies with the regex filter
 		// kooky.Debug,            // print cookies after applying the regex filter
-	)
+	).Collect(ctx)
 
 	for _, cookie := range cookies {
 		fmt.Println(cookie.Value)

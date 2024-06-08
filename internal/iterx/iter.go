@@ -1,4 +1,4 @@
-package cookies
+package iterx
 
 import (
 	"cmp"
@@ -8,12 +8,14 @@ import (
 	"github.com/browserutils/kooky"
 )
 
-func CookieFilterYield(cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
+// func CookieFilterYield(cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
+func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
 	ret := true
 	if errCookie != nil {
 		ret = yield(nil, errCookie)
 	}
-	if kooky.FilterCookie(context.Background(), cookie, filters...) {
+	// ctx := context.Background()
+	if kooky.FilterCookie(ctx, cookie, filters...) {
 		ret = yield(cookie, nil)
 	}
 	return ret
@@ -72,3 +74,5 @@ func ErrCookieSeq(e error) kooky.CookieSeq {
 }
 
 var ErrYieldEnd = errors.New(`yield end`)
+
+type RefLast[T any] struct{ Last *T } // TODO rm

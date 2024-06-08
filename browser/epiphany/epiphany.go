@@ -8,6 +8,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/utils"
 )
 
@@ -21,12 +22,12 @@ func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
 
 func (s *epiphanyCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return cookies.ErrCookieSeq(err)
+		return iterx.ErrCookieSeq(err)
 	} else if s.Database == nil {
-		return cookies.ErrCookieSeq(errors.New(`database is nil`))
+		return iterx.ErrCookieSeq(errors.New(`database is nil`))
 	}
 
 	// Epiphany originally used a Mozilla Gecko backend but later switched to WebKit.
@@ -101,8 +102,8 @@ func (s *epiphanyCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Coo
 			cookie.HttpOnly = hoInt > 0
 			cookie.Browser = s
 
-			if !cookies.CookieFilterYield(&cookie, nil, yield, filters...) {
-				return cookies.ErrYieldEnd
+			if !iterx.CookieFilterYield(context.Background(), &cookie, nil, yield, filters...) {
+				return iterx.ErrYieldEnd
 			}
 
 			return nil
@@ -110,7 +111,7 @@ func (s *epiphanyCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Coo
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
 		err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, visitor(yield))
-		if !errors.Is(err, cookies.ErrYieldEnd) {
+		if !errors.Is(err, iterx.ErrYieldEnd) {
 			yield(nil, err)
 		}
 	}

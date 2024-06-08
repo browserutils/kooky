@@ -3,6 +3,7 @@ package kooky
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
 	"net/http"
 	"runtime"
@@ -31,15 +32,14 @@ type Cookie struct {
 // Or only a specific browser:
 //
 //	import _ "github.com/browserutils/kooky/browser/chrome"
-func ReadCookies(filters ...Filter) []*Cookie {
-	var cookies []*Cookie
-	for cookie, err := range TraverseCookies(context.Background()) {
-		if err != nil || cookie == nil {
-			continue
-		}
-		cookies = append(cookies, cookie)
-	}
-	return cookies
+func ReadCookies(ctx context.Context, filters ...Filter) (Cookies, error) {
+	return TraverseCookies(ctx).ReadAllCookies(ctx)
+}
+
+func AllCookies(filters ...Filter) Cookies {
+	// for convenience...
+	ctx := context.Background()
+	return TraverseCookies(ctx).Collect(ctx)
 }
 
 type CookieSeq iter.Seq2[*Cookie, error]
@@ -51,7 +51,7 @@ func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
 			c *Cookie
 			e error
 		}
-		cookieChan := make(chan ce)
+		cookieChan := make(chan ce, 1)
 
 		var wgTot sync.WaitGroup
 		defer wgTot.Wait()
@@ -88,7 +88,7 @@ func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
 
 		wgTot.Add(runtime.NumCPU())
 		for range runtime.NumCPU() {
-			go func() {
+			go func(yield func(*Cookie, error) bool) {
 				defer wgTot.Done()
 				for {
 					select {
@@ -96,6 +96,7 @@ func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
 						return
 					case c, ok := <-cookieChan:
 						if !ok {
+							cancel()
 							return
 						}
 						if !yield(c.c, c.e) {
@@ -104,12 +105,18 @@ func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
 						}
 					}
 				}
-			}()
+			}(yield)
 		}
 	}
 }
 
-func (s CookieSeq) ReadAllCookies(ctx context.Context) ([]*Cookie, error) {
+// Collect() is the same as ReadAllCookies but ignores the error
+func (s CookieSeq) Collect(ctx context.Context) Cookies {
+	cookies, _ := s.ReadAllCookies(ctx)
+	return cookies
+}
+
+func (s CookieSeq) ReadAllCookies(ctx context.Context) (Cookies, error) {
 	if s == nil {
 		return nil, errors.New(`nil receiver`)
 	}
@@ -136,8 +143,9 @@ Outer:
 	return cookies, errors.Join(errs...)
 }
 
-func (s CookieSeq) OnlyCookies() iter.Seq[*Cookie] {
-	return func(yield func(*Cookie) bool) {
+// sequence of non-nil cookies and nil errors
+func (s CookieSeq) OnlyCookies() CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
 		if s == nil {
 			return
 		}
@@ -145,7 +153,8 @@ func (s CookieSeq) OnlyCookies() iter.Seq[*Cookie] {
 			if err != nil || cookie == nil {
 				continue
 			}
-			if !yield(cookie) {
+			fmt.Println("yield is nil (2):", yield == nil)
+			if !yield(cookie, nil) {
 				return
 			}
 		}
@@ -187,7 +196,7 @@ func (s CookieSeq) FirstMatch(ctx context.Context, filters ...Filter) *Cookie {
 	if s == nil {
 		return nil
 	}
-	for cookie := range s.OnlyCookies() {
+	for cookie, _ := range s.OnlyCookies() {
 		select {
 		case <-ctx.Done():
 			return nil
@@ -240,3 +249,66 @@ func mergeSeqs[S iter.Seq2[T, error], T any](seqs ...S) S {
 		return seqs2
 	}
 }
+
+func (s CookieSeq) Chan(ctx context.Context) <-chan *Cookie {
+	cookieChan := make(chan *Cookie)
+	go func() {
+		defer close(cookieChan)
+		for cookie, err := range s {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			if err != nil || cookie == nil {
+				continue
+			}
+			cookieChan <- cookie
+		}
+	}()
+	return cookieChan
+}
+
+type Cookies []*Cookie
+
+func (c Cookies) Seq() CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
+		if c == nil {
+			return
+		}
+		for _, cookie := range c {
+			if cookie == nil {
+				continue
+			}
+			if !yield(cookie, nil) {
+				return
+			}
+		}
+	}
+}
+
+/*
+	// TODO rm
+func (c Cookies) Seq(ctx context.Context, filters ...Filter) CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
+		if c == nil {
+			return
+		}
+		for _, cookie := range c {
+			if cookie == nil {
+				continue
+			}
+			if !FilterCookie(ctx, cookie, filters...) {
+				continue
+			}
+			if !yield(cookie, nil) {
+				return
+			}
+		}
+	}
+}
+
+func (c Cookies) Filter(ctx context.Context, filters ...Filter) CookieSeq {
+	return filterCookieSlice(ctx, c, filters...)
+}
+*/

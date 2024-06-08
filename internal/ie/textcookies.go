@@ -4,12 +4,14 @@ package ie
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 )
 
@@ -21,7 +23,7 @@ var _ cookies.CookieStore = (*TextCookieStore)(nil)
 
 func (s *TextCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return cookies.ErrCookieSeq(errors.New(`cookie store is nil`))
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	return func(yield func(*kooky.Cookie, error) bool) {
 		if err := s.Open(); err != nil {
@@ -114,7 +116,7 @@ func (s *TextCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieS
 				} else {
 					cookie = nil
 				}
-				if !cookies.CookieFilterYield(cookie, errCookie, yield, filters...) {
+				if !iterx.CookieFilterYield(context.Background(), cookie, errCookie, yield, filters...) {
 					return
 				}
 				errCookie = nil

@@ -26,19 +26,19 @@ func (f *uzblFinder) FindCookieStores() kooky.CookieStoreSeq {
 		files := []string{`session-cookies.txt`, `cookies.txt`}
 		lastFile := len(files) - 1
 
-		var stInner *cookies.DefaultCookieStore
+		/*var stInner *cookies.DefaultCookieStore
 		defer func() {
 			if stInner == nil || !stInner.IsDefaultProfileBool {
 				return
 			}
 			stInner.IsDefaultProfileBool = true
-		}()
+		}()*/
 		for root, err := range uzblRoots() {
 			if err != nil && !yield(nil, err) {
 				return
 			}
 			for i, filename := range files {
-				stInner = &cookies.DefaultCookieStore{
+				stInner := &cookies.DefaultCookieStore{
 					BrowserStr:           `uzbl`,
 					IsDefaultProfileBool: i == lastFile,
 					FileNameStr:          filepath.Join(root, `uzbl`, filename),
