@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -40,10 +41,25 @@ func FilterCookies[S CookieSeq | ~[]*Cookie | ~[]*http.Cookie](ctx context.Conte
 	switch cookiesTyped := any(cookies).(type) {
 	case CookieSeq:
 		ret = filterCookieSeq(ctx, cookiesTyped, filters...)
+	case Cookies:
+		ret = filterCookieSlice(ctx, []*Cookie(cookiesTyped), filters...)
 	case []*Cookie:
 		ret = filterCookieSlice(ctx, cookiesTyped, filters...)
 	case []*http.Cookie:
 		ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+	default:
+		rv := reflect.ValueOf(cookies)
+		rtc := reflect.TypeFor[[]*Cookie]()
+		rthc := reflect.TypeFor[[]*http.Cookie]()
+		if rv.CanConvert(rtc) {
+			cookiesTyped := rv.Convert(rtc).Interface().([]*Cookie)
+			ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+		} else if rv.CanConvert(rthc) {
+			cookiesTyped := rv.Convert(rthc).Interface().([]*http.Cookie)
+			ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+		} else {
+			ret = func(yield func(*Cookie, error) bool) { yield(nil, errors.New(`unknown type`)) }
+		}
 	}
 	return ret
 }

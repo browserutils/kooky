@@ -112,7 +112,9 @@ func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
 
 // Collect() is the same as ReadAllCookies but ignores the error
 func (s CookieSeq) Collect(ctx context.Context) Cookies {
-	cookies, _ := s.ReadAllCookies(ctx)
+	cookies, e := s.ReadAllCookies(ctx)
+	fmt.Println(e)
+	fmt.Println(cookies)
 	return cookies
 }
 
