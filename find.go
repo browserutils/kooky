@@ -28,7 +28,6 @@ type BrowserInfo interface {
 
 // CookieStoreFinder tries to find cookie stores at default locations.
 type CookieStoreFinder interface {
-	// FindCookieStores() ([]CookieStore, error)
 	FindCookieStores() CookieStoreSeq
 }
 

@@ -3,16 +3,12 @@ package kooky
 import (
 	"context"
 	"errors"
-	"fmt"
 	"iter"
 	"net/http"
 	"runtime"
 	"sync"
 	"time"
 )
-
-// TODO(zellyn): figure out what to do with quoted values, like the "bcookie" cookie
-// from slideshare.net
 
 // Cookie is the struct returned by functions in this package. Similar to http.Cookie.
 type Cookie struct {
@@ -22,7 +18,8 @@ type Cookie struct {
 	Browser   BrowserInfo
 }
 
-// ReadCookies() uses registered cookiestore finders to read cookies.
+// Cookie retrieving functions in this package like TraverseCookies(), ReadCookies(), AllCookies()
+// use registered cookiestore finders to read cookies.
 // Erronous reads are skipped.
 //
 // Register cookie store finders for all browsers like this:
@@ -42,6 +39,7 @@ func AllCookies(filters ...Filter) Cookies {
 	return TraverseCookies(ctx).Collect(ctx)
 }
 
+// for-rangeable cookie retriever
 type CookieSeq iter.Seq2[*Cookie, error]
 
 func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
@@ -153,7 +151,6 @@ func (s CookieSeq) OnlyCookies() CookieSeq {
 			if err != nil || cookie == nil {
 				continue
 			}
-			fmt.Println("yield is nil (2):", yield == nil)
 			if !yield(cookie, nil) {
 				return
 			}
@@ -286,29 +283,3 @@ func (c Cookies) Seq() CookieSeq {
 		}
 	}
 }
-
-/*
-	// TODO rm
-func (c Cookies) Seq(ctx context.Context, filters ...Filter) CookieSeq {
-	return func(yield func(*Cookie, error) bool) {
-		if c == nil {
-			return
-		}
-		for _, cookie := range c {
-			if cookie == nil {
-				continue
-			}
-			if !FilterCookie(ctx, cookie, filters...) {
-				continue
-			}
-			if !yield(cookie, nil) {
-				return
-			}
-		}
-	}
-}
-
-func (c Cookies) Filter(ctx context.Context, filters ...Filter) CookieSeq {
-	return filterCookieSlice(ctx, c, filters...)
-}
-*/

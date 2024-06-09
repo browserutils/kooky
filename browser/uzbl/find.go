@@ -21,31 +21,23 @@ func init() {
 	kooky.RegisterFinder(`uzbl`, &uzblFinder{})
 }
 
+// TODO default profile
+
 func (f *uzblFinder) FindCookieStores() kooky.CookieStoreSeq {
 	return func(yield func(kooky.CookieStore, error) bool) {
 		files := []string{`session-cookies.txt`, `cookies.txt`}
-		lastFile := len(files) - 1
 
-		/*var stInner *cookies.DefaultCookieStore
-		defer func() {
-			if stInner == nil || !stInner.IsDefaultProfileBool {
-				return
-			}
-			stInner.IsDefaultProfileBool = true
-		}()*/
 		for root, err := range uzblRoots() {
 			if err != nil && !yield(nil, err) {
 				return
 			}
-			for i, filename := range files {
-				stInner := &cookies.DefaultCookieStore{
-					BrowserStr:           `uzbl`,
-					IsDefaultProfileBool: i == lastFile,
-					FileNameStr:          filepath.Join(root, `uzbl`, filename),
-				}
+			for _, filename := range files {
 				st := &cookies.CookieJar{
 					CookieStore: &netscape.CookieStore{
-						DefaultCookieStore: *stInner,
+						DefaultCookieStore: cookies.DefaultCookieStore{
+							BrowserStr:  `uzbl`,
+							FileNameStr: filepath.Join(root, `uzbl`, filename),
+						},
 					},
 				}
 				if !yield(st, nil) {

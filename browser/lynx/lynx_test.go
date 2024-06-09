@@ -2,7 +2,6 @@ package lynx
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ func TestReadCookies(t *testing.T) {
 
 	var cookies []*kooky.Cookie
 	for cookie, err := range TraverseCookies(testCookiesPath) {
-		fmt.Println(cookie, err)
 		if err != nil && !errors.Is(err, netscape.ErrNotStrict) {
 			t.Fatal(err)
 		}

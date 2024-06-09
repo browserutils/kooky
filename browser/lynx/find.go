@@ -33,20 +33,19 @@ func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
 			return
 		}
 
-		var ret []kooky.CookieStore
 		// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
-		ret = append(
-			ret,
-			&cookies.CookieJar{
-				CookieStore: &netscape.CookieStore{
-					DefaultCookieStore: cookies.DefaultCookieStore{
-						BrowserStr:           `lynx`,
-						IsDefaultProfileBool: true,
-						FileNameStr:          filepath.Join(home, `.lynx_cookies`),
-					},
+		st := &cookies.CookieJar{
+			CookieStore: &netscape.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           `lynx`,
+					IsDefaultProfileBool: true,
+					FileNameStr:          filepath.Join(home, `.lynx_cookies`),
 				},
 			},
-		)
+		}
+		if !yield(st, nil) {
+			return
+		}
 
 		// parse config files so that we don't have to execute lynx -show_cfg
 		configFiles := []string{
@@ -60,6 +59,21 @@ func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
 		// COOKIE_FILE:/path/to/directory/.lynx_cookies // read file (?)
 		// COOKIE_SAVE_FILE:/path/to/directory/.lynx_cookies // save file
 
+		var primCookieFile string
+		storeForFile := func(cookieFile string) *cookies.CookieJar {
+			return &cookies.CookieJar{
+				CookieStore: &netscape.CookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr: `lynx`,
+						// last one probably overwrites earlier configuration
+						IsDefaultProfileBool: cookieFile == primCookieFile,
+						FileNameStr:          cookieFile,
+					},
+				},
+			}
+		}
+
+		cookieMap := make(map[string]struct{})
 		var includes, cookieFiles, cookieSaveFiles []string
 		parse := func(configFile string) error {
 			file, err := utils.OpenFile(configFile)
@@ -80,13 +94,20 @@ func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
 				if strings.HasPrefix(line, `COOKIE_FILE:`) {
 					sp := strings.Split(line, `:`)
 					if len(sp) == 2 {
-						cookieFiles = append(cookieFiles, sp[1])
+						// cookie file
+						cookieFile := sp[1]
+						primCookieFile = cookieFile
+						cookieFiles = append(cookieFiles, cookieFile)
+						cookieMap[cookieFile] = struct{}{}
 					}
 				}
 				if strings.HasPrefix(line, `COOKIE_SAVE_FILE:`) {
 					sp := strings.Split(line, `:`)
 					if len(sp) == 2 {
-						cookieSaveFiles = append(cookieSaveFiles, sp[1])
+						// cookie save file
+						cookieSaveFile := sp[1]
+						cookieSaveFiles = append(cookieSaveFiles, cookieSaveFile)
+						cookieMap[cookieSaveFile] = struct{}{}
 					}
 				}
 			}
@@ -103,43 +124,9 @@ func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
 			goto configFileLoop
 		}
 
-		var primCookieFile string
-		if len(cookieFiles) > 0 {
-			primCookieFile = cookieFiles[len(cookieFiles)-1]
-		}
-
-		cookieMap := make(map[string]struct{})
-		for _, cookieFile := range append(cookieSaveFiles, cookieFiles...) {
-			if _, exists := cookieMap[cookieFile]; exists {
-				continue
-			}
-			cookieMap[cookieFile] = struct{}{}
-		}
-
-		{
-			last := len(cookieMap) - 1
-			i := 0
-			for cookieFile := range cookieMap {
-				ret = append(
-					ret,
-					&cookies.CookieJar{
-						CookieStore: &netscape.CookieStore{
-							DefaultCookieStore: cookies.DefaultCookieStore{
-								BrowserStr: `lynx`,
-								// last one probably overwrites earlier configuration
-								IsDefaultProfileBool: cookieFile == primCookieFile || i == last,
-								FileNameStr:          cookieFile,
-							},
-						},
-					},
-				)
-				i++
-			}
-		}
-
-		for _, st := range ret {
-			// TODO
-			if !yield(st, nil) {
+		// primCookieFile is now set
+		for cookieFile := range cookieMap {
+			if !yield(storeForFile(cookieFile), nil) {
 				return
 			}
 		}
