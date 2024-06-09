@@ -8,7 +8,7 @@ import (
 )
 
 // Filter is used for filtering cookies in ReadCookies() functions.
-// Filter order might be changed for peformance reasons
+// Filter order might be changed for performance reasons
 // (omission of value decryption of filtered out cookies, etc).
 //
 // A cookie passes the Filter if Filter.Filter returns true.

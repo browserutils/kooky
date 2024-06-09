@@ -72,12 +72,6 @@ func main() {
 		}
 
 		cookies, _ := store.ReadCookies(filters...)
-		/*fmt.Println(store.FilePath()) // TODO rm
-		cookies, err := store.ReadCookies(filters...)
-		if err != nil {
-			fmt.Println(err)
-		}*/
-		// continue // TODO rm
 
 		if export != nil && len(*export) > 0 {
 			cookiesExport = append(cookiesExport, cookies...)
