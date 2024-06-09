@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Filter is used for filtering cokies in ReadCookies() functions.
+// Filter is used for filtering cookies in ReadCookies() functions.
 // Filter order might be changed for peformance reasons
 // (omission of value decryption of filtered out cookies, etc).
 //

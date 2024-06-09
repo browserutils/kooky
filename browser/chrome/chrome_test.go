@@ -9,7 +9,6 @@ import (
 	"github.com/browserutils/kooky/internal/testutils"
 )
 
-// d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadCookies(t *testing.T) {
 	testCookiesPath, err := testutils.GetTestDataFilePath("chrome-macos-cookie-db.sqlite") // this test file was created on macos
 	if err != nil {
