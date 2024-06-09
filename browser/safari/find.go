@@ -15,17 +15,16 @@ func init() {
 	kooky.RegisterFinder(`safari`, &safariFinder{})
 }
 
-func (f *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	fileStrs, err := cookieFiles()
-	if err != nil {
-		return nil, err
-	}
+func (f *safariFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		fileStrs, err := cookieFiles()
+		if err != nil {
+			_ = yield(nil, err)
+			return
+		}
 
-	var ret []kooky.CookieStore
-	for i, fileStr := range fileStrs {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+		for i, fileStr := range fileStrs {
+			st := &cookies.CookieJar{
 				CookieStore: &safariCookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
 						BrowserStr:           `safari`,
@@ -33,9 +32,10 @@ func (f *safariFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						FileNameStr:          fileStr,
 					},
 				},
-			},
-		)
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-
-	return ret, nil
 }

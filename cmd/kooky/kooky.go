@@ -1,36 +1,58 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/spf13/pflag"
+
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
+)
 
-	"github.com/spf13/pflag"
+var (
+	browser        *string
+	profile        *string
+	defaultProfile *bool
 )
 
 func main() {
-	browser := pflag.StringP(`browser`, `b`, ``, `browser filter`)
-	profile := pflag.StringP(`profile`, `p`, ``, `profile filter`)
-	defaultProfile := pflag.BoolP(`default-profile`, `q`, false, `only default profile(s)`)
+	browser = pflag.StringP(`browser`, `b`, ``, `browser filter`)
+	profile = pflag.StringP(`profile`, `p`, ``, `profile filter`)
+	defaultProfile = pflag.BoolP(`default-profile`, `q`, false, `only default profile(s)`)
 	showExpired := pflag.BoolP(`expired`, `e`, false, `show expired cookies`)
 	domain := pflag.StringP(`domain`, `d`, ``, `cookie domain filter (partial)`)
 	name := pflag.StringP(`name`, `n`, ``, `cookie name filter (exact)`)
 	export := pflag.StringP(`export`, `o`, ``, `export cookies in netscape format`)
 	pflag.Parse()
 
-	cookieStores := kooky.FindAllCookieStores()
+	// cookie filters
+	filters := []kooky.Filter{storeFilter}
+	if showExpired == nil || !*showExpired {
+		filters = append(filters, kooky.Valid)
+	}
+	if domain != nil && len(*domain) > 0 {
+		filters = append(filters, kooky.DomainContains(*domain))
+	}
+	if name != nil && len(*name) > 0 {
+		filters = append(filters, kooky.Name(*name))
+	}
 
-	var cookiesExport []*kooky.Cookie // for netscape export
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() { <-c; cancel() }()
 
-	var f io.Writer         // for netscape export
-	var w *tabwriter.Writer // for printing
+	seq := kooky.TraverseCookies(ctx, filters...)
+
 	if export != nil && len(*export) > 0 {
+		var f io.Writer // for netscape export
 		if *export == `-` {
 			f = os.Stdout
 		} else {
@@ -41,74 +63,77 @@ func main() {
 			defer fl.Close()
 			f = fl
 		}
-	} else {
-		w = tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+		seq.Export(ctx, f)
+		return
 	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0) // for printing
+
 	trimLen := 45
-	for _, store := range cookieStores {
-		defer store.Close()
-
-		// cookie store filters
-		if browser != nil && len(*browser) > 0 && store.Browser() != *browser {
-			continue
-		}
-		if profile != nil && len(*profile) > 0 && store.Profile() != *profile {
-			continue
-		}
-		if defaultProfile != nil && *defaultProfile && !store.IsDefaultProfile() {
-			continue
-		}
-
-		// cookie filters
-		var filters []kooky.Filter
-		if showExpired == nil || !*showExpired {
-			filters = append(filters, kooky.Valid)
-		}
-		if domain != nil && len(*domain) > 0 {
-			filters = append(filters, kooky.DomainContains(*domain))
-		}
-		if name != nil && len(*name) > 0 {
-			filters = append(filters, kooky.Name(*name))
-		}
-
-		cookies, _ := store.ReadCookies(filters...)
-		/*fmt.Println(store.FilePath()) // TODO rm
-		cookies, err := store.ReadCookies(filters...)
-		if err != nil {
-			fmt.Println(err)
-		}*/
-		// continue // TODO rm
-
-		if export != nil && len(*export) > 0 {
-			cookiesExport = append(cookiesExport, cookies...)
-		} else {
-			for _, cookie := range cookies {
-				container := cookie.Container
-				if len(container) > 0 {
-					container = ` [` + container + `]`
-				}
-				fmt.Fprintf(
-					w,
-					"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					store.Browser(),
-					store.Profile(),
-					container,
-					trimStr(store.FilePath(), trimLen),
-					trimStr(cookie.Domain, trimLen),
-					trimStr(cookie.Name, trimLen),
-					// be careful about raw bytes
-					trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-					cookie.Expires.Format(`2006.01.02 15:04:05`),
-				)
-			}
-		}
+	// use channel so that tabwriter won't panic
+	for cookie := range seq.Chan(ctx) {
+		prCookieLine(w, cookie, trimLen)
 	}
-	if export != nil && len(*export) > 0 {
-		kooky.ExportCookies(f, cookiesExport)
-	} else {
-		w.Flush()
-	}
+	w.Flush()
 }
+
+func prCookieLine(w io.Writer, cookie *kooky.Cookie, trimLen int) {
+	if cookie == nil {
+		return
+	}
+	container := cookie.Container
+	if len(container) > 0 {
+		container = ` [` + container + `]`
+	}
+	fmt.Fprintf(
+		w,
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		prBrowser(cookie),
+		prProfile(cookie),
+		container,
+		trimStr(prFilePath(cookie), trimLen),
+		trimStr(cookie.Domain, trimLen),
+		trimStr(cookie.Name, trimLen),
+		// be careful about raw bytes
+		trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
+		cookie.Expires.Format(`2006.01.02 15:04:05`),
+	)
+}
+
+func prBrowser(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.Browser()
+}
+
+func prProfile(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.Profile()
+}
+
+func prFilePath(c *kooky.Cookie) string {
+	if c == nil || c.Browser == nil {
+		return ``
+	}
+	return c.Browser.FilePath()
+}
+
+var storeFilter = kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
+	// cookie store filters
+	if browser != nil && len(*browser) > 0 && cookie.Browser.Browser() != *browser {
+		return false
+	}
+	if profile != nil && len(*profile) > 0 && cookie.Browser.Profile() != *profile {
+		return false
+	}
+	if defaultProfile != nil && *defaultProfile && !cookie.Browser.IsDefaultProfile() {
+		return false
+	}
+	return true
+})
 
 func trimStr(str string, length int) string {
 	if len(str) <= length {

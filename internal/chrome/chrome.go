@@ -2,6 +2,7 @@ package chrome
 
 import (
 	"bytes"
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha1"
@@ -13,97 +14,94 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 	"github.com/browserutils/kooky/internal/utils"
 )
 
 // Thanks to https://gist.github.com/dacort/bd6a5116224c594b14db
 
-func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	} else if s.Database == nil {
-		return nil, errors.New(`database is nil`)
+		return iterx.ErrCookieSeq(errors.New(`database is nil`))
 	}
-
-	var cookies []*kooky.Cookie
 
 	headerMappings := map[string]string{
 		"secure":   "is_secure",
 		"httponly": "is_httponly",
 	}
 
-	var valueFilters, nonValueFilters []kooky.Filter
-	for _, filter := range filters {
-		if _, ok := filter.(kooky.ValueFilterFunc); ok {
-			valueFilters = append(valueFilters, filter)
-		} else {
-			nonValueFilters = append(nonValueFilters, filter)
-		}
+	splitFilters := true
+	valRetr := func(row utils.TableRow) func(c *kooky.Cookie) error {
+		return func(c *kooky.Cookie) error { return s.saveCookieValue(c, row) }
 	}
+	yldr := iterx.NewCookieFilterYielder(splitFilters, filters...)
 
-	visitor := func(rowID *int64, row utils.TableRow) error {
-		cookie := &kooky.Cookie{
-			Creation: timex.FromFILETIME(*rowID * 10),
-		}
-
-		var err error
-
-		cookie.Domain, err = row.String(`host_key`)
-		if err != nil {
-			return err
-		}
-
-		cookie.Name, err = row.String(`name`)
-		if err != nil {
-			return err
-		}
-
-		cookie.Path, err = row.String(`path`)
-		if err != nil {
-			return err
-		}
-
-		if expiresUTC, err := row.Int64(`expires_utc`); err == nil {
-			// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
-			if expiresUTC != 0 {
-				cookie.Expires = timex.FromFILETIME(expiresUTC * 10)
+	ctx := context.Background()
+	visitor := func(ctx context.Context, yield func(*kooky.Cookie, error) bool) func(rowID *int64, row utils.TableRow) error {
+		return func(rowID *int64, row utils.TableRow) error {
+			cookie := &kooky.Cookie{
+				Creation: timex.FromFILETIME(*rowID * 10),
 			}
-		} else {
-			return err
-		}
 
-		cookie.Secure, err = row.Bool(`is_secure`)
-		if err != nil {
-			return err
-		}
+			var err error
 
-		cookie.HttpOnly, err = row.Bool(`is_httponly`)
-		if err != nil {
-			return err
-		}
+			cookie.Domain, err = row.String(`host_key`)
+			if err != nil {
+				return err
+			}
 
-		if !kooky.FilterCookie(cookie, nonValueFilters...) {
-			return nil // cookie filtered out
-		}
-		if err := s.saveCookieValue(cookie, row); err != nil {
-			return err
-		}
-		if !kooky.FilterCookie(cookie, valueFilters...) {
-			return nil // cookie filtered out
-		}
-		cookies = append(cookies, cookie)
+			cookie.Name, err = row.String(`name`)
+			if err != nil {
+				return err
+			}
 
-		return nil
+			cookie.Path, err = row.String(`path`)
+			if err != nil {
+				return err
+			}
+
+			if expiresUTC, err := row.Int64(`expires_utc`); err == nil {
+				// https://cs.chromium.org/chromium/src/base/time/time.h?l=452&rcl=fceb9a030c182e939a436a540e6dacc70f161cb1
+				if expiresUTC != 0 {
+					cookie.Expires = timex.FromFILETIME(expiresUTC * 10)
+				}
+			} else {
+				return err
+			}
+
+			cookie.Secure, err = row.Bool(`is_secure`)
+			if err != nil {
+				return err
+			}
+
+			cookie.HttpOnly, err = row.Bool(`is_httponly`)
+			if err != nil {
+				return err
+			}
+			cookie.Browser = s
+
+			if !yldr(ctx, yield, cookie, nil, valRetr(row)) {
+				return iterx.ErrYieldEnd
+			}
+
+			return nil
+		}
 	}
-	if err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, visitor); err != nil {
-		return nil, err
+
+	seq := func(yield func(*kooky.Cookie, error) bool) {
+		err := utils.VisitTableRows(s.Database, `cookies`, headerMappings, visitor(ctx, yield))
+		if !errors.Is(err, iterx.ErrYieldEnd) {
+			yield(nil, err)
+		}
 	}
 
-	return cookies, nil
+	return seq
 }
 
 // query, decrypt and store cookie value

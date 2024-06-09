@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 )
 
-func firefoxRoots() ([]string, error) {
+func firefoxRoots(yield func(string, error) bool) {
 	// "%AppData%"
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	return []string{filepath.Join(cfgDir, `Mozilla`, `Firefox`)}, nil
+	if !yield(filepath.Join(cfgDir, `Mozilla`, `Firefox`), nil) {
+		return
+	}
 }

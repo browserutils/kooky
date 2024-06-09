@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 )
 
-func firefoxRoots() ([]string, error) {
+func firefoxRoots(yield func(string, error) bool) {
 	// "$HOME/Library/Application Support"
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	return []string{filepath.Join(cfgDir, `Firefox`)}, nil
+	if !yield(filepath.Join(cfgDir, `Firefox`), nil) {
+		return
+	}
 }

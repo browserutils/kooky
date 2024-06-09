@@ -18,42 +18,47 @@ func init() {
 	kooky.RegisterFinder(`konqueror`, &konquerorFinder{})
 }
 
-func (f *konquerorFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	roots, err := konquerorRoots()
-	if err != nil {
-		return nil, err
+func (f *konquerorFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		//var stInner *cookies.DefaultCookieStore
+		/*defer func() {
+			if stInner == nil {
+				return
+			}
+			stInner.IsDefaultProfileBool = true
+		}()*/
+		for root, err := range konquerorRoots {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
+			stInner := &cookies.DefaultCookieStore{
+				BrowserStr:  `konqueror`,
+				FileNameStr: filepath.Join(root, `kcookiejar`, `cookies`),
+			}
+			st := &cookies.CookieJar{CookieStore: &konquerorCookieStore{DefaultCookieStore: *stInner}}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-
-	var ret []kooky.CookieStore
-
-	last := len(roots) - 1
-	for i, root := range roots {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
-				CookieStore: &konquerorCookieStore{
-					DefaultCookieStore: cookies.DefaultCookieStore{
-						BrowserStr:           `konqueror`,
-						IsDefaultProfileBool: i == last,
-						FileNameStr:          filepath.Join(root, `kcookiejar`, `cookies`),
-					},
-				},
-			},
-		)
-	}
-
-	return ret, nil
 }
 
-func konquerorRoots() ([]string, error) {
-	var ret []string
+func konquerorRoots(yield func(string, error) bool) {
 	// fallback
-	if home, err := os.UserHomeDir(); err == nil {
-		ret = append(ret, filepath.Join(home, `.local`, `share`))
+	if home, err := os.UserHomeDir(); err != nil {
+		if !yield(``, err) {
+			return
+		}
+	} else {
+		if !yield(filepath.Join(home, `.local`, `share`), nil) {
+			return
+		}
 	}
 	if dataDir, ok := os.LookupEnv(`XDG_DATA_HOME`); ok {
-		ret = append(ret, dataDir)
+		if !yield(dataDir, nil) {
+			return
+		}
 	}
-
-	return ret, nil
 }

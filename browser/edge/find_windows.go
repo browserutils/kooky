@@ -7,26 +7,23 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/browserutils/kooky"
 	iefind "github.com/browserutils/kooky/internal/ie/find"
 )
 
-func edgeChromiumRoots() ([]string, error) {
+func edgeChromiumRoots(yield func(string, error) bool) {
 	// %LocalAppData%
 	locApp, err := os.UserCacheDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-
-	var ret = []string{
-		filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`),
+	if !yield(filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`), nil) {
+		return
 	}
-
-	return ret, nil
 }
 
 func init() {
-	edgeOldCookieStores = func() ([]kooky.CookieStore, error) { return (&iefind.IEFinder{Browser: `edge`}).FindCookieStores() }
+	edgeOldCookieStores = (&iefind.IEFinder{Browser: `edge`}).FindCookieStores()
 }
 
 /*

@@ -4,6 +4,6 @@ package edge
 
 import "errors"
 
-func edgeChromiumRoots() ([]string, error) {
-	return nil, errors.New(`platform not supported`)
+func edgeChromiumRoots(yield func(string, error) bool) {
+	_ = yield(``, errors.New(`platform not supported`))
 }

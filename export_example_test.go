@@ -1,6 +1,7 @@
 package kooky_test
 
 import (
+	"context"
 	"net/http"
 	"os"
 
@@ -19,5 +20,5 @@ func ExampleExportCookies() {
 	}
 	defer file.Close()
 
-	kooky.ExportCookies(file, cookies)
+	kooky.ExportCookies(context.TODO(), file, cookies)
 }

@@ -4,13 +4,14 @@ import (
 	"errors"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/internal/iterx"
 )
 
-func (s *CookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
+	if s == nil || s.CookieStore == nil {
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
-	return s.CookieStore.ReadCookies(filters...)
+	return s.CookieStore.TraverseCookies(filters...)
 }
 
 /*

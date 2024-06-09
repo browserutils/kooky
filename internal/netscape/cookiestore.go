@@ -6,12 +6,18 @@ import (
 
 type CookieStore struct {
 	cookies.DefaultCookieStore
-	IsStrictBool bool
+	isStrict func() bool
 }
 
 // strict netscape cookies.txt format
 func (s *CookieStore) IsStrict() bool {
-	return s != nil && s.IsStrictBool
+	if s == nil {
+		return false
+	}
+	if s.isStrict == nil {
+		_, s.isStrict = TraverseCookies(s.File, s)
+	}
+	return s.isStrict()
 }
 
 var _ cookies.CookieStore = (*CookieStore)(nil)

@@ -15,17 +15,16 @@ func init() {
 	kooky.RegisterFinder(`chrome`, &chromeFinder{})
 }
 
-func (f *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	files, err := find.FindChromeCookieStoreFiles()
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []kooky.CookieStore
-	for _, file := range files {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+func (f *chromeFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		for file, err := range find.FindChromeCookieStoreFiles() {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			st := &cookies.CookieJar{
 				CookieStore: &chrome.CookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
 						BrowserStr:           file.Browser,
@@ -35,8 +34,10 @@ func (f *chromeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						FileNameStr:          file.Path,
 					},
 				},
-			},
-		)
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-	return ret, nil
 }

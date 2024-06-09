@@ -1,36 +1,19 @@
 package dillo
 
 import (
-	"net/http"
+	"context"
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/netscape"
 )
 
-func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	return s.ReadCookies(filters...)
+func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	return cookies.SingleRead(cookieStore, filename, filters...).ReadAllCookies(ctx)
 }
 
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the Dillo browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
+func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStore, filename, filters...)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
@@ -43,5 +26,5 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 	s.FileNameStr = filename
 	s.BrowserStr = `dillo`
 
-	return &cookies.CookieJar{CookieStore: s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }

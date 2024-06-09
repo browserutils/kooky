@@ -1,6 +1,7 @@
 package cookies
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/cookiejar"
@@ -21,18 +22,30 @@ type CookieJar struct {
 	*cookiejar.Jar
 	init    sync.Once
 	initErr error
+	filters []kooky.Filter
+	cookies kooky.Cookies // duplicate storage required for SubJar()
 	CookieStore
 }
 
+func NewCookieJar(st CookieStore, filters ...kooky.Filter) *CookieJar {
+	// TODO set struct fields of the CookieStore:
+	// FileNameStr, BrowserStr, string; CookieStore CookieStore (inner), File *os.File
+	return &CookieJar{
+		filters:     filters,
+		CookieStore: st,
+	}
+}
+
 func (s *CookieJar) Cookies(u *url.URL) []*http.Cookie {
+	var ret []*http.Cookie
 	if s == nil || s.CookieStore == nil || s.initErr != nil {
-		return nil
+		return ret
 	}
 	if err := s.InitJar(); err != nil {
-		return nil
+		return ret
 	}
-	if s.Jar == nil {
-		return nil
+	if s.Jar == nil || u == nil {
+		return ret
 	}
 	return s.Jar.Cookies(u)
 }
@@ -45,11 +58,18 @@ func (s *CookieJar) InitJar() error {
 		return errors.New(`no cookie store set`)
 	}
 	s.init.Do(func() {
-		kookies, err := s.CookieStore.ReadCookies()
-		defer s.Close()
-		if err != nil {
-			s.initErr = err
-			return
+		ctx := context.Background()
+		var kookies []*kooky.Cookie
+		if s.CookieStore != nil && len(s.cookies) == 0 {
+			var err error
+			kookies, err = s.CookieStore.TraverseCookies(s.filters...).ReadAllCookies(ctx)
+			defer s.Close()
+			if err != nil {
+				s.initErr = err
+				return
+			}
+		} else {
+			kookies = kooky.FilterCookies(ctx, s.cookies, s.filters...).Collect(ctx)
 		}
 		jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 		if err != nil {
@@ -57,38 +77,44 @@ func (s *CookieJar) InitJar() error {
 			return
 		}
 		s.Jar = jar
-		cookies := kookies2cookies(kookies)
+		s.cookies = kookies
+		cookies := kookies2cookies(ctx, kookies)
 		setAllCookies(s, cookies)
 	})
 
 	return s.initErr
 }
 
-func (s *CookieJar) SubJar(filters ...kooky.Filter) (http.CookieJar, error) {
+func (s *CookieJar) SubJar(ctx context.Context, filters ...kooky.Filter) (http.CookieJar, error) {
 	if s == nil {
 		return nil, errors.New(`nil receiver`)
 	}
 	if s.CookieStore == nil {
 		return nil, errors.New(`no cookie store set`)
 	}
-	kookies, err := s.CookieStore.ReadCookies(filters...)
-	defer s.Close()
-	if err != nil {
+	if err := s.InitJar(); err != nil {
 		return nil, err
 	}
+	kookies := kooky.FilterCookies(ctx, s.cookies, filters...).Collect(ctx)
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
 	if err != nil {
 		return nil, err
 	}
-	cookies := kookies2cookies(kookies)
+	j := &CookieJar{
+		filters:     append(s.filters, filters...),
+		cookies:     kookies,
+		Jar:         jar,
+		CookieStore: s.CookieStore,
+	}
+	cookies := kookies2cookies(ctx, kookies)
 	setAllCookies(jar, cookies)
 
-	return jar, nil
+	return j, nil
 }
 
-func kookies2cookies(kookies []*kooky.Cookie, filters ...kooky.Filter) []*http.Cookie {
-	filteredKookies := kooky.FilterCookies(kookies, filters...)
-	cookies := make([]*http.Cookie, len(filteredKookies))
+func kookies2cookies(ctx context.Context, kookies []*kooky.Cookie, filters ...kooky.Filter) []*http.Cookie {
+	filteredKookies := kooky.FilterCookies(ctx, kookies, filters...).Collect(ctx)
+	cookies := make([]*http.Cookie, 0, len(filteredKookies))
 	for _, k := range filteredKookies {
 		cookies = append(cookies, &k.Cookie)
 	}

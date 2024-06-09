@@ -8,21 +8,22 @@ import (
 	"path/filepath"
 )
 
-func operaPrestoRoots() ([]string, error) {
+func operaPrestoRoots(yield func(string, error) bool) {
 	// https://kb.digital-detective.net/display/BF/Location+of+Opera+Presto+Data
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
 
-	return []string{filepath.Join(home, `.opera`)}, nil
+	_ = yield(filepath.Join(home, `.opera`), nil)
 }
 
-func operaBlinkRoots() ([]string, error) {
+func operaBlinkRoots(yield func(string, error) bool) {
 	// https://kb.digital-detective.net/display/BF/Location+of+Opera+Blink+Data
 
-	var dotConfigs, ret []string
+	var dotConfigs []string
 
 	// fallback
 	if home, err := os.UserHomeDir(); err == nil {
@@ -32,10 +33,8 @@ func operaBlinkRoots() ([]string, error) {
 		dotConfigs = append(dotConfigs, dir)
 	}
 	for _, dotConfig := range dotConfigs {
-		ret = append(
-			ret,
-			filepath.Join(dotConfig, `opera`),
-		)
+		if !yield(filepath.Join(dotConfig, `opera`), nil) {
+			return
+		}
 	}
-	return ret, nil
 }

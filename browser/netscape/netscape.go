@@ -1,7 +1,7 @@
 package netscape
 
 import (
-	"net/http"
+	"context"
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
@@ -10,31 +10,20 @@ import (
 
 // This ReadCookies() function returns an additional boolean "strict" telling
 // if the file adheres to the netscape cookies.txt format
-func ReadCookies(filename string, filters ...kooky.Filter) (c []*kooky.Cookie, strict bool, e error) {
-	s := &netscape.CookieStore{}
-	s.FileNameStr = filename
-	s.BrowserStr = `netscape`
-
-	defer s.Close()
-
-	cookies, err := s.ReadCookies(filters...)
-
-	return cookies, s.IsStrict(), err
+func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) (_ []*kooky.Cookie, strict bool, _ error) {
+	cs, str := TraverseCookies(filename, filters...)
+	cookies, err := cs.ReadAllCookies(ctx)
+	strict = err == nil && str()
+	return cookies, strict, err
 }
 
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the Netscape browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
+// This TraverseCookies() function returns an additional boolean returning func "strict" telling
+// if the file adheres to the netscape cookies.txt format
+func TraverseCookies(filename string, filters ...kooky.Filter) (_ kooky.CookieSeq, strict func() bool) {
+	st := cookieStoreBasic(filename)
+	stFilt := cookies.NewCookieJar(st, filters...)
+	seq := cookies.ReadCookiesClose(stFilt, filters...)
+	return seq, st.IsStrict
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
@@ -43,9 +32,14 @@ func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, e
 }
 
 func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
-	s := &netscape.CookieStore{}
-	s.FileNameStr = filename
-	s.BrowserStr = `netscape`
-
-	return &cookies.CookieJar{CookieStore: s}, nil
+	return cookies.NewCookieJar(cookieStoreBasic(filename), filters...), nil
 }
+
+func cookieStoreBasic(filename string) *netscape.CookieStore {
+	st := &netscape.CookieStore{}
+	st.FileNameStr = filename
+	st.BrowserStr = `netscape`
+	return st
+}
+
+var ErrNotStrict = netscape.ErrNotStrict

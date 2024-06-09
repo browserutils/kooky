@@ -15,17 +15,15 @@ func init() {
 	kooky.RegisterFinder(`firefox`, &firefoxFinder{})
 }
 
-func (f *firefoxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	files, err := find.FindFirefoxCookieStoreFiles()
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []kooky.CookieStore
-	for _, file := range files {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+func (f *firefoxFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		for file, err := range find.FindFirefoxCookieStoreFiles() {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
+			st := &cookies.CookieJar{
 				CookieStore: &firefox.CookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
 						BrowserStr:           file.Browser,
@@ -34,9 +32,10 @@ func (f *firefoxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						FileNameStr:          file.Path,
 					},
 				},
-			},
-		)
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-
-	return ret, nil
 }

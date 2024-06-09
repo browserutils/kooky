@@ -18,14 +18,15 @@ func init() {
 	kooky.RegisterFinder(`w3m`, &w3mFinder{})
 }
 
-func (f *w3mFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
+func (f *w3mFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			_ = yield(nil, err)
+			return
+		}
 
-	var ret = []kooky.CookieStore{
-		&cookies.CookieJar{
+		st := &cookies.CookieJar{
 			CookieStore: &w3mCookieStore{
 				DefaultCookieStore: cookies.DefaultCookieStore{
 					BrowserStr:           `w3m`,
@@ -33,8 +34,9 @@ func (f *w3mFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 					FileNameStr:          filepath.Join(home, `.w3m`, `cookie`),
 				},
 			},
-		},
+		}
+		if !yield(st, nil) {
+			return
+		}
 	}
-
-	return ret, nil
 }

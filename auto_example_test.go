@@ -12,7 +12,7 @@ func ExampleReadCookies_all() {
 	// try to find cookie stores in default locations and
 	// read the cookies from them.
 	// decryption is handled automatically.
-	cookies := kooky.ReadCookies()
+	cookies := kooky.AllCookies()
 
 	for _, cookie := range cookies {
 		fmt.Println(cookie)

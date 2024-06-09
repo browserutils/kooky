@@ -3,7 +3,6 @@
 package utils
 
 import (
-	"fmt"
 	"os"
 	"syscall"
 	"unsafe"
@@ -104,10 +103,8 @@ func sysOpen(path string, mode int, perm uint32) (fd syscall.Handle, err error) 
 }
 
 func openFile(name string) (*os.File, error) {
-	fmt.Println("open locked file", name)
 	fd, err := sysOpen(name, os.O_RDONLY, 0)
 	if err != nil {
-		fmt.Println("open locked file error:", err)
 		return nil, err
 	}
 	f := os.NewFile(uintptr(fd), name)

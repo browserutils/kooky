@@ -15,17 +15,16 @@ func init() {
 	kooky.RegisterFinder(`netscape`, &netscapeFinder{})
 }
 
-func (f *netscapeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	files, err := find.FindCookieStoreFiles(netscapeRoots, `netscape`, `cookies.txt`)
-	if err != nil {
-		return nil, err
-	}
-
-	var ret []kooky.CookieStore
-	for _, file := range files {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+func (f *netscapeFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		for file, err := range find.FindCookieStoreFiles(netscapeRoots, `netscape`, `cookies.txt`) {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			st := &cookies.CookieJar{
 				CookieStore: &netscape.CookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
 						BrowserStr:           file.Browser,
@@ -34,9 +33,10 @@ func (f *netscapeFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						FileNameStr:          file.Path,
 					},
 				},
-			},
-		)
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-
-	return ret, nil
 }

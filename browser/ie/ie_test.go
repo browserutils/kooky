@@ -1,6 +1,7 @@
 package ie
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ func TestReadCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadCookies(testCookiesPath)
+	cookies, err := TraverseCookies(testCookiesPath).ReadAllCookies(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
