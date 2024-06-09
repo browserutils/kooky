@@ -15,12 +15,12 @@ all: kooky
 
 
 kooky: ${SRC}
-	@env GOWORK=off CGO_ENABLED=0 GOEXPERIMENT=rangefunc go build -trimpath -ldflags '-w -s' -o kooky${EXT} ./cmd/kooky
+	@env GOWORK=off GOEXPERIMENT=rangefunc go build -trimpath -ldflags '-w -s' -o kooky${EXT} ./cmd/kooky
 
 
 .PHONY: test
 test:
-	@env GOEXPERIMENT=rangefunc go test -count=1 -timeout=30s ./... | grep -v '^? '
+	@env GOWORK=off GOEXPERIMENT=rangefunc go test -count=1 -timeout=30s ./... | grep -v '^? '
 
 .PHONY: clean
 clean:
