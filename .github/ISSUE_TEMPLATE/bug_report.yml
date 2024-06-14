@@ -1,0 +1,70 @@
+# based on templates by the https://github.com/fyne-io/fyne project (BSD-3 License)
+name: Bug Report
+description: Create a bug report to help us improve.
+labels: ["bug", "unverified"]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please make sure you have read the following.
+    options:
+      - label: I have searched the [issue tracker](https://github.com/browserutils/kooky/issues) for open issues that relate to the same problem, before opening a new one.
+        required: true
+      - label: This issue only relates to a single bug. I will open new issues for any other problems.
+        required: true
+- type: textarea
+  attributes:
+    label: Describe the bug
+    description: A clear and concise description about the bug. Please include the full stack trace in the case of a crash.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: How to reproduce
+    description: A clear description of how to reproduce the problem.
+    placeholder: |
+      1. ...
+      2. ...
+      3. ...
+- type: textarea
+  attributes:
+    label: Example code
+    description: |
+      Add a short code snippet to help explain and simplify reproduction of the problem.
+      A good code example should be runnable and contain no more code than is necessary to reproduce the bug.
+    placeholder: |
+      Please write the code inside a code block with Go syntax highlighting enabled, like this:
+      ```go
+      Write your code here.
+      ```
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Kooky version
+    description: Clarify the version of Kooky that you are using.
+    placeholder: "e.g. v0.2.2 or git SHA"
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Go compiler version
+    description: Clarify the version of the Go compiler that you are using.
+    placeholder: "e.g. 1.18.3 or 1.22.4"
+  validations:
+    required: true
+- type: input
+  id: browser
+  attributes:
+    label: Browser
+    description: The name and version of the browser you are using.
+    placeholder: "e.g. Chromium 125, Firefox 115 ESR, ..."
+  validations:
+    required: true
+- type: input
+  attributes:
+    label: Operating system and version
+    description: The name and version of the operating system you are using.
+    placeholder: "e.g. Windows 10, macOS High Sierra or Ubuntu 18.04"
+  validations:
+    required: true
