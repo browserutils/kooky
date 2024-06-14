@@ -30,15 +30,6 @@ Some functions might not yet be implemented on some platforms.
 
 PRs more than welcome.
 
-## TODOs
-
-- [ ] Set up CI
-- [x] Make it work on Windows. (Look at
-      [this](https://play.golang.org/p/fknP9AuLU-) and
-      [this](https://github.com/cfstras/chromecsv/blob/master/crypt_windows.go)
-      to learn how to decrypt.)
-- [x] Handle rows in Chrome's cookie DB with other than 14 columns (?)
-
 ## Example usage
 
 ### Any Browser - Cookie Filter Usage
@@ -117,6 +108,7 @@ func main() {
 ```
 
 ## Thanks/references
+
 - Thanks to [@dacort](http://github.com/dacort) for MacOS cookie decrypting
   code at https://gist.github.com/dacort/bd6a5116224c594b14db.
 - Thanks to [@as0ler](http://github.com/as0ler)

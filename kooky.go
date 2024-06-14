@@ -5,10 +5,7 @@ import (
 	"time"
 )
 
-// TODO(zellyn): figure out what to do with quoted values, like the "bcookie" cookie
-// from slideshare.net
-
-// Cookie is the struct returned by functions in this package. Similar to http.Cookie.
+// Cookie is an http.Cookie augmented with information obtained through the scraping process.
 type Cookie struct {
 	http.Cookie
 	Creation  time.Time
