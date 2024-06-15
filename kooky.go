@@ -5,7 +5,6 @@ import (
 	"errors"
 	"iter"
 	"net/http"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -43,69 +42,7 @@ func AllCookies(filters ...Filter) Cookies {
 type CookieSeq iter.Seq2[*Cookie, error]
 
 func TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
-	return func(yield func(*Cookie, error) bool) {
-		ctx, cancel := context.WithCancel(ctx)
-		type ce struct {
-			c *Cookie
-			e error
-		}
-		cookieChan := make(chan ce, 1)
-
-		var wgTot sync.WaitGroup
-		defer wgTot.Wait()
-		wgTot.Add(1)
-		go func() {
-			defer wgTot.Done()
-
-			var wgTrav sync.WaitGroup
-			defer func() {
-				wgTrav.Wait()
-				cancel()
-				close(cookieChan)
-			}()
-			for cookieStore, _ := range TraverseCookieStores(ctx) {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-				wgTrav.Add(1)
-				go func(cookieStore CookieStore) {
-					defer wgTrav.Done()
-					for cookie, err := range cookieStore.TraverseCookies(filters...) {
-						select {
-						case <-ctx.Done():
-							return
-						default:
-						}
-						cookieChan <- ce{c: cookie, e: err}
-					}
-				}(cookieStore)
-			}
-		}()
-
-		wgTot.Add(runtime.NumCPU())
-		for range runtime.NumCPU() {
-			go func(yield func(*Cookie, error) bool) {
-				defer wgTot.Done()
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case c, ok := <-cookieChan:
-						if !ok {
-							cancel()
-							return
-						}
-						if !yield(c.c, c.e) {
-							cancel()
-							return
-						}
-					}
-				}
-			}(yield)
-		}
-	}
+	return TraverseCookieStores(ctx).TraverseCookies(ctx, filters...)
 }
 
 // Collect() is the same as ReadAllCookies but ignores the error

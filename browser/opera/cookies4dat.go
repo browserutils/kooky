@@ -67,11 +67,13 @@ func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.
 			return iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...)
 		}
 		_, err := p.process(yld)
-		if err != nil && err != io.EOF {
-			_ = yld(nil, err)
+		if err != nil {
+			if !p.end && !errors.Is(err, iterx.ErrYieldEnd) && !errors.Is(err, io.EOF) {
+				_ = yld(nil, err)
+			}
 			return
 		}
-		if !yld(p.cookie, nil) {
+		if p.end || !yld(p.cookie, nil) {
 			return
 		}
 	}
@@ -88,12 +90,15 @@ type processor struct {
 	cookie        *kooky.Cookie
 	filters       []kooky.Filter
 	browser       kooky.BrowserInfo
+	end           bool
 }
 
 func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) {
 	if p.idTagLength < 1 || p.idTagLength > 4 || p.lengthLength < 1 || p.lengthLength > 4 {
 		err := errors.New(`unexpected byte length values`)
-		yield(nil, err)
+		if !yield(nil, err) {
+			p.end = true
+		}
 		return 0, err
 	}
 
@@ -137,6 +142,7 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		c.Path = p.path
 		c.Browser = p.browser
 		if !yield(p.cookie, nil) {
+			p.end = true
 			return n, err
 		}
 		p.cookie = c

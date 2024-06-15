@@ -2,9 +2,9 @@ package kooky
 
 import (
 	"context"
+	"fmt"
 	"iter"
 	"net/http"
-	"runtime"
 	"sync"
 )
 
@@ -65,6 +65,23 @@ func FindAllCookieStores(ctx context.Context) []CookieStore {
 
 type CookieStoreSeq iter.Seq2[CookieStore, error]
 
+// sequence of non-nil cookie stores and nil errors
+func (s CookieStoreSeq) OnlyCookieStores() CookieStoreSeq {
+	return func(yield func(CookieStore, error) bool) {
+		if s == nil {
+			return
+		}
+		for cookieStore, err := range s {
+			if err != nil || cookieStore == nil {
+				continue
+			}
+			if !yield(cookieStore, nil) {
+				return
+			}
+		}
+	}
+}
+
 func (s CookieStoreSeq) AllCookieStores(ctx context.Context) []CookieStore {
 	var ret []CookieStore
 	if s == nil {
@@ -77,123 +94,146 @@ Outer:
 			break Outer
 		default:
 		}
+		if cookieStore == nil {
+			continue
+		}
 		ret = append(ret, cookieStore)
 	}
 	return ret
 }
 
 func (s CookieStoreSeq) TraverseCookies(ctx context.Context, filters ...Filter) CookieSeq {
-	return func(yield func(*Cookie, error) bool) {
-		if s == nil {
+	if s == nil {
+		return func(yield func(*Cookie, error) bool) {}
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	type ce struct {
+		c *Cookie
+		e error
+	}
+	startChan := make(chan struct{}, 1)
+	cookieChan := make(chan ce, 1)
+
+	go func() {
+		select {
+		case <-ctx.Done():
 			return
+		case <-startChan: // wait for iteration start
 		}
-		ctx, cancel := context.WithCancel(ctx)
-		type ce struct {
-			c *Cookie
-			e error
-		}
-		cookieChan := make(chan ce)
-
-		var wgTot sync.WaitGroup
-		defer wgTot.Wait()
-		wgTot.Add(1)
-		go func() {
-			defer wgTot.Done()
-
-			var wgTrav sync.WaitGroup
-			defer func() {
-				wgTrav.Wait()
-				cancel()
-				close(cookieChan)
-			}()
-			for cookieStore, _ := range s {
+		var wg sync.WaitGroup
+		defer func() {
+			wg.Wait()
+			cancel()
+			close(cookieChan)
+		}()
+		for cookieStore, err := range s {
+			if err != nil {
 				select {
 				case <-ctx.Done():
 					return
-				default:
+				case cookieChan <- ce{e: fmt.Errorf(`cookie store: %w`, err)}:
 				}
-				wgTrav.Add(1)
-				go func(cookieStore CookieStore) {
-					defer wgTrav.Done()
-					for cookie, err := range cookieStore.TraverseCookies(filters...) {
-						select {
-						case <-ctx.Done():
-							return
-						default:
-						}
-						cookieChan <- ce{c: cookie, e: err}
-					}
-				}(cookieStore)
+				continue
 			}
-		}()
-
-		wgTot.Add(runtime.NumCPU())
-		for range runtime.NumCPU() {
-			go func() {
-				defer wgTot.Done()
-				for {
+			if cookieStore == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(cookieStore CookieStore) {
+				defer wg.Done()
+				for cookie, err := range cookieStore.TraverseCookies(filters...) {
 					select {
 					case <-ctx.Done():
 						return
-					case c, ok := <-cookieChan:
-						if !ok {
-							return
-						}
-						if !yield(c.c, c.e) {
-							cancel()
-							return
-						}
+					case cookieChan <- ce{c: cookie, e: err}:
 					}
 				}
-			}()
+			}(cookieStore)
+		}
+	}()
+
+	return func(yield func(*Cookie, error) bool) {
+		startChan <- struct{}{}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case c, ok := <-cookieChan:
+				if !ok {
+					cancel()
+					return
+				}
+				if !yield(c.c, c.e) {
+					cancel()
+					return
+				}
+			}
 		}
 	}
 }
 
 func TraverseCookieStores(ctx context.Context) CookieStoreSeq {
-	return func(yield func(CookieStore, error) bool) {
+	ctx, cancel := context.WithCancel(ctx)
+	type se struct {
+		s CookieStore
+		e error
+	}
+	startChan := make(chan struct{}, 1)
+	storeChan := make(chan se, 1)
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-startChan:
+		}
+
 		var wg sync.WaitGroup
 		wg.Add(len(finders))
-
-		c := make(chan CookieStore)
-		done := make(chan struct{})
-
-		go func() {
-			for cookieStore := range c {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-				if !yield(cookieStore, nil) {
-					return
-				}
-
-			}
-			close(done)
+		defer func() {
+			wg.Wait()
+			cancel()
+			close(storeChan)
 		}()
 
 		muFinder.RLock()
 		defer muFinder.RUnlock()
+
 		for _, finder := range finders {
-			select {
-			case <-ctx.Done():
-				return
-			default:
+			if finder == nil {
+				wg.Done()
+				continue
 			}
 			go func(finder CookieStoreFinder) {
 				defer wg.Done()
 				for cookieStore, err := range finder.FindCookieStores() {
-					if err == nil && cookieStore != nil {
-						c <- cookieStore
+					select {
+					case <-ctx.Done():
+						return
+					case storeChan <- se{s: cookieStore, e: err}:
 					}
 				}
 			}(finder)
 		}
+	}()
 
-		wg.Wait()
-		close(c)
-
-		<-done
+	return func(yield func(CookieStore, error) bool) {
+		startChan <- struct{}{}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case s, ok := <-storeChan:
+				if !ok {
+					cancel()
+					return
+				}
+				if !yield(s.s, s.e) {
+					cancel()
+					return
+				}
+			}
+		}
 	}
 }

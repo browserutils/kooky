@@ -324,7 +324,7 @@ var HTTPOnly Filter = FilterFunc(func(cookie *Cookie) bool {
 
 // expires filters
 
-var Valid Filter = FilterFunc(func(cookie *Cookie) bool {
+var Valid Filter = ValueFilterFunc(func(cookie *Cookie) bool {
 	return cookie != nil && cookie.Expires.After(time.Now()) && cookie.Cookie.Valid() == nil
 })
 

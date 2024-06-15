@@ -11,6 +11,9 @@ import (
 func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
 	ret := true
 	if errCookie != nil {
+		if errors.Is(errCookie, ErrYieldEnd) {
+			return false
+		}
 		ret = yield(nil, errCookie)
 	}
 	if kooky.FilterCookie(ctx, cookie, filters...) {
@@ -71,4 +74,5 @@ func ErrCookieSeq(e error) kooky.CookieSeq {
 	return func(yield func(*kooky.Cookie, error) bool) { yield(nil, e) }
 }
 
+// this error should not surface to the library user
 var ErrYieldEnd = errors.New(`yield end`)
