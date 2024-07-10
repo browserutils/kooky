@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -22,6 +23,7 @@ func main() {
 	domain := pflag.StringP(`domain`, `d`, ``, `cookie domain filter (partial)`)
 	name := pflag.StringP(`name`, `n`, ``, `cookie name filter (exact)`)
 	export := pflag.StringP(`export`, `o`, ``, `export cookies in netscape format`)
+	jsonFormat := pflag.BoolP(`json`, `j`, false, `JSON output format`)
 	pflag.Parse()
 
 	cookieStores := kooky.FindAllCookieStores()
@@ -77,23 +79,31 @@ func main() {
 			cookiesExport = append(cookiesExport, cookies...)
 		} else {
 			for _, cookie := range cookies {
-				container := cookie.Container
-				if len(container) > 0 {
-					container = ` [` + container + `]`
+				if jsonFormat != nil && *jsonFormat {
+					b, err := json.Marshal(cookie)
+					if err != nil {
+						panic(err)
+					}
+					fmt.Fprintf(w, "%s\n", b)
+				} else {
+					container := cookie.Container
+					if len(container) > 0 {
+						container = ` [` + container + `]`
+					}
+					fmt.Fprintf(
+						w,
+						"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+						store.Browser(),
+						store.Profile(),
+						container,
+						trimStr(store.FilePath(), trimLen),
+						trimStr(cookie.Domain, trimLen),
+						trimStr(cookie.Name, trimLen),
+						// be careful about raw bytes
+						trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
+						cookie.Expires.Format(`2006.01.02 15:04:05`),
+					)
 				}
-				fmt.Fprintf(
-					w,
-					"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-					store.Browser(),
-					store.Profile(),
-					container,
-					trimStr(store.FilePath(), trimLen),
-					trimStr(cookie.Domain, trimLen),
-					trimStr(cookie.Name, trimLen),
-					// be careful about raw bytes
-					trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-					cookie.Expires.Format(`2006.01.02 15:04:05`),
-				)
 			}
 		}
 	}
