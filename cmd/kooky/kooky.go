@@ -153,45 +153,4 @@ func trimStr(str string, length int) string {
 	return str[:length]
 }
 
-type jsonCookieExtra struct {
-	*kooky.Cookie
-	jsonCookieExtraFields
-}
-
-type jsonCookieExtraFields struct {
-	// separated for easier json marshaling
-	Browser  string `json:"browser,omitempty"`
-	Profile  string `json:"profile,omitempty"`
-	FilePath string `json:"file_path,omitempty"`
-}
-
-func (c *jsonCookieExtra) MarshalJSON() ([]byte, error) {
-	if c == nil {
-		return []byte(`null`), nil
-	}
-	b := &strings.Builder{}
-	b.WriteByte('{')
-	var hasCookieBytes bool
-	if c.Cookie != nil {
-		bc, err := c.Cookie.MarshalJSON()
-		if err != nil {
-			return nil, err
-		}
-		hasCookieBytes = len(bc) > 2
-		if hasCookieBytes {
-			b.Write(bc[1 : len(bc)-1])
-		}
-	}
-	be, err := json.Marshal(c.jsonCookieExtraFields)
-	if err != nil || len(be) <= 2 {
-		b.WriteByte('}')
-		return []byte(b.String()), nil
-	}
-	if hasCookieBytes {
-		b.WriteByte(',')
-	}
-	b.Write(append(be[1:len(be)-1], '}'))
-	return []byte(b.String()), nil
-}
-
 // TODO: "kooky -b firefox -o /dev/stdout | head" hangs
