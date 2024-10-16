@@ -4,6 +4,4 @@ package edge
 
 import "errors"
 
-func edgeChromiumRoots() ([]string, error) {
-	return nil, errors.New(`not implemented`)
-}
+func edgeChromiumRoots(yield func(string, error) bool) { yield(``, errors.New(`not implemented`)) }

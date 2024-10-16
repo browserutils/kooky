@@ -7,12 +7,16 @@ import (
 	"path/filepath"
 )
 
-func chromeRoots() ([]string, error) {
+func chromeRoots(yield func(string, error) bool) {
 	// "${CHROME_VERSION_EXTRA:-${XDG_CONFIG_HOME:-$HOME/.config}}"
 	// https://chromium.googlesource.com/chromium/src.git/+/62.0.3202.58/docs/user_data_dir.md#linux
 	var dotConfigs, ret []string
 	// fallback
-	if home, err := os.UserHomeDir(); err == nil {
+	if home, err := os.UserHomeDir(); err != nil {
+		if !yield(``, err) {
+			return
+		}
+	} else {
 		dotConfigs = append(dotConfigs, filepath.Join(home, `.config`))
 	}
 	for _, v := range []string{`XDG_CONFIG_HOME`, `CHROME_CONFIG_HOME`} {
@@ -35,24 +39,28 @@ func chromeRoots() ([]string, error) {
 			)
 		}
 	}
-	return ret, nil
+	for _, r := range ret {
+		if !yield(r, nil) {
+			return
+		}
+	}
 }
 
-func chromiumRoots() ([]string, error) {
+func chromiumRoots(yield func(string, error) bool) {
 	// "${XDG_CONFIG_HOME:-$HOME/.config}"
-	var dotConfigs, ret []string
+	var dotConfigs []string
 	// fallback
-	if home, err := os.UserHomeDir(); err == nil {
+	if home, err := os.UserHomeDir(); err != nil {
+		_ = yield(``, err)
+	} else {
 		dotConfigs = append(dotConfigs, filepath.Join(home, `.config`))
 	}
 	if dir, ok := os.LookupEnv(`XDG_CONFIG_HOME`); ok {
 		dotConfigs = append(dotConfigs, dir)
 	}
 	for _, dotConfig := range dotConfigs {
-		ret = append(
-			ret,
-			filepath.Join(dotConfig, `chromium`),
-		)
+		if !yield(filepath.Join(dotConfig, `chromium`), nil) {
+			return
+		}
 	}
-	return ret, nil
 }

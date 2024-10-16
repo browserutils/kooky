@@ -25,17 +25,16 @@ func init() {
 	kooky.RegisterFinder(`lynx`, &lynxFinder{})
 }
 
-func (f *lynxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-	var ret []kooky.CookieStore
+func (f *lynxFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			_ = yield(nil, err)
+			return
+		}
 
-	// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
-	ret = append(
-		ret,
-		&cookies.CookieJar{
+		// the default value is ~/.lynx_cookies for most systems, but ~/cookies for MS-DOS
+		st := &cookies.CookieJar{
 			CookieStore: &netscape.CookieStore{
 				DefaultCookieStore: cookies.DefaultCookieStore{
 					BrowserStr:           `lynx`,
@@ -43,97 +42,93 @@ func (f *lynxFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 					FileNameStr:          filepath.Join(home, `.lynx_cookies`),
 				},
 			},
-		},
-	)
-
-	// parse config files so that we don't have to execute lynx -show_cfg
-	configFiles := []string{
-		filepath.Join(`/etc`, `lynx.cfg`),
-		filepath.Join(`/etc`, `lynx`, `lynx.cfg`), // Debian
-	}
-
-	// INCLUDE:/etc/lynx/local.cfg
-	// `/etc/lynx/lynx.cfg` includes `/etc/lynx/local.cfg` on Debian
-	// https://lynx.invisible-island.net/current/README.cookies
-	// COOKIE_FILE:/path/to/directory/.lynx_cookies // read file (?)
-	// COOKIE_SAVE_FILE:/path/to/directory/.lynx_cookies // save file
-
-	var includes, cookieFiles, cookieSaveFiles []string
-	parse := func(configFile string) error {
-		file, err := utils.OpenFile(configFile)
-		if err != nil {
-			return err
 		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if strings.HasPrefix(line, `INCLUDE:`) {
-				sp := strings.Split(line, `:`)
-				if len(sp) == 2 {
-					includes = append(includes, sp[1])
-				}
-			}
-			if strings.HasPrefix(line, `COOKIE_FILE:`) {
-				sp := strings.Split(line, `:`)
-				if len(sp) == 2 {
-					cookieFiles = append(cookieFiles, sp[1])
-				}
-			}
-			if strings.HasPrefix(line, `COOKIE_SAVE_FILE:`) {
-				sp := strings.Split(line, `:`)
-				if len(sp) == 2 {
-					cookieSaveFiles = append(cookieSaveFiles, sp[1])
-				}
-			}
+		if !yield(st, nil) {
+			return
 		}
-		return nil
-	}
 
-configFileLoop:
-	for _, configFile := range configFiles {
-		_ = parse(configFile)
-	}
-	if len(includes) > 0 {
-		configFiles = includes
-		includes = nil
-		goto configFileLoop
-	}
-
-	var primCookieFile string
-	if len(cookieFiles) > 0 {
-		primCookieFile = cookieFiles[len(cookieFiles)-1]
-	}
-
-	cookieMap := make(map[string]struct{})
-	for _, cookieFile := range append(cookieSaveFiles, cookieFiles...) {
-		if _, exists := cookieMap[cookieFile]; exists {
-			continue
+		// parse config files so that we don't have to execute lynx -show_cfg
+		configFiles := []string{
+			filepath.Join(`/etc`, `lynx.cfg`),
+			filepath.Join(`/etc`, `lynx`, `lynx.cfg`), // Debian
 		}
-		cookieMap[cookieFile] = struct{}{}
-	}
 
-	{
-		last := len(cookieMap) - 1
-		i := 0
-		for cookieFile := range cookieMap {
-			ret = append(
-				ret,
-				&cookies.CookieJar{
-					CookieStore: &netscape.CookieStore{
-						DefaultCookieStore: cookies.DefaultCookieStore{
-							BrowserStr: `lynx`,
-							// last one probably overwrites earlier configuration
-							IsDefaultProfileBool: cookieFile == primCookieFile || i == last,
-							FileNameStr:          cookieFile,
-						},
+		// INCLUDE:/etc/lynx/local.cfg
+		// `/etc/lynx/lynx.cfg` includes `/etc/lynx/local.cfg` on Debian
+		// https://lynx.invisible-island.net/current/README.cookies
+		// COOKIE_FILE:/path/to/directory/.lynx_cookies // read file (?)
+		// COOKIE_SAVE_FILE:/path/to/directory/.lynx_cookies // save file
+
+		var primCookieFile string
+		storeForFile := func(cookieFile string) *cookies.CookieJar {
+			return &cookies.CookieJar{
+				CookieStore: &netscape.CookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr: `lynx`,
+						// last one probably overwrites earlier configuration
+						IsDefaultProfileBool: cookieFile == primCookieFile,
+						FileNameStr:          cookieFile,
 					},
 				},
-			)
-			i++
+			}
+		}
+
+		cookieMap := make(map[string]struct{})
+		var includes, cookieFiles, cookieSaveFiles []string
+		parse := func(configFile string) error {
+			file, err := utils.OpenFile(configFile)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.HasPrefix(line, `INCLUDE:`) {
+					sp := strings.Split(line, `:`)
+					if len(sp) == 2 {
+						includes = append(includes, sp[1])
+					}
+				}
+				if strings.HasPrefix(line, `COOKIE_FILE:`) {
+					sp := strings.Split(line, `:`)
+					if len(sp) == 2 {
+						// cookie file
+						cookieFile := sp[1]
+						primCookieFile = cookieFile
+						cookieFiles = append(cookieFiles, cookieFile)
+						cookieMap[cookieFile] = struct{}{}
+					}
+				}
+				if strings.HasPrefix(line, `COOKIE_SAVE_FILE:`) {
+					sp := strings.Split(line, `:`)
+					if len(sp) == 2 {
+						// cookie save file
+						cookieSaveFile := sp[1]
+						cookieSaveFiles = append(cookieSaveFiles, cookieSaveFile)
+						cookieMap[cookieSaveFile] = struct{}{}
+					}
+				}
+			}
+			return nil
+		}
+
+	configFileLoop:
+		for _, configFile := range configFiles {
+			_ = parse(configFile)
+		}
+		if len(includes) > 0 {
+			configFiles = includes
+			includes = nil
+			goto configFileLoop
+		}
+
+		// primCookieFile is now set
+		for cookieFile := range cookieMap {
+			if !yield(storeForFile(cookieFile), nil) {
+				return
+			}
 		}
 	}
-
-	return ret, nil
 }

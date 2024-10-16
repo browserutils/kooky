@@ -28,51 +28,55 @@ func init() {
 	})
 }
 
-func (f *IEFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	locApp, _ := os.UserCacheDir()
-	home := os.Getenv(`USERPROFILE`)
-	windows := os.Getenv(`windir`)
-	appData, _ := os.UserConfigDir()
-
-	type pathStruct struct {
-		dir   string
-		paths [][]string
-	}
-
-	// https://tzworks.com/prototypes/index_dat/id.users.guide.pdf
-	paths := []pathStruct{
-		{
-			dir: windows,
-			paths: [][]string{
-				{`Cookies`}, // IE 4.0
-			},
-		},
-		{
-			dir: home,
-			paths: [][]string{
-				{`Cookies`}, // XP, Vista
-			},
-		},
-		{
-			dir: appData,
-			paths: [][]string{
-				{`Microsoft`, `Windows`, `Cookies`},
-				{`Microsoft`, `Windows`, `Cookies`, `Low`},
-				{`Microsoft`, `Windows`, `Cookies`, `Low`},
-				{`Microsoft`, `Windows`, `Internet Explorer`, `UserData`, `Low`},
-			},
-		},
-	}
-
-	var cookiesFiles []kooky.CookieStore
-	for _, p := range paths {
-		if len(p.dir) == 0 {
-			continue
+func (f *IEFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		locApp, err := os.UserCacheDir()
+		if !yield(nil, err) {
+			return
 		}
-		for _, path := range p.paths {
-			cookiesFiles = append(
-				cookiesFiles,
-				&cookies.CookieJar{
+		home := os.Getenv(`USERPROFILE`)
+		windows := os.Getenv(`windir`)
+		appData, err := os.UserConfigDir()
+		if !yield(nil, err) {
+			return
+		}
+
+		type pathStruct struct {
+			dir   string
+			paths [][]string
+		}
+
+		// https://tzworks.com/prototypes/index_dat/id.users.guide.pdf
+		paths := []pathStruct{
+			{
+				dir: windows,
+				paths: [][]string{
+					{`Cookies`}, // IE 4.0
+				},
+			},
+			{
+				dir: home,
+				paths: [][]string{
+					{`Cookies`}, // XP, Vista
+				},
+			},
+			{
+				dir: appData,
+				paths: [][]string{
+					{`Microsoft`, `Windows`, `Cookies`},
+					{`Microsoft`, `Windows`, `Cookies`, `Low`},
+					{`Microsoft`, `Windows`, `Cookies`, `Low`},
+					{`Microsoft`, `Windows`, `Internet Explorer`, `UserData`, `Low`},
+				},
+			},
+		}
+
+		for _, p := range paths {
+			if len(p.dir) == 0 {
+				continue
+			}
+			for _, path := range p.paths {
+				st := &cookies.CookieJar{
 					CookieStore: &ie.CookieStore{
 						CookieStore: &ie.IECacheCookieStore{
 							DefaultCookieStore: cookies.DefaultCookieStore{
@@ -82,14 +86,14 @@ func (f *IEFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 							},
 						},
 					},
-				},
-			)
+				}
+				if !yield(st, nil) {
+					return
+				}
+			}
 		}
-	}
 
-	cookiesFiles = append(
-		cookiesFiles,
-		&cookies.CookieJar{
+		st := &cookies.CookieJar{
 			CookieStore: &ie.CookieStore{
 				CookieStore: &ie.ESECookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{
@@ -99,8 +103,9 @@ func (f *IEFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 					},
 				},
 			},
-		},
-	)
-
-	return cookiesFiles, nil
+		}
+		if !yield(st, nil) {
+			return
+		}
+	}
 }

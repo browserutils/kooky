@@ -1,9 +1,12 @@
 package uzbl
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/browserutils/kooky/browser/netscape"
 	"github.com/browserutils/kooky/internal/testutils"
 )
 
@@ -12,8 +15,8 @@ func TestReadCookies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
-	cookies, err := ReadCookies(testCookiesPath)
-	if err != nil {
+	cookies, err := TraverseCookies(testCookiesPath).ReadAllCookies(context.Background())
+	if err != nil && !errors.Is(err, netscape.ErrNotStrict) {
 		t.Fatal(err)
 	}
 	if len(cookies) != 2 {
@@ -51,8 +54,8 @@ func TestReadCookies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load test data file")
 	}
-	cookies, err = ReadCookies(testCookiesPath)
-	if err != nil {
+	cookies, err = TraverseCookies(testCookiesPath).ReadAllCookies(context.Background())
+	if err != nil && !errors.Is(err, netscape.ErrNotStrict) {
 		t.Fatal(err)
 	}
 	if len(cookies) != 1 {

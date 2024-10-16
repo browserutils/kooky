@@ -7,29 +7,31 @@ import (
 	"path/filepath"
 )
 
-func chromeRoots() ([]string, error) {
+func chromeRoots(yield func(string, error) bool) {
 	// https://chromium.googlesource.com/chromium/src.git/+/62.0.3202.58/docs/user_data_dir.md#mac-os-x
 	// The canary channel suffix is determined using the CrProductDirName key in the browser app's Info.plist
 	// "$HOME/Library/Application Support"
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	var ret = []string{
-		filepath.Join(cfgDir, `Google`, `Chrome`),
-		filepath.Join(cfgDir, `Google`, `Chrome Canary`),
+	if !yield(filepath.Join(cfgDir, `Google`, `Chrome`), nil) {
+		return
 	}
-	return ret, nil
+	if !yield(filepath.Join(cfgDir, `Google`, `Chrome Canary`), nil) {
+		return
+	}
 }
 
-func chromiumRoots() ([]string, error) {
+func chromiumRoots(yield func(string, error) bool) {
 	// "$HOME/Library/Application Support"
 	cfgDir, err := os.UserConfigDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	var ret = []string{
-		filepath.Join(cfgDir, `Chromium`),
+	if !yield(filepath.Join(cfgDir, `Chromium`), nil) {
+		return
 	}
-	return ret, nil
 }

@@ -1,6 +1,6 @@
 module github.com/browserutils/kooky
 
-go 1.18
+go 1.23.2
 
 require (
 	github.com/Velocidex/ordereddict v0.0.0-20230909174157-2aa49cc5d11d
