@@ -9,10 +9,10 @@ require (
 	github.com/keybase/go-keychain v0.0.0-20231219164618-57a3676c3af6
 	github.com/spf13/pflag v1.0.5
 	github.com/zalando/go-keyring v0.2.5
-	golang.org/x/crypto v0.24.0
-	golang.org/x/net v0.26.0
-	golang.org/x/sys v0.21.0
-	golang.org/x/text v0.16.0
+	golang.org/x/crypto v0.28.0
+	golang.org/x/net v0.30.0
+	golang.org/x/sys v0.26.0
+	golang.org/x/text v0.19.0
 	www.velocidex.com/golang/go-ese v0.2.0
 )
 
