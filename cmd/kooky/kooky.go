@@ -23,7 +23,7 @@ func main() {
 	domain := pflag.StringP(`domain`, `d`, ``, `cookie domain filter (partial)`)
 	name := pflag.StringP(`name`, `n`, ``, `cookie name filter (exact)`)
 	export := pflag.StringP(`export`, `o`, ``, `export cookies in netscape format`)
-	jsonFormat := pflag.BoolP(`json`, `j`, false, `JSON output format`)
+	jsonFormat := pflag.BoolP(`jsonl`, `j`, false, `JSON Lines output format`)
 	pflag.Parse()
 
 	cookieStores := kooky.FindAllCookieStores()
@@ -80,9 +80,17 @@ func main() {
 		} else {
 			for _, cookie := range cookies {
 				if jsonFormat != nil && *jsonFormat {
-					b, err := json.Marshal(cookie)
+					c := &jsonCookieExtra{
+						Cookie: cookie,
+						jsonCookieExtraFields: jsonCookieExtraFields{
+							Browser:  store.Browser(),
+							Profile:  store.Profile(),
+							FilePath: store.FilePath(),
+						},
+					}
+					b, err := json.Marshal(c)
 					if err != nil {
-						panic(err)
+						log.Fatalln(err)
 					}
 					fmt.Fprintf(w, "%s\n", b)
 				} else {
@@ -122,6 +130,47 @@ func trimStr(str string, length int) string {
 		return str[:length-1] + "\u2026" // "..."
 	}
 	return str[:length]
+}
+
+type jsonCookieExtra struct {
+	*kooky.Cookie
+	jsonCookieExtraFields
+}
+
+type jsonCookieExtraFields struct {
+	// separated for easier json marshaling
+	Browser  string `json:"browser,omitempty"`
+	Profile  string `json:"profile,omitempty"`
+	FilePath string `json:"file_path,omitempty"`
+}
+
+func (c *jsonCookieExtra) MarshalJSON() ([]byte, error) {
+	if c == nil {
+		return []byte(`null`), nil
+	}
+	b := &strings.Builder{}
+	b.WriteByte('{')
+	var hasCookieBytes bool
+	if c.Cookie != nil {
+		bc, err := c.Cookie.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		hasCookieBytes = len(bc) > 2
+		if hasCookieBytes {
+			b.Write(bc[1 : len(bc)-1])
+		}
+	}
+	be, err := json.Marshal(c.jsonCookieExtraFields)
+	if err != nil || len(be) <= 2 {
+		b.WriteByte('}')
+		return []byte(b.String()), nil
+	}
+	if hasCookieBytes {
+		b.WriteByte(',')
+	}
+	b.Write(append(be[1:len(be)-1], '}'))
+	return []byte(b.String()), nil
 }
 
 // TODO: "kooky -b firefox -o /dev/stdout | head" hangs
