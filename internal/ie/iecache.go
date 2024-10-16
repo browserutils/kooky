@@ -125,6 +125,9 @@ func (s *IECacheCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 		}
 		entry.FormatVersion = formatVersion
 		offsetURLRecordFileName, err := bytesx.ReadOffSetInt64LE(s.File, "url record filename offset", offsetURLEntry, 60)
+		if err != nil {
+			return iterx.ErrCookieSeq(err)
+		}
 		fileName, err := bytesx.ReadString(s.File, "file name", offsetURLEntry, offsetURLRecordFileName)
 		if err != nil {
 			return iterx.ErrCookieSeq(err)
@@ -169,6 +172,7 @@ func (s *IECacheCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 				},
 			},
 		)
+		_ = entries // TODO
 		// TODO: the file name of these nested text cookie stores are not visible to the caller, the index.dat appears as the file source
 
 		_, _ = s.File.Seek(offsetURLEntry+int64(len(urlSig)), io.SeekStart)

@@ -162,6 +162,8 @@ type errorList struct {
 	Errors []error
 }
 
+var _ error = (*errorList)(nil)
+
 func (l errorList) Error() string {
 	if len(l.Errors) > 0 {
 		return l.Errors[0].Error() + `, additional errors...`

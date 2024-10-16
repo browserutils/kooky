@@ -108,12 +108,10 @@ func GetCookieStore(filename, browser string, m map[string]func(f *os.File, s *C
 	if err != nil {
 		return nil, err
 	}
-	if m != nil {
-		for name, fn := range m {
-			if f != nil && typ == name {
-				fn(f, s, browser)
-				goto end
-			}
+	for name, fn := range m {
+		if f != nil && typ == name {
+			fn(f, s, browser)
+			goto end
 		}
 	}
 	switch typ {
