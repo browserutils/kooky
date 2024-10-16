@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -10,30 +11,25 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/spf13/pflag"
-
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
-)
 
-var (
-	browser        *string
-	profile        *string
-	defaultProfile *bool
+	"github.com/spf13/pflag"
 )
 
 func main() {
-	browser = pflag.StringP(`browser`, `b`, ``, `browser filter`)
-	profile = pflag.StringP(`profile`, `p`, ``, `profile filter`)
-	defaultProfile = pflag.BoolP(`default-profile`, `q`, false, `only default profile(s)`)
+	browser := pflag.StringP(`browser`, `b`, ``, `browser filter`)
+	profile := pflag.StringP(`profile`, `p`, ``, `profile filter`)
+	defaultProfile := pflag.BoolP(`default-profile`, `q`, false, `only default profile(s)`)
 	showExpired := pflag.BoolP(`expired`, `e`, false, `show expired cookies`)
 	domain := pflag.StringP(`domain`, `d`, ``, `cookie domain filter (partial)`)
 	name := pflag.StringP(`name`, `n`, ``, `cookie name filter (exact)`)
 	export := pflag.StringP(`export`, `o`, ``, `export cookies in netscape format`)
+	jsonFormat := pflag.BoolP(`jsonl`, `j`, false, `JSON Lines output format`)
 	pflag.Parse()
 
 	// cookie filters
-	filters := []kooky.Filter{storeFilter}
+	filters := []kooky.Filter{storeFilter(browser, profile, defaultProfile)}
 	if showExpired == nil || !*showExpired {
 		filters = append(filters, kooky.Valid)
 	}
@@ -72,9 +68,16 @@ func main() {
 	trimLen := 45
 	// use channel so that tabwriter won't panic
 	for cookie := range seq.Chan(ctx) {
-		prCookieLine(w, cookie, trimLen)
+		if jsonFormat != nil && *jsonFormat {
+			b, err := json.Marshal(cookie)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			fmt.Fprintf(w, "%s\n", b)
+		} else {
+			prCookieLine(w, cookie, trimLen)
+		}
 	}
-	w.Flush()
 }
 
 func prCookieLine(w io.Writer, cookie *kooky.Cookie, trimLen int) {
@@ -121,19 +124,24 @@ func prFilePath(c *kooky.Cookie) string {
 	return c.Browser.FilePath()
 }
 
-var storeFilter = kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
-	// cookie store filters
-	if browser != nil && len(*browser) > 0 && cookie.Browser.Browser() != *browser {
-		return false
-	}
-	if profile != nil && len(*profile) > 0 && cookie.Browser.Profile() != *profile {
-		return false
-	}
-	if defaultProfile != nil && *defaultProfile && !cookie.Browser.IsDefaultProfile() {
-		return false
-	}
-	return true
-})
+func storeFilter(browser, profile *string, defaultProfile *bool) kooky.Filter {
+	return kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
+		if cookie == nil || cookie.Browser == nil {
+			return false
+		}
+		// cookie store filters
+		if browser != nil && len(*browser) > 0 && cookie.Browser.Browser() != *browser {
+			return false
+		}
+		if profile != nil && len(*profile) > 0 && cookie.Browser.Profile() != *profile {
+			return false
+		}
+		if defaultProfile != nil && *defaultProfile && !cookie.Browser.IsDefaultProfile() {
+			return false
+		}
+		return true
+	})
+}
 
 func trimStr(str string, length int) string {
 	if len(str) <= length {

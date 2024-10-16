@@ -22,7 +22,7 @@ type CookieStore interface {
 }
 
 /*
-DefaultCookieStore implements most of the kooky.CookieStore interface except for the ReadCookies method
+DefaultCookieStore implements most of the kooky.CookieStore interface except for the TraverseCookies method
 func (s *DefaultCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq
 
 DefaultCookieStore also provides an Open() method
