@@ -49,7 +49,7 @@ func main() {
 	// applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
 	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`)).OnlyCookies()
 
-	for cookie, _ := range cookiesSeq {
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
 	}
  }
@@ -72,7 +72,7 @@ func main() {
 	dir, _ := os.UserConfigDir() // "/<USER>/Library/Application Support/"
 	cookiesFile := dir + "/Google/Chrome/Default/Cookies"
 	cookiesSeq := chrome.TraverseCookies(cookiesFile).OnlyCookies()
-	for cookie, _ := range cookiesSeq {
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie)
 	}
 }
@@ -95,7 +95,7 @@ func main() {
 	dir, _ := os.UserHomeDir()
 	cookiesFile := dir + "/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
 	cookiesSeq := safari.TraverseCookies(cookiesFile).OnlyCookies()
-	for cookie, _ := range cookiesSeq {
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie)
 	}
 }
