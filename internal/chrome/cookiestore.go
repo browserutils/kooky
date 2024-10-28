@@ -14,8 +14,9 @@ type CookieStore struct {
 	Database             *sqlite3.DbFile
 	KeyringPasswordBytes []byte
 	PasswordBytes        []byte
-	DecryptionMethod     func(data, password []byte) ([]byte, error)
+	DecryptionMethod     func(data, password []byte, dbVersion int64) ([]byte, error)
 	storage              safeStorage
+	dbVersion            int64
 }
 
 func (s *CookieStore) Open() error {
