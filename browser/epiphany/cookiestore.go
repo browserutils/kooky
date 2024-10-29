@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-sqlite/sqlite3"
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/utils"
 )
 
 type epiphanyCookieStore struct {
@@ -22,7 +23,11 @@ func (s *epiphanyCookieStore) Open() error {
 		return nil
 	}
 
-	db, err := sqlite3.Open(s.FileNameStr)
+	f, err := utils.OpenFile(s.FileNameStr)
+	if err != nil {
+		return err
+	}
+	db, err := sqlite3.OpenFrom(f)
 	if err != nil {
 		return err
 	}

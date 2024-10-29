@@ -16,17 +16,15 @@ func init() {
 	kooky.RegisterFinder(`opera`, &operaFinder{})
 }
 
-func (f *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	var ret []kooky.CookieStore
-
-	roots, err := operaPrestoRoots()
-	if err != nil {
-		return nil, err
-	}
-	for _, root := range roots {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+func (f *operaFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		for root, err := range operaPrestoRoots {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
+			st := &cookies.CookieJar{
 				CookieStore: &operaCookieStore{
 					CookieStore: &operaPrestoCookieStore{
 						DefaultCookieStore: cookies.DefaultCookieStore{
@@ -36,18 +34,19 @@ func (f *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						},
 					},
 				},
-			},
-		)
-	}
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 
-	roots, err = operaBlinkRoots()
-	if err != nil {
-		return nil, err
-	}
-	for _, root := range roots {
-		ret = append(
-			ret,
-			&cookies.CookieJar{
+		for root, err := range operaBlinkRoots {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
+			st := &cookies.CookieJar{
 				CookieStore: &operaCookieStore{
 					CookieStore: &chrome.CookieStore{
 						DefaultCookieStore: cookies.DefaultCookieStore{
@@ -57,9 +56,10 @@ func (f *operaFinder) FindCookieStores() ([]kooky.CookieStore, error) {
 						},
 					},
 				},
-			},
-		)
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
-
-	return ret, nil
 }

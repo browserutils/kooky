@@ -1,4 +1,5 @@
-//+build !windows,!darwin,!plan9,!android,!js,!aix
+//go:build !windows && !darwin && !plan9 && !android && !js && !aix
+// +build !windows,!darwin,!plan9,!android,!js,!aix
 
 package netscape
 
@@ -7,10 +8,13 @@ import (
 	"path/filepath"
 )
 
-func netscapeRoots() ([]string, error) {
+func netscapeRoots(yield func(string, error) bool) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
-	return []string{filepath.Join(home, `.netscape`, `navigator`)}, nil
+	if !yield(filepath.Join(home, `.netscape`, `navigator`), nil) {
+		return
+	}
 }

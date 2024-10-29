@@ -1,6 +1,7 @@
 package firefox
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,7 +17,8 @@ func TestReadCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err := ReadCookies(testCookiesPath)
+	ctx := context.Background()
+	cookies, err := TraverseCookies(testCookiesPath).ReadAllCookies(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestReadCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, err = ReadCookies(testCookiesPath)
+	cookies, err = TraverseCookies(testCookiesPath).ReadAllCookies(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +81,7 @@ func TestReadCookies(t *testing.T) {
 	}
 
 	c = cookies[0]
-	if c.Domain != "google.de" {
+	if c.Domain != ".google.de" {
 		t.Errorf("c.Domain=%q", c.Domain)
 	}
 	if c.Name != "NID" {

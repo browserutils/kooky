@@ -6,14 +6,15 @@ package safari
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/xiazemin/kooky"
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/iterx"
 	"github.com/xiazemin/kooky/internal/timex"
 )
 
@@ -47,95 +48,106 @@ type safariCookieStore struct {
 
 var _ cookies.CookieStore = (*safariCookieStore)(nil)
 
-func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	return s.ReadCookies(filters...)
+func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	return cookies.SingleRead(cookieStore, filename, filters...).ReadAllCookies(ctx)
 }
 
-func (s *safariCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
-	}
-	if err := s.Open(); err != nil {
-		return nil, err
-	} else if s.File == nil {
-		return nil, errors.New(`file is nil`)
-	}
+func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStore, filename, filters...)
+}
 
-	var allCookies []*kooky.Cookie
+func (s *safariCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
+	return func(yield func(*kooky.Cookie, error) bool) {
+		if s == nil {
+			yield(nil, errors.New(`cookie store is nil`))
+			return
+		}
+		if err := s.Open(); err != nil {
+			yield(nil, err)
+			return
+		}
+		if s.File == nil {
+			yield(nil, errors.New(`file is nil`))
+			return
+		}
 
-	var header fileHeader
-	err := binary.Read(s.File, binary.BigEndian, &header)
-	if err != nil {
-		return nil, fmt.Errorf("error reading header: %v", err)
-	}
-	if string(header.Magic[:]) != "cook" {
-		return nil, fmt.Errorf("expected first 4 bytes to be %q; got %q", "cook", string(header.Magic[:]))
-	}
+		var header fileHeader
+		err := binary.Read(s.File, binary.BigEndian, &header)
+		if err != nil {
+			yield(nil, fmt.Errorf("error reading header: %v", err))
+			return
+		}
+		if string(header.Magic[:]) != "cook" {
+			yield(nil, fmt.Errorf("expected first 4 bytes to be %q; got %q", "cook", string(header.Magic[:])))
+			return
+		}
 
-	pageSizes := make([]int32, header.NumPages)
-	if err = binary.Read(s.File, binary.BigEndian, &pageSizes); err != nil {
-		return nil, fmt.Errorf("error reading page sizes: %v", err)
-	}
+		pageSizes := make([]int32, header.NumPages)
+		if err = binary.Read(s.File, binary.BigEndian, &pageSizes); err != nil {
+			yield(nil, fmt.Errorf("error reading page sizes: %w", err))
+			return
+		}
 
-	for i, pageSize := range pageSizes {
-		if allCookies, err = readPage(s.File, pageSize, allCookies); err != nil {
-			return nil, fmt.Errorf("error reading page %d: %v", i, err)
+		// read cookies
+		for i, pageSize := range pageSizes {
+			if !s.readPage(s.File, i, pageSize, yield, filters...) {
+				return
+			}
+		}
+
+		// TODO(zellyn): figure out how the checksum works.
+		var checksum [8]byte
+		err = binary.Read(s.File, binary.BigEndian, &checksum)
+		if err != nil {
+			yield(nil, fmt.Errorf("error reading checksum: %w", err))
+			return
 		}
 	}
-
-	// TODO(zellyn): figure out how the checksum works.
-	var checksum [8]byte
-	err = binary.Read(s.File, binary.BigEndian, &checksum)
-	if err != nil {
-		return nil, fmt.Errorf("error reading checksum: %v", err)
-	}
-
-	// Filter cookies by specified filters.
-	cookies := kooky.FilterCookies(allCookies, filters...)
-
-	return cookies, nil
 }
 
-func readPage(f io.Reader, pageSize int32, cookies []*kooky.Cookie) ([]*kooky.Cookie, error) {
+func (s *safariCookieStore) readPage(f io.Reader, page int, pageSize int32, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
+	yld := func(c *kooky.Cookie, e error) bool {
+		if e != nil {
+			e = fmt.Errorf("error reading page %d: %w", page, e)
+		}
+		return iterx.CookieFilterYield(context.Background(), c, e, yield, filters...)
+	}
+
 	bb := make([]byte, pageSize)
 	if _, err := io.ReadFull(f, bb); err != nil {
-		return nil, err
+		return yld(nil, err)
 	}
 	r := bytes.NewReader(bb)
 
 	var header pageHeader
 	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
-		return nil, fmt.Errorf("error reading header: %v", err)
+		return yld(nil, fmt.Errorf("error reading header: %w", err))
 	}
 	want := [4]byte{0x00, 0x00, 0x01, 0x00}
 	if header.Header != want {
-		return nil, fmt.Errorf("expected first 4 bytes of page to be %v; got %v", want, header.Header)
+		return yld(nil, fmt.Errorf("expected first 4 bytes of page to be %v; got %v", want, header.Header))
 	}
 
 	cookieOffsets := make([]int32, header.NumCookies)
 	if err := binary.Read(r, binary.LittleEndian, &cookieOffsets); err != nil {
-		return nil, fmt.Errorf("error reading cookie offsets: %v", err)
+		return yld(nil, fmt.Errorf("error reading cookie offsets: %w", err))
 	}
 
 	for i, cookieOffset := range cookieOffsets {
 		r.Seek(int64(cookieOffset), io.SeekStart)
-		cookie, err := readCookie(r)
+		cookie, err := s.readCookie(r)
 		if err != nil {
-			return nil, fmt.Errorf("cookie %d: %v", i, err)
+			return yld(nil, fmt.Errorf("cookie %d: %w", i, err))
 		}
-		cookies = append(cookies, cookie)
+		if !yld(cookie, nil) {
+			return false
+		}
 	}
 
-	return cookies, nil
+	return true
 }
 
-func readCookie(r io.ReadSeeker) (*kooky.Cookie, error) {
+func (s *safariCookieStore) readCookie(r io.ReadSeeker) (*kooky.Cookie, error) {
 	start, _ := r.Seek(0, io.SeekCurrent)
 	var ch cookieHeader
 	if err := binary.Read(r, binary.LittleEndian, &ch); err != nil {
@@ -145,25 +157,24 @@ func readCookie(r io.ReadSeeker) (*kooky.Cookie, error) {
 	expiry := timex.FromSafariTime(ch.ExpirationDate)
 	creation := timex.FromSafariTime(ch.CreationDate)
 
-	url, err := readString(r, "url", start, ch.UrlOffset)
+	url, err := s.readString(r, "url", start, ch.UrlOffset)
 	if err != nil {
 		return nil, err
 	}
-	name, err := readString(r, "name", start, ch.NameOffset)
+	name, err := s.readString(r, "name", start, ch.NameOffset)
 	if err != nil {
 		return nil, err
 	}
-	path, err := readString(r, "path", start, ch.PathOffset)
+	path, err := s.readString(r, "path", start, ch.PathOffset)
 	if err != nil {
 		return nil, err
 	}
-	value, err := readString(r, "value", start, ch.ValueOffset)
+	value, err := s.readString(r, "value", start, ch.ValueOffset)
 	if err != nil {
 		return nil, err
 	}
 
 	cookie := &kooky.Cookie{}
-
 	cookie.Expires = expiry
 	cookie.Creation = creation
 	cookie.Name = name
@@ -172,10 +183,12 @@ func readCookie(r io.ReadSeeker) (*kooky.Cookie, error) {
 	cookie.Path = path
 	cookie.Secure = (ch.Flags & 1) > 0
 	cookie.HttpOnly = (ch.Flags & 4) > 0
+	cookie.Browser = s
+
 	return cookie, nil
 }
 
-func readString(r io.ReadSeeker, field string, start int64, offset int32) (string, error) {
+func (s *safariCookieStore) readString(r io.ReadSeeker, field string, start int64, offset int32) (string, error) {
 	if _, err := r.Seek(start+int64(offset), io.SeekStart); err != nil {
 		return "", fmt.Errorf("seeking for %q at offset %d", field, offset)
 	}
@@ -188,21 +201,6 @@ func readString(r io.ReadSeeker, field string, start int64, offset int32) (strin
 	return value[:len(value)-1], nil
 }
 
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the Safari browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
-}
-
 // CookieStore has to be closed with CookieStore.Close() after use.
 func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
 	return cookieStore(filename, filters...)
@@ -213,5 +211,5 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 	s.FileNameStr = filename
 	s.BrowserStr = `safari`
 
-	return &cookies.CookieJar{CookieStore: s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }

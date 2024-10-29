@@ -1,6 +1,7 @@
 package chrome
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/xiazemin/kooky/internal/testutils"
 )
 
-// d18f6247db68045dfbab126d814baf2cf1512141391
 func TestReadCookies(t *testing.T) {
 	testCookiesPath, err := testutils.GetTestDataFilePath("chrome-macos-cookie-db.sqlite") // this test file was created on macos
 	if err != nil {
@@ -24,7 +24,7 @@ func TestReadCookies(t *testing.T) {
 	oldPassword := s.SetKeyringPassword([]byte("ChromeSafeStoragePasswrd"))
 	defer s.SetKeyringPassword(oldPassword)
 
-	cookies, err := s.ReadCookies()
+	cookies, err := s.TraverseCookies().ReadAllCookies(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,8 @@ func TestReadCookies(t *testing.T) {
 	domain := "news.ycombinator.com"
 	name := "user"
 
-	cookies = kooky.FilterCookies(cookies, kooky.Domain(domain), kooky.Name(name))
+	ctx := context.Background()
+	cookies = kooky.FilterCookies(ctx, cookies, kooky.Domain(domain), kooky.Name(name)).Collect(ctx)
 	if len(cookies) == 0 {
 		t.Fatalf("Found no cookies with domain=%q, name=%q", domain, name)
 	}

@@ -6,6 +6,4 @@ import "errors"
 
 // TODO
 
-func ieRoots() ([]string, error) {
-	return nil, errors.New(`not implemented`)
-}
+func ieRoots(yield func(string, error) bool) { _ = yield(``, errors.New(`not implemented`)) }

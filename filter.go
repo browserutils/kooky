@@ -1,13 +1,18 @@
 package kooky
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 )
 
-// Filter is used for filtering cokies in ReadCookies() functions.
+// Filter is used for filtering cookies in ReadCookies() functions.
+// Filter order might be changed for performance reasons
+// (omission of value decryption of filtered out cookies, etc).
 //
 // A cookie passes the Filter if Filter.Filter returns true.
 type Filter interface{ Filter(*Cookie) bool }
@@ -21,45 +26,125 @@ func (f FilterFunc) Filter(c *Cookie) bool {
 	return f(c)
 }
 
-// FilterCookies() applies "filters" in order to the "cookies".
-func FilterCookies[T Cookie | http.Cookie](cookies []*T, filters ...Filter) []*T {
-	var ret = make([]*T, 0, len(cookies))
+type ValueFilterFunc func(*Cookie) bool
 
+func (f ValueFilterFunc) Filter(c *Cookie) bool {
+	if f == nil {
+		return false
+	}
+	return f(c)
+}
+
+func FilterCookies[S CookieSeq | ~[]*Cookie | ~[]*http.Cookie](ctx context.Context, cookies S, filters ...Filter) CookieSeq {
+	var ret CookieSeq
 	// https://github.com/golang/go/issues/45380#issuecomment-1014950980
-	switch cookiesTyp := any(cookies).(type) {
-	case []*http.Cookie:
-	cookieLoopHTTP:
-		for i, cookie := range cookiesTyp {
-			if cookie == nil {
-				continue
-			}
-			for _, filter := range filters {
-				if !filter.Filter(&Cookie{Cookie: *cookie}) {
-					continue cookieLoopHTTP
-				}
-			}
-			ret = append(ret, cookies[i])
-		}
+	switch cookiesTyped := any(cookies).(type) {
+	case CookieSeq:
+		ret = filterCookieSeq(ctx, cookiesTyped, filters...)
+	case Cookies:
+		ret = filterCookieSlice(ctx, []*Cookie(cookiesTyped), filters...)
 	case []*Cookie:
-	cookieLoopKooky:
-		for i, cookie := range cookiesTyp {
-			if cookie == nil {
-				continue
-			}
-			for _, filter := range filters {
-				if !filter.Filter(cookie) {
-					continue cookieLoopKooky
-				}
-			}
-			ret = append(ret, cookies[i])
+		ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+	case []*http.Cookie:
+		ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+	default:
+		rv := reflect.ValueOf(cookies)
+		rtc := reflect.TypeFor[[]*Cookie]()
+		rthc := reflect.TypeFor[[]*http.Cookie]()
+		if rv.CanConvert(rtc) {
+			cookiesTyped := rv.Convert(rtc).Interface().([]*Cookie)
+			ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+		} else if rv.CanConvert(rthc) {
+			cookiesTyped := rv.Convert(rthc).Interface().([]*http.Cookie)
+			ret = filterCookieSlice(ctx, cookiesTyped, filters...)
+		} else {
+			ret = func(yield func(*Cookie, error) bool) { yield(nil, errors.New(`unknown type`)) }
 		}
 	}
-
 	return ret
 }
 
+func filterCookieSeq(ctx context.Context, cookies CookieSeq, filters ...Filter) CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
+		if cookies == nil {
+			yield(nil, errors.New(`nil receiver`))
+			return
+		}
+		for cookie, errCookie := range cookies {
+			if errCookie != nil {
+				if !yield(nil, errCookie) {
+					return
+				}
+				continue
+			}
+			if cookie == nil {
+				continue
+			}
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			if !FilterCookie(ctx, cookie, filters...) {
+				continue
+			}
+			if !yield(cookie, nil) {
+				return
+			}
+		}
+	}
+}
+
+func filterCookieSlice[S ~[]*T, T Cookie | http.Cookie](ctx context.Context, cookies S, filters ...Filter) CookieSeq {
+	return func(yield func(*Cookie, error) bool) {
+		if len(cookies) < 1 {
+			_ = yield(nil, errors.New(`cookie slice of lenght 0`))
+			return
+		}
+		switch cookiesTyped := any(cookies).(type) {
+		case []*http.Cookie:
+		cookieLoopHTTP:
+			for _, cookie := range cookiesTyped {
+				if cookie == nil {
+					continue
+				}
+				select {
+				case <-ctx.Done():
+					break cookieLoopHTTP
+				default:
+				}
+				kooky := &Cookie{Cookie: *cookie}
+				if !FilterCookie(ctx, kooky, filters...) {
+					continue
+				}
+				if !yield(kooky, nil) {
+					return
+				}
+			}
+		case []*Cookie:
+		cookieLoopKooky:
+			for _, cookie := range cookiesTyped {
+				if cookie == nil {
+					continue
+				}
+				select {
+				case <-ctx.Done():
+					break cookieLoopKooky
+				default:
+				}
+				if !FilterCookie(ctx, cookie, filters...) {
+					continue
+				}
+				if !yield(cookie, nil) {
+					return
+				}
+			}
+		}
+	}
+}
+
 // FilterCookie() tells if a "cookie" passes all "filters".
-func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
+func FilterCookie[T Cookie | http.Cookie](ctx context.Context, cookie *T, filters ...Filter) bool {
 	if cookie == nil {
 		return false
 	}
@@ -74,6 +159,14 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 	}
 
 	for _, filter := range filters {
+		if filter == nil {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
 		if !filter.Filter(c) {
 			return false
 		}
@@ -87,6 +180,7 @@ func FilterCookie[T Cookie | http.Cookie](cookie *T, filters ...Filter) bool {
 //
 // Position Debug after the filter you want to test.
 var Debug Filter = FilterFunc(func(cookie *Cookie) bool {
+	// TODO(srlehn): where should the Debug filter be positioned when the filter rearrangement happens?
 	fmt.Printf("%+#v\n", cookie)
 	return true
 })
@@ -94,7 +188,7 @@ var Debug Filter = FilterFunc(func(cookie *Cookie) bool {
 // domain filters
 
 type domainFilter struct {
-	filterFunc func(*Cookie) bool
+	filterFunc FilterFunc
 	typ        string
 	domain     string
 }
@@ -191,27 +285,27 @@ func PathDepth(depth int) Filter {
 // value filters
 
 func Value(value string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && cookie.Value == value
 	})
 }
 func ValueContains(substr string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.Contains(cookie.Value, substr)
 	})
 }
 func ValueHasPrefix(prefix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasPrefix(cookie.Value, prefix)
 	})
 }
 func ValueHasSuffix(suffix string) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && strings.HasSuffix(cookie.Value, suffix)
 	})
 }
 func ValueLen(length int) Filter {
-	return FilterFunc(func(cookie *Cookie) bool {
+	return ValueFilterFunc(func(cookie *Cookie) bool {
 		return cookie != nil && len(cookie.Value) == length
 	})
 }
@@ -230,7 +324,7 @@ var HTTPOnly Filter = FilterFunc(func(cookie *Cookie) bool {
 
 // expires filters
 
-var Valid Filter = FilterFunc(func(cookie *Cookie) bool {
+var Valid Filter = ValueFilterFunc(func(cookie *Cookie) bool {
 	return cookie != nil && cookie.Expires.After(time.Now()) && cookie.Cookie.Valid() == nil
 })
 

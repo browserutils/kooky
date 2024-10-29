@@ -1,129 +1,148 @@
 package ie
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"strings"
 
 	"github.com/xiazemin/kooky"
+	"github.com/xiazemin/kooky/internal/iterx"
 	"github.com/xiazemin/kooky/internal/timex"
 
 	"github.com/Velocidex/ordereddict"
 	"www.velocidex.com/golang/go-ese/parser"
 )
 
-func (s *ESECookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	} else if s.File == nil {
-		return nil, errors.New(`file is nil`)
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
 	if s.ESECatalog == nil {
-		return nil, errors.New(`ESE catalog is nil`)
+		return iterx.ErrCookieSeq(errors.New(`ESE catalog is nil`))
 	}
 
 	tables := s.ESECatalog.Tables
 	if tables == nil {
-		return nil, errors.New(`catalog.Tables is nil`)
+		return iterx.ErrCookieSeq(errors.New(`catalog.Tables is nil`))
 	}
 
-	var cookies []*kooky.Cookie
-	var errs []error
+	cbCookieEntries := func(yield func(*kooky.Cookie, error) bool) func(row *ordereddict.Dict) error {
+		return func(row *ordereddict.Dict) error {
+			if row == nil {
+				if !yield(nil, errors.New(`row is nil`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
 
-	cbCookieEntries := func(row *ordereddict.Dict) error {
-		if row == nil {
-			errs = append(errs, errors.New(`row is nil`))
-			return nil
-		}
+			var cookieEntry webCacheCookieEntry
+			if e, ok := row.GetInt64(`EntryId`); ok {
+				cookieEntry.entryID = uint64(e)
+			} else {
+				if !yield(nil, errors.New(`no int64 EntryId`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			if e, ok := row.GetInt64(`MinimizedRDomainLength`); ok {
+				cookieEntry.minimizedRDomainLength = uint64(e)
+			} else {
+				if !yield(nil, errors.New(`no int64 MinimizedRDomainLength`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			if e, ok := row.GetInt64(`Flags`); ok {
+				cookieEntry.flags = uint32(e)
+			} else {
+				if !yield(nil, errors.New(`no int64 Flags`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			if e, ok := row.GetInt64(`Expires`); ok {
+				cookieEntry.expires = e
+			} else {
+				if !yield(nil, errors.New(`no int64 Expires`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			if e, ok := row.GetInt64(`LastModified`); ok {
+				cookieEntry.lastModified = e
+			} else {
+				if !yield(nil, errors.New(`no int64 LastModified`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			var ok bool
+			cookieEntry.cookieHash, ok = row.GetString(`CookieHash`)
+			if !ok {
+				if !yield(nil, errors.New(`no string CookieHash`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			cookieEntry.rDomain, ok = row.GetString(`RDomain`)
+			if !ok {
+				if !yield(nil, errors.New(`no string RDomain`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			cookieEntry.path, ok = row.GetString(`Path`)
+			if !ok {
+				if !yield(nil, errors.New(`no string Path`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			cookieEntry.name, ok = row.GetString(`Name`)
+			if !ok {
+				if !yield(nil, errors.New(`no string Name`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
+			cookieEntry.value, ok = row.GetString(`Value`)
+			if !ok {
+				if !yield(nil, errors.New(`no string Value`)) {
+					return iterx.ErrYieldEnd
+				}
+				return nil
+			}
 
-		var cookieEntry webCacheCookieEntry
-		if e, ok := row.GetInt64(`EntryId`); ok {
-			cookieEntry.entryID = uint64(e)
-		} else {
-			errs = append(errs, errors.New(`no int64 EntryId`))
-			return nil
-		}
-		if e, ok := row.GetInt64(`MinimizedRDomainLength`); ok {
-			cookieEntry.minimizedRDomainLength = uint64(e)
-		} else {
-			errs = append(errs, errors.New(`no int64 MinimizedRDomainLength`))
-			return nil
-		}
-		if e, ok := row.GetInt64(`Flags`); ok {
-			cookieEntry.flags = uint32(e)
-		} else {
-			errs = append(errs, errors.New(`no int64 Flags`))
-			return nil
-		}
-		if e, ok := row.GetInt64(`Expires`); ok {
-			cookieEntry.expires = e
-		} else {
-			errs = append(errs, errors.New(`no int64 Expires`))
-			return nil
-		}
-		if e, ok := row.GetInt64(`LastModified`); ok {
-			cookieEntry.lastModified = e
-		} else {
-			errs = append(errs, errors.New(`no int64 LastModified`))
-			return nil
-		}
-		var ok bool
-		cookieEntry.cookieHash, ok = row.GetString(`CookieHash`)
-		if !ok {
-			errs = append(errs, errors.New(`no string CookieHash`))
-			return nil
-		}
-		cookieEntry.rDomain, ok = row.GetString(`RDomain`)
-		if !ok {
-			errs = append(errs, errors.New(`no string RDomain`))
-			return nil
-		}
-		cookieEntry.path, ok = row.GetString(`Path`)
-		if !ok {
-			errs = append(errs, errors.New(`no string Path`))
-			return nil
-		}
-		cookieEntry.name, ok = row.GetString(`Name`)
-		if !ok {
-			errs = append(errs, errors.New(`no string Name`))
-			return nil
-		}
-		cookieEntry.value, ok = row.GetString(`Value`)
-		if !ok {
-			errs = append(errs, errors.New(`no string Value`))
-			return nil
-		}
+			cookie, errCookie := convertCookieEntry(&cookieEntry, s)
+			if !iterx.CookieFilterYield(context.Background(), cookie, errCookie, yield, filters...) {
+				return nil
+			}
 
-		cookie, err := convertCookieEntry(&cookieEntry)
-		if err != nil {
-			errs = append(errs, err)
 			return nil
 		}
-
-		if kooky.FilterCookie(cookie, filters...) {
-			cookies = append(cookies, cookie)
-		}
-
-		return nil
 	}
 
-	for _, tableName := range tables.Keys() {
-		if !strings.HasPrefix(tableName, `CookieEntryEx_`) {
-			continue
-		}
-		if err := s.ESECatalog.DumpTable(tableName, cbCookieEntries); err != nil {
-			errs = append(errs, err)
-			err = errorList{Errors: errs}
-			return nil, err
+	seq := func(yield func(*kooky.Cookie, error) bool) {
+		for _, tableName := range tables.Keys() {
+			if !strings.HasPrefix(tableName, `CookieEntryEx_`) {
+				continue
+			}
+			if err := s.ESECatalog.DumpTable(tableName, cbCookieEntries(yield)); err != nil {
+				if !yield(nil, err) {
+					return
+				}
+			}
 		}
 	}
-
-	return cookies, nil
+	return seq
 }
 
 type webCacheCookieEntry struct {
@@ -143,6 +162,8 @@ type errorList struct {
 	Errors []error
 }
 
+var _ error = (*errorList)(nil)
+
 func (l errorList) Error() string {
 	if len(l.Errors) > 0 {
 		return l.Errors[0].Error() + `, additional errors...`
@@ -158,7 +179,7 @@ func eseHexDecodeString(raw string) (string, error) {
 	return strings.Split(string(b), "\x00")[0], nil
 }
 
-func convertCookieEntry(entry *webCacheCookieEntry) (*kooky.Cookie, error) {
+func convertCookieEntry(entry *webCacheCookieEntry, bi kooky.BrowserInfo) (*kooky.Cookie, error) {
 	if entry == nil {
 		return nil, errors.New(`cookie entry is nil`)
 	}
@@ -194,6 +215,8 @@ func convertCookieEntry(entry *webCacheCookieEntry) (*kooky.Cookie, error) {
 	cookie.Expires = timex.FromFILETIME(entry.expires)
 
 	// TODO: use "CookieEntryEx_##.LastModified" field as "Cookie.Creation" time?
+
+	cookie.Browser = bi
 
 	return cookie, nil
 }

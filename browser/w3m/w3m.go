@@ -2,14 +2,15 @@ package w3m
 
 import (
 	"bufio"
+	"context"
 	"errors"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/xiazemin/kooky"
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/iterx"
 )
 
 type w3mCookieStore struct {
@@ -18,89 +19,70 @@ type w3mCookieStore struct {
 
 var _ cookies.CookieStore = (*w3mCookieStore)(nil)
 
-func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	return s.ReadCookies(filters...)
+func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	return cookies.SingleRead(cookieStore, filename, filters...).ReadAllCookies(ctx)
 }
 
-func (s *w3mCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStore, filename, filters...)
+}
+
+func (s *w3mCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	// cookie.c: void save_cookies(void){}
 	// https://github.com/tats/w3m/blob/169789b1480710712d587d5859fab9d93eb952a2/cookie.c#L429
 
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	} else if s.File == nil {
-		return nil, errors.New(`file is nil`)
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
-	var ret []*kooky.Cookie
+	return func(yield func(*kooky.Cookie, error) bool) {
+		scanner := bufio.NewScanner(s.File)
+		for scanner.Scan() {
+			// split line into fields
+			sp := strings.Split(scanner.Text(), "\t")
+			if len(sp) != 11 {
+				continue
+			}
+			exp, err := strconv.ParseInt(sp[3], 10, 64)
+			if err != nil {
+				continue
+			}
+			bitFlag, err := strconv.Atoi(sp[6])
+			if err != nil {
+				continue
+			}
 
-	scanner := bufio.NewScanner(s.File)
-	for scanner.Scan() {
-		// split line into fields
-		sp := strings.Split(scanner.Text(), "\t")
-		if len(sp) != 11 {
-			continue
+			// #defined in "fm.h"
+			const (
+				// cooUse      int =  1 // COO_USE
+				cooSecure int = 2 // COO_SECURE
+				// cooDomain   int =  4 // COO_DOMAIN
+				// cooPath     int =  8 // COO_PATH
+				// cooDiscard  int = 16 // COO_DISCARD
+				// cooOverride int = 32 // COO_OVERRIDE - user override of security checks
+			)
+
+			cookie := &kooky.Cookie{}
+			cookie.Name = sp[1]
+			cookie.Value = sp[2]
+			cookie.Path = sp[5]
+			cookie.Domain = sp[4]
+			cookie.Expires = time.Unix(exp, 0)
+			cookie.Secure = bitFlag&cooSecure != 0
+			// sp[6] // state management specification version
+			// sp[7] // port list
+			cookie.Browser = s
+
+			if !iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...) {
+				return
+			}
 		}
-		exp, err := strconv.ParseInt(sp[3], 10, 64)
-		if err != nil {
-			continue
-		}
-		bitFlag, err := strconv.Atoi(sp[6])
-		if err != nil {
-			continue
-		}
-
-		// #defined in "fm.h"
-		const (
-			// cooUse      int =  1 // COO_USE
-			cooSecure int = 2 // COO_SECURE
-			// cooDomain   int =  4 // COO_DOMAIN
-			// cooPath     int =  8 // COO_PATH
-			// cooDiscard  int = 16 // COO_DISCARD
-			// cooOverride int = 32 // COO_OVERRIDE - user override of security checks
-		)
-
-		cookie := &kooky.Cookie{}
-		cookie.Name = sp[1]
-		cookie.Value = sp[2]
-		cookie.Path = sp[5]
-		cookie.Domain = sp[4]
-		cookie.Expires = time.Unix(exp, 0)
-		cookie.Secure = bitFlag&cooSecure != 0
-		// sp[6] // state management specification version
-		// sp[7] // port list
-
-		if !kooky.FilterCookie(cookie, filters...) {
-			continue
-		}
-
-		ret = append(ret, cookie)
 	}
-	return ret, nil
-}
-
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the w3m browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
@@ -113,7 +95,7 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 	s.FileNameStr = filename
 	s.BrowserStr = `w3m`
 
-	return &cookies.CookieJar{CookieStore: s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }
 
 // TODO:

@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 )
 
-func cookieFile() (string, error) {
+func cookieFiles() ([]string, error) {
 	confDir, err := os.UserConfigDir()
 	if err != nil {
-		return ``, err
+		return nil, err
 	}
-	return filepath.Join(confDir, `Apple Computer`, `Safari`, `Cookies`, `Cookies.binarycookies`), nil
+	return []string{filepath.Join(confDir, `Apple Computer`, `Safari`, `Cookies`, `Cookies.binarycookies`)}, nil
 }

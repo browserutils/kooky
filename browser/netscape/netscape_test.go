@@ -1,6 +1,7 @@
 package netscape
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -13,11 +14,12 @@ func TestReadCookies(t *testing.T) {
 		t.Fatalf("Failed to load test data file")
 	}
 
-	cookies, isStrict, err := ReadCookies(testCookiesPath)
+	seq, isStrict := TraverseCookies(testCookiesPath)
+	cookies, err := seq.ReadAllCookies(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !isStrict {
+	if !isStrict() {
 		t.Error("file not in strict netscape format")
 	}
 

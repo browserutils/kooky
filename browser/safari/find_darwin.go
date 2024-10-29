@@ -7,10 +7,16 @@ import (
 	"path/filepath"
 )
 
-func cookieFile() (string, error) {
+func cookieFiles() ([]string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ``, err
+		return nil, err
 	}
-	return filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`), nil
+	paths := []string{
+		// ~/Library/Containers/com.apple.Safari/Data/Library/Cookies
+		filepath.Join(home, `Library`, `Containers`, `com.apple.Safari`, `Data`, `Library`, `Cookies`, `Cookies.binarycookies`),
+		filepath.Join(home, `Library`, `Cookies`, `Cookies.binarycookies`),
+	}
+
+	return paths, nil
 }

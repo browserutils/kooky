@@ -12,39 +12,40 @@ import (
 	"github.com/xiazemin/kooky"
 	"github.com/xiazemin/kooky/internal/bytesx"
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/iterx"
 	"github.com/xiazemin/kooky/internal/timex"
 )
 
 // index.dat parser
 
-func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func (s *IECacheCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	} else if s.File == nil {
-		return nil, errors.New(`file is nil`)
+		return iterx.ErrCookieSeq(errors.New(`file is nil`))
 	}
 
 	ieCacheVersion, err := bytesx.ReadString(s.File, "file format version", 0x00, 0x18)
 	if err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	}
 	if ieCacheVersion != `5.2` {
-		return nil, errors.New(`unsupported IE url cache version`)
+		return iterx.ErrCookieSeq(errors.New(`unsupported IE url cache version`))
 	}
 
 	offsetHashStart, err := bytesx.ReadOffSetInt64LE(s.File, "hash table offset", 0x00, 0x20)
 	if err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	}
 	hashSig, err := bytesx.ReadBytesN(s.File, "hash table offset", offsetHashStart, 0x00, 4)
 	if err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	}
 	if string(hashSig) != `HASH` {
-		return nil, errors.New(`wrong offset for hash table`)
+		return iterx.ErrCookieSeq(errors.New(`wrong offset for hash table`))
 	}
 	// TODO: use hash entries for domain search
 
@@ -52,7 +53,7 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 	var textCookieStores []*TextCookieStore
 	// TODO: do url records always start at 0x5000?
 	urlSig := []byte(`URL `)
-	s.File.Seek(0, io.SeekStart)
+	_, _ = s.File.Seek(0, io.SeekStart)
 	for {
 		offsetURLEntry, err := scanRest(s.File, urlSig)
 		if err != nil {
@@ -62,24 +63,24 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 
 		blockCount, err := bytesx.ReadOffSetInt64LE(s.File, "block count", offsetURLEntry, 4)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		dateModification, err := getFILETIME(s.File, "modification date", offsetURLEntry, 8)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		dateLastAccessed, err := getFILETIME(s.File, "last access date", offsetURLEntry, 16)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		// probably less accurate copy of DateLastAccessed
 		dateLastChecked, err := getFATTIME(s.File, "last check date", offsetURLEntry, 80)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		dateExpiry, err := getFATTIME(s.File, "expiry date", offsetURLEntry, 24)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 
 		entry.BlockCount = blockCount
@@ -92,11 +93,11 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 		// Cookie:<username>@<URI>
 		offsetURLRecordLocation, err := bytesx.ReadOffSetInt64LE(s.File, "location offset", offsetURLEntry, 52) // always 104?
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		location, err := bytesx.ReadString(s.File, "location", offsetURLEntry, offsetURLRecordLocation)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		if !strings.HasPrefix(location, `Cookie:`) {
 			_, _ = s.File.Seek(offsetURLEntry+int64(len(urlSig)), io.SeekStart)
@@ -110,7 +111,7 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 		entry.Domain = strings.SplitN(locAtParts[1], `/`, 2)[0]
 		directoryIndex, err := bytesx.ReadBytesN(s.File, "directory index", offsetURLEntry, 56, 1)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		entry.DirectoryIndex = directoryIndex
 		isCookieEntry := string(entry.DirectoryIndex) == string([]byte{0xFE})
@@ -120,40 +121,43 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 		}
 		formatVersion, err := bytesx.ReadBytesN(s.File, "entry format version", offsetURLEntry, 58, 1) // 0x00 ⇒ IE5_URL_FILEMAP_ENTRY, 0x10 ⇒ IE6_URL_FILEMAP_ENTRY
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		entry.FormatVersion = formatVersion
 		offsetURLRecordFileName, err := bytesx.ReadOffSetInt64LE(s.File, "url record filename offset", offsetURLEntry, 60)
+		if err != nil {
+			return iterx.ErrCookieSeq(err)
+		}
 		fileName, err := bytesx.ReadString(s.File, "file name", offsetURLEntry, offsetURLRecordFileName)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		entry.FileName = filepath.Join(filepath.Dir(s.FileNameStr), fileName)
 		// https://github.com/libyal/libmsiecf/blob/main/documentation/MSIE%20Cache%20File%20(index.dat)%20format.asciidoc#43-cache-entry-flags
 		flags, err := bytesx.ReadBytesN(s.File, "flags", offsetURLEntry, 64, 4)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		entry.Flags = binary.LittleEndian.Uint32(flags)
 		// probably no Data in Cookie Entries
 		offsetURLRecordData, err := bytesx.ReadOffSetInt64LE(s.File, "url record data offset", offsetURLEntry, 68)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		if offsetURLRecordData != 0 {
 			urlRecordDataSize, err := bytesx.ReadBytesN(s.File, "url record data size", offsetURLEntry, 72, 4)
 			if err != nil {
-				return nil, err
+				return iterx.ErrCookieSeq(err)
 			}
 			data, err := bytesx.ReadBytesN(s.File, "url record data", offsetURLEntry, offsetURLRecordData, binary.LittleEndian.Uint32(urlRecordDataSize))
 			if err != nil {
-				return nil, err
+				return iterx.ErrCookieSeq(err)
 			}
 			entry.Data = data
 		}
 		hitsCount, err := bytesx.ReadBytesN(s.File, "hits count", offsetURLEntry, 84, 4)
 		if err != nil {
-			return nil, err
+			return iterx.ErrCookieSeq(err)
 		}
 		entry.HitsCount = binary.LittleEndian.Uint32(hitsCount)
 
@@ -168,24 +172,22 @@ func (s *IECacheCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cook
 				},
 			},
 		)
+		_ = entries // TODO
 		// TODO: the file name of these nested text cookie stores are not visible to the caller, the index.dat appears as the file source
 
 		_, _ = s.File.Seek(offsetURLEntry+int64(len(urlSig)), io.SeekStart)
 	}
 
-	var ret []*kooky.Cookie
-	for _, textCookieStore := range textCookieStores {
-		// TODO: parallelize (internalize kooky/find.go?)
-		cs, err := textCookieStore.ReadCookies(filters...)
-		if err == nil {
-			ret = append(
-				ret,
-				cs...,
-			)
+	return func(yield func(*kooky.Cookie, error) bool) {
+		for _, textCookieStore := range textCookieStores {
+			// TODO: parallelize (internalize kooky/find.go?)
+			for cookie, err := range textCookieStore.TraverseCookies(filters...) {
+				if !yield(cookie, err) {
+					return
+				}
+			}
 		}
 	}
-
-	return ret, nil
 }
 
 type CacheCookieEntry struct {

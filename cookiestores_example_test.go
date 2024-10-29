@@ -1,6 +1,7 @@
 package kooky_test
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/xiazemin/kooky"
@@ -8,7 +9,8 @@ import (
 )
 
 func ExampleFindAllCookieStores() {
-	cookieStores := kooky.FindAllCookieStores()
+	ctx := context.TODO()
+	cookieStores := kooky.FindAllCookieStores(ctx)
 
 	for _, store := range cookieStores {
 		// CookieStore keeps files/databases open for repeated reads
@@ -19,8 +21,7 @@ func ExampleFindAllCookieStores() {
 			kooky.Valid, // remove expired cookies
 		}
 
-		cookies, _ := store.ReadCookies(filters...)
-		for _, cookie := range cookies {
+		for cookie := range store.TraverseCookies(filters...).OnlyCookies() {
 			fmt.Printf(
 				"%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 				store.Browser(),

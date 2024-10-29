@@ -1,134 +1,102 @@
 package epiphany
 
 import (
+	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/xiazemin/kooky"
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/iterx"
 	"github.com/xiazemin/kooky/internal/utils"
 )
 
-func ReadCookies(filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	s, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer s.Close()
-
-	return s.ReadCookies(filters...)
+func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	return cookies.SingleRead(cookieStore, filename, filters...).ReadAllCookies(ctx)
 }
 
-func (s *epiphanyCookieStore) ReadCookies(filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStore, filename, filters...)
+}
+
+func (s *epiphanyCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	if s == nil {
-		return nil, errors.New(`cookie store is nil`)
+		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
 	if err := s.Open(); err != nil {
-		return nil, err
+		return iterx.ErrCookieSeq(err)
 	} else if s.Database == nil {
-		return nil, errors.New(`database is nil`)
+		return iterx.ErrCookieSeq(errors.New(`database is nil`))
 	}
-
-	var cookies []*kooky.Cookie
 
 	// Epiphany originally used a Mozilla Gecko backend but later switched to WebKit.
 	// For possible deviations from the firefox database layout
 	// it might be better not to depend on the firefox implementation.
 
-	err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, func(rowId *int64, row utils.TableRow) error {
-		cookie := kooky.Cookie{}
-		var err error
+	visitor := func(yield func(*kooky.Cookie, error) bool) func(rowId *int64, row utils.TableRow) error {
+		return func(rowId *int64, row utils.TableRow) error {
+			cookie := kooky.Cookie{}
+			var err error
 
-		// Name
-		cookie.Name, err = row.String(`name`)
-		if err != nil {
-			return err
-		}
+			// Name
+			cookie.Name, err = row.String(`name`)
+			if err != nil {
+				return err
+			}
 
-		// Value
-		cookie.Value, err = row.String(`value`)
-		if err != nil {
-			return err
-		}
+			// Value
+			cookie.Value, err = row.String(`value`)
+			if err != nil {
+				return err
+			}
 
-		// Host
-		cookie.Domain, err = row.String(`host`)
-		if err != nil {
-			return err
-		}
+			// Host
+			cookie.Domain, err = row.String(`host`)
+			if err != nil {
+				return err
+			}
 
-		// Path
-		cookie.Path, err = row.String(`path`)
-		if err != nil {
-			return err
-		}
+			// Path
+			cookie.Path, err = row.String(`path`)
+			if err != nil {
+				return err
+			}
 
-		// Expires
-		var expiry int64
-		exp, err := row.Value(`expiry`)
-		if err != nil {
-			return err
-		}
-		switch v := exp.(type) {
-		case int64:
-			expiry = v
-		case int32:
-			expiry = int64(v)
-		default:
-			return fmt.Errorf("got unexpected value for Expires %v (type %[1]T)", expiry)
-		}
-		cookie.Expires = time.Unix(expiry, 0)
+			// Expires
+			expiry, err := utils.ValueOrFallback[int64](row, `expiry`, 0, true)
+			if err != nil {
+				return err
+			}
+			cookie.Expires = time.Unix(expiry, 0)
 
-		// Secure
-		sec, err := row.Value(`isSecure`)
-		if err != nil {
-			return err
-		}
-		secInt, okSec := sec.(int)
-		if !okSec {
-			return fmt.Errorf("got unexpected value for Secure %v (type %[1]T)", sec)
-		}
-		cookie.Secure = secInt > 0
+			// Secure
+			cookie.Secure, err = row.Bool(`isSecure`)
+			if err != nil {
+				return err
+			}
 
-		// HttpOnly
-		ho, err := row.Value(`isHttpOnly`)
-		if err != nil {
-			return err
-		}
-		hoInt, okHO := ho.(int)
-		if !okHO {
-			return fmt.Errorf("got unexpected value for HttpOnly %v (type %[1]T)", ho)
-		}
-		cookie.HttpOnly = hoInt > 0
+			// HttpOnly
+			cookie.HttpOnly, err = row.Bool(`isHttpOnly`)
+			if err != nil {
+				return err
+			}
+			cookie.Browser = s
 
-		if kooky.FilterCookie(&cookie, filters...) {
-			cookies = append(cookies, &cookie)
-		}
+			if !iterx.CookieFilterYield(context.Background(), &cookie, nil, yield, filters...) {
+				return iterx.ErrYieldEnd
+			}
 
-		return nil
-	})
-	if err != nil {
-		return nil, err
+			return nil
+		}
+	}
+	seq := func(yield func(*kooky.Cookie, error) bool) {
+		err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, visitor(yield))
+		if !errors.Is(err, iterx.ErrYieldEnd) {
+			yield(nil, err)
+		}
 	}
 
-	return cookies, nil
-}
-
-// CookieJar returns an initiated http.CookieJar based on the cookies stored by
-// the Epiphany/Gnome Web browser. Set cookies are memory stored and do not modify any
-// browser files.
-func CookieJar(filename string, filters ...kooky.Filter) (http.CookieJar, error) {
-	j, err := cookieStore(filename, filters...)
-	if err != nil {
-		return nil, err
-	}
-	defer j.Close()
-	if err := j.InitJar(); err != nil {
-		return nil, err
-	}
-	return j, nil
+	return seq
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
@@ -141,5 +109,5 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 	s.FileNameStr = filename
 	s.BrowserStr = `epiphany`
 
-	return &cookies.CookieJar{CookieStore: s}, nil
+	return cookies.NewCookieJar(s, filters...), nil
 }

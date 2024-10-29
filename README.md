@@ -1,8 +1,8 @@
 # kooky
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/xiazemin/kooky)](https://pkg.go.dev/github.com/xiazemin/kooky)
-[![Go Report Card](https://goreportcard.com/badge/zellyn/kooky)](https://goreportcard.com/report/zellyn/kooky)
-![Lines of code](https://img.shields.io/tokei/lines/github/zellyn/kooky)
+[![Go Report Card](https://goreportcard.com/badge/browserutils/kooky)](https://goreportcard.com/report/browserutils/kooky)
+![Lines of code](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codetabs.com%2Fv1%2Floc%2F%3Fgithub%3Dbrowserutils%2Fkooky%26ignored%3Dvendor%2Ctestdata&query=%24%5B%3F(%40.language%3D%3D%22Go%22)%5D.linesOfCode&logo=Go&label=lines%20of%20code&cacheSeconds=3600)
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
@@ -30,15 +30,6 @@ Some functions might not yet be implemented on some platforms.
 
 PRs more than welcome.
 
-## TODOs
-
-- [ ] Set up CI
-- [x] Make it work on Windows. (Look at
-      [this](https://play.golang.org/p/fknP9AuLU-) and
-      [this](https://github.com/cfstras/chromecsv/blob/master/crypt_windows.go)
-      to learn how to decrypt.)
-- [x] Handle rows in Chrome's cookie DB with other than 14 columns (?)
-
 ## Example usage
 
 ### Any Browser - Cookie Filter Usage
@@ -56,9 +47,9 @@ import (
 func main() {
 	// uses registered finders to find cookie store files in default locations
 	// applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
-	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`))
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`)).OnlyCookies()
 
-	for _, cookie := range cookies {
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
 	}
  }
@@ -80,11 +71,8 @@ import (
 func main() {
 	dir, _ := os.UserConfigDir() // "/<USER>/Library/Application Support/"
 	cookiesFile := dir + "/Google/Chrome/Default/Cookies"
-	cookies, err := chrome.ReadCookies(cookiesFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, cookie := range cookies {
+	cookiesSeq := chrome.TraverseCookies(cookiesFile).OnlyCookies()
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie)
 	}
 }
@@ -105,25 +93,22 @@ import (
 
 func main() {
 	dir, _ := os.UserHomeDir()
-	cookiesFile := dir + "/Library/Cookies/Cookies.binarycookies"
-	cookies, err := safari.ReadCookies(cookiesFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, cookie := range cookies {
+	cookiesFile := dir + "/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
+	cookiesSeq := safari.TraverseCookies(cookiesFile).OnlyCookies()
+	for cookie := range cookiesSeq {
 		fmt.Println(cookie)
 	}
 }
 ```
 
 ## Thanks/references
-- Thanks to [@dacort](http://github.com/dacort) for MacOS cookie decrypting
+- Thanks to [@dacort](https://github.com/dacort) for MacOS cookie decrypting
   code at https://gist.github.com/dacort/bd6a5116224c594b14db.
-- Thanks to [@as0ler](http://github.com/as0ler)
-  (and originally [@satishb3](http://github.com/satishb3) I believe) for
+- Thanks to [@as0ler](https://github.com/as0ler)
+  (and originally [@satishb3](https://github.com/satishb3) I believe) for
   Safari cookie-reading Python code at https://github.com/as0ler/BinaryCookieReader.
 - Thanks to all the people who have contributed functionality and fixes:
-  - [@srlehn](http://github.com/srlehn) - many fixes, Linux support for Chrome, added about a dozen browsers!
-  - [@zippoxer](http://github.com/zippoxer) - Windows support for Chrome
-  - [@adamdecaf](http://github.com/adamdecaf) - Firefox support
+  - [@srlehn](https://github.com/srlehn) - many fixes, Linux support for Chrome, added about a dozen browsers!
+  - [@zippoxer](https://github.com/zippoxer) - Windows support for Chrome
+  - [@adamdecaf](https://github.com/adamdecaf) - Firefox support
   - [@barnardb](https://github.com/barnardb) - better row abstraction, fixing column length errors

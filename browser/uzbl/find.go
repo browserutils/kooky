@@ -4,6 +4,7 @@
 package uzbl
 
 import (
+	"iter"
 	"os"
 	"path/filepath"
 
@@ -20,57 +21,65 @@ func init() {
 	kooky.RegisterFinder(`uzbl`, &uzblFinder{})
 }
 
-func (f *uzblFinder) FindCookieStores() ([]kooky.CookieStore, error) {
-	roots, err := uzblRoots()
-	if err != nil {
-		return nil, err
-	}
-	files := []string{`session-cookies.txt`, `cookies.txt`}
+// TODO default profile
 
-	var ret []kooky.CookieStore
-	lastRoot := len(roots) - 1
-	lastFile := len(files) - 1
-	for i, root := range roots {
-		for j, filename := range files {
-			ret = append(
-				ret,
-				&cookies.CookieJar{
+func (f *uzblFinder) FindCookieStores() kooky.CookieStoreSeq {
+	return func(yield func(kooky.CookieStore, error) bool) {
+		files := []string{`session-cookies.txt`, `cookies.txt`}
+
+		for root, err := range uzblRoots() {
+			if err != nil && !yield(nil, err) {
+				return
+			}
+			for _, filename := range files {
+				st := &cookies.CookieJar{
 					CookieStore: &netscape.CookieStore{
 						DefaultCookieStore: cookies.DefaultCookieStore{
-							BrowserStr:           `uzbl`,
-							IsDefaultProfileBool: i == lastRoot && j == lastFile,
-							FileNameStr:          filepath.Join(root, `uzbl`, filename),
+							BrowserStr:  `uzbl`,
+							FileNameStr: filepath.Join(root, `uzbl`, filename),
 						},
 					},
-				},
-			)
+				}
+				if !yield(st, nil) {
+					return
+				}
+			}
 		}
 	}
-
-	return ret, nil
 }
 
-func uzblRoots() ([]string, error) {
-	var ret []string
-	home, errHome := os.UserHomeDir()
+func uzblRoots() iter.Seq2[string, error] {
+	return func(yield func(string, error) bool) {
+		home, errHome := os.UserHomeDir()
 
-	// old location
-	// fallback
-	if errHome == nil {
-		ret = append(ret, filepath.Join(home, `.config`))
-	}
-	if dir, ok := os.LookupEnv(`XDG_CONFIG_HOME`); ok {
-		ret = append(ret, dir)
-	}
+		// old location
+		// fallback
+		if errHome != nil {
+			if !yield(``, errHome) {
+				return
+			}
+		} else {
+			if !yield(filepath.Join(home, `.config`), nil) {
+				return
+			}
+		}
+		if dir, ok := os.LookupEnv(`XDG_CONFIG_HOME`); ok {
+			if !yield(dir, nil) {
+				return
+			}
+		}
 
-	// new location
-	if errHome == nil {
-		ret = append(ret, filepath.Join(home, `.local`, `share`))
-	}
+		// new location
+		if errHome == nil {
+			if !yield(filepath.Join(home, `.local`, `share`), nil) {
+				return
+			}
+		}
 
-	if dataDir, ok := os.LookupEnv(`XDG_DATA_HOME`); ok {
-		ret = append(ret, dataDir)
+		if dataDir, ok := os.LookupEnv(`XDG_DATA_HOME`); ok {
+			if !yield(dataDir, nil) {
+				return
+			}
+		}
 	}
-
-	return ret, nil
 }

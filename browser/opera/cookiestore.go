@@ -3,9 +3,9 @@ package opera
 import (
 	"errors"
 	"io"
-	"os"
 
 	"github.com/xiazemin/kooky/internal/cookies"
+	"github.com/xiazemin/kooky/internal/utils"
 )
 
 type operaCookieStore struct {
@@ -32,7 +32,7 @@ func (s *operaPrestoCookieStore) Open() error {
 		return nil
 	}
 
-	f, err := os.Open(s.FileNameStr)
+	f, err := utils.OpenFile(s.FileNameStr)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,5 @@
-//+build darwin
+//go:build darwin
+// +build darwin
 
 package opera
 
@@ -7,26 +8,32 @@ import (
 	"path/filepath"
 )
 
-func operaPrestoRoots() ([]string, error) {
+func operaPrestoRoots(yield func(string, error) bool) {
 	// https://kb.digital-detective.net/display/BF/Location+of+Opera+Presto+Data
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
 
 	// /Users/{user}/Library/Opera/
-	return []string{filepath.Join(home, `Library`, `Opera`)}, nil
+	if !yield(filepath.Join(home, `Library`, `Opera`), nil) {
+		return
+	}
 }
 
-func operaBlinkRoots() ([]string, error) {
+func operaBlinkRoots(yield func(string, error) bool) {
 	// https://kb.digital-detective.net/display/BF/Location+of+Opera+Blink+Data
 
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, err
+		_ = yield(``, err)
+		return
 	}
 
 	// /Users/{user}/Library/Application Support/com.operasoftware.Opera/
-	return []string{filepath.Join(home, `Library`, `Application Support`, `com.operasoftware.Opera`)}, nil
+	if !yield(filepath.Join(home, `Library`, `Application Support`, `com.operasoftware.Opera`), nil) {
+		return
+	}
 }
