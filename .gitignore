@@ -22,4 +22,5 @@ kooky.exe
 
 .vscode/
 *.code-workspace
+.idea/
 
