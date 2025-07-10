@@ -1,6 +1,8 @@
 package firefox
 
 import (
+	"errors"
+
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/firefox"
@@ -22,6 +24,12 @@ func (f *firefoxFinder) FindCookieStores() kooky.CookieStoreSeq {
 				if !yield(nil, err) {
 					return
 				}
+			}
+			if file == nil {
+				if !yield(nil, errors.New(`nil cookie store file`)) {
+					return
+				}
+				continue
 			}
 			st := &cookies.CookieJar{
 				CookieStore: &firefox.CookieStore{

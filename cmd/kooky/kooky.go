@@ -78,6 +78,7 @@ func main() {
 			prCookieLine(w, cookie, trimLen)
 		}
 	}
+	w.Flush()
 }
 
 func prCookieLine(w io.Writer, cookie *kooky.Cookie, trimLen int) {
