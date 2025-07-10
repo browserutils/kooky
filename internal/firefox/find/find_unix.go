@@ -5,6 +5,9 @@ package find
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+
+	"github.com/browserutils/kooky/internal/wsl"
 )
 
 func firefoxRoots(yield func(string, error) bool) {
@@ -18,6 +21,17 @@ func firefoxRoots(yield func(string, error) bool) {
 		return
 	}
 	if !yield(filepath.Join(home, `.mozilla`, `firefox`), nil) {
+		return
+	}
+	// on WSL Linux add Windows paths
+	if runtime.GOOS != `linux` {
+		return
+	}
+	appDataRoot, err := wsl.WSLAppDataRoot()
+	if err != nil && !yield(``, err) {
+		return
+	}
+	if !yield(filepath.Join(appDataRoot, `Roaming`, `Mozilla`, `Firefox`), nil) {
 		return
 	}
 }

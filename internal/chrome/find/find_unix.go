@@ -5,6 +5,8 @@ package find
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/browserutils/kooky/internal/wsl"
 )
 
 func chromeRoots(yield func(string, error) bool) {
@@ -44,6 +46,16 @@ func chromeRoots(yield func(string, error) bool) {
 			return
 		}
 	}
+	// on WSL Linux add Windows paths
+	appDataRoot, err := wsl.WSLAppDataRoot()
+	if err != nil && !yield(``, err) {
+		return
+	}
+	for r, err := range windowsChromeRoots(filepath.Join(appDataRoot, `Local`)) {
+		if !yield(r, err) {
+			return
+		}
+	}
 }
 
 func chromiumRoots(yield func(string, error) bool) {
@@ -51,7 +63,9 @@ func chromiumRoots(yield func(string, error) bool) {
 	var dotConfigs []string
 	// fallback
 	if home, err := os.UserHomeDir(); err != nil {
-		_ = yield(``, err)
+		if !yield(``, err) {
+			return
+		}
 	} else {
 		dotConfigs = append(dotConfigs, filepath.Join(home, `.config`))
 	}
@@ -60,6 +74,16 @@ func chromiumRoots(yield func(string, error) bool) {
 	}
 	for _, dotConfig := range dotConfigs {
 		if !yield(filepath.Join(dotConfig, `chromium`), nil) {
+			return
+		}
+	}
+	// on WSL Linux add Windows paths
+	appDataRoot, err := wsl.WSLAppDataRoot()
+	if err != nil && !yield(``, err) {
+		return
+	}
+	for r, err := range windowsChromiumRoots(filepath.Join(appDataRoot, `Local`)) {
+		if !yield(r, err) {
 			return
 		}
 	}
