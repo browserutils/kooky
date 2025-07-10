@@ -88,7 +88,7 @@ func (s CookieStoreSeq) AllCookieStores(ctx context.Context) []CookieStore {
 		return nil
 	}
 Outer:
-	for cookieStore, _ := range s {
+	for cookieStore := range s {
 		select {
 		case <-ctx.Done():
 			break Outer

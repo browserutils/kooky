@@ -202,7 +202,7 @@ func (s CookieSeq) FirstMatch(ctx context.Context, filters ...Filter) *Cookie {
 	if s == nil {
 		return nil
 	}
-	for cookie, _ := range s.OnlyCookies() {
+	for cookie := range s.OnlyCookies() {
 		select {
 		case <-ctx.Done():
 			return nil
