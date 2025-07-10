@@ -3,16 +3,16 @@ module github.com/browserutils/kooky
 go 1.23.10
 
 require (
-	github.com/Velocidex/ordereddict v0.0.0-20230909174157-2aa49cc5d11d
+	github.com/Velocidex/ordereddict v0.0.0-20250626035939-2f7f022fc719
 	github.com/go-ini/ini v1.67.0
 	github.com/go-sqlite/sqlite3 v0.0.0-20180313105335-53dd8e640ee7
-	github.com/keybase/go-keychain v0.0.0-20231219164618-57a3676c3af6
-	github.com/spf13/pflag v1.0.5
-	github.com/zalando/go-keyring v0.2.5
-	golang.org/x/crypto v0.28.0
-	golang.org/x/net v0.30.0
-	golang.org/x/sys v0.26.0
-	golang.org/x/text v0.19.0
+	github.com/keybase/go-keychain v0.0.1
+	github.com/spf13/pflag v1.0.6
+	github.com/zalando/go-keyring v0.2.6
+	golang.org/x/crypto v0.40.0
+	golang.org/x/net v0.42.0
+	golang.org/x/sys v0.34.0
+	golang.org/x/text v0.27.0
 	www.velocidex.com/golang/go-ese v0.2.0
 )
 
