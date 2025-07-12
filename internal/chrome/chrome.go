@@ -328,6 +328,9 @@ func decryptAESCBC(encrypted, password []byte, iterations int, dbVersion int64) 
 
 	decrypted := make([]byte, len(encrypted))
 	cbc := cipher.NewCBCDecrypter(block, []byte(aescbcIV))
+	if len(encrypted)%cbc.BlockSize() != 0 {
+		return nil, errors.New("chrome: cipher input not full blocks")
+	}
 	cbc.CryptBlocks(decrypted, encrypted)
 
 	// In the padding scheme the last <padding length> bytes
