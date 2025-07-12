@@ -3,6 +3,7 @@
 package find
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,7 +29,7 @@ func firefoxRoots(yield func(string, error) bool) {
 		return
 	}
 	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && !yield(``, err) {
+	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
 		return
 	}
 	if !yield(filepath.Join(appDataRoot, `Roaming`, `Mozilla`, `Firefox`), nil) {

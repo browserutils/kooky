@@ -3,7 +3,6 @@
 package wsl
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -24,7 +23,7 @@ func IsWSL() bool {
 
 func WindowsUsername() (string, error) {
 	if !IsWSL() {
-		return "", errors.New("not running inside WSL")
+		return "", ErrNotWSL
 	}
 
 	// First try to extract username from PATH

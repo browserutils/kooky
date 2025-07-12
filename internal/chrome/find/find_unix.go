@@ -3,6 +3,7 @@
 package find
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -48,7 +49,7 @@ func chromeRoots(yield func(string, error) bool) {
 	}
 	// on WSL Linux add Windows paths
 	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && !yield(``, err) {
+	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
 		return
 	}
 	for r, err := range windowsChromeRoots(filepath.Join(appDataRoot, `Local`)) {
@@ -79,7 +80,7 @@ func chromiumRoots(yield func(string, error) bool) {
 	}
 	// on WSL Linux add Windows paths
 	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && !yield(``, err) {
+	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
 		return
 	}
 	for r, err := range windowsChromiumRoots(filepath.Join(appDataRoot, `Local`)) {
