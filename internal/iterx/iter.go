@@ -1,7 +1,6 @@
 package iterx
 
 import (
-	"cmp"
 	"context"
 	"errors"
 
@@ -50,15 +49,20 @@ func NewCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ c
 		go func() {
 			defer func() { done <- struct{}{} }()
 			if valRetriever != nil {
-				ret = !cmp.Or(
-					!kooky.FilterCookie(ctx, cookie, nonValueFilters...),
-					!retr(cookie),
-					!kooky.FilterCookie(ctx, cookie, valueFilters...),
-				)
+				if kooky.FilterCookie(ctx, cookie, nonValueFilters...) &&
+					retr(cookie) &&
+					kooky.FilterCookie(ctx, cookie, valueFilters...) {
+					ret = yield(cookie, nil)
+				} else {
+					ret = true
+				}
 			} else {
-				ret = kooky.FilterCookie(ctx, cookie, filters...)
+				if kooky.FilterCookie(ctx, cookie, filters...) {
+					ret = yield(cookie, nil)
+				} else {
+					ret = true
+				}
 			}
-			ret = ret && yield(cookie, nil)
 		}()
 		select {
 		case <-ctx.Done():
