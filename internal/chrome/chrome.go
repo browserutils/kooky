@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 
@@ -210,14 +211,12 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 
 	// prioritize previously selected platform then current platform and then other platforms in order of usage on non-server computers
 	// TODO: mobile
-	var osMap = map[string]struct{}{} // used for deduplication
 	var oss []string
 	for _, opsys := range []string{s.OSStr, runtime.GOOS, `windows`, `darwin`, `linux`} {
-		if _, ok := osMap[opsys]; ok {
+		if slices.Contains(oss, opsys) {
 			continue
 		}
 		oss = append(oss, opsys)
-		osMap[opsys] = struct{}{}
 	}
 
 	for _, opsys := range oss {
@@ -234,6 +233,11 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 				// present before Chrome v80 on Windows
 				decrypt = func(encrypted, _ []byte, dbVersion int64) ([]byte, error) {
 					return decryptDPAPI(encrypted)
+				}
+			case bytes.HasPrefix(encrypted, []byte(`v20`)):
+				// Chrome 127+ App-Bound Encryption (ABE)
+				decrypt = func(encrypted, _ []byte, dbVersion int64) ([]byte, error) {
+					return nil, errors.New("unsupported v20 App-Bound Encryption (requires elevated COM access)")
 				}
 			case bytes.HasPrefix(encrypted, []byte(`v10`)):
 				fallthrough
