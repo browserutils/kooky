@@ -50,4 +50,5 @@ account          |   name
 ----------------------------
 Chrome           |   Chrome Safe Storage
 Microsoft Edge   |   Microsoft Edge Safe Storage
+Arc              |   Arc Safe Storage
 */
