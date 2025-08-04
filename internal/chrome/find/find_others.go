@@ -9,3 +9,5 @@ var errNotImplemented = errors.New(`not implemented`)
 func chromeRoots(yield func(string, error) bool) { _ = yield(``, errNotImplemented) }
 
 func chromiumRoots(yield func(string, error) bool) { _ = yield(``, errNotImplemented) }
+
+func braveRoots(yield func(string, error) bool) { _ = yield(``, errNotImplemented) }

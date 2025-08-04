@@ -38,3 +38,15 @@ func windowsChromiumRoots(dir string) func(yield func(string, error) bool) {
 		}
 	}
 }
+
+func windowsBraveRoots(dir string) func(yield func(string, error) bool) {
+	return func(yield func(string, error) bool) {
+		if len(dir) == 0 {
+			_ = yield(``, errors.New(`%LocalAppData% is empty`))
+			return
+		}
+		if !yield(filepath.Join(dir, `BraveSoftware`, `Brave-Browser`, `User Data`), nil) {
+			return
+		}
+	}
+}

@@ -9,3 +9,7 @@ func windowsChromeRoots(_ string) func(yield func(string, error) bool) {
 func windowsChromiumRoots(_ string) func(yield func(string, error) bool) {
 	return func(yield func(string, error) bool) {}
 }
+
+func windowsBraveRoots(_ string) func(yield func(string, error) bool) {
+	return func(yield func(string, error) bool) {}
+}

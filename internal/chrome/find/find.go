@@ -26,6 +26,10 @@ func FindChromiumCookieStoreFiles() iter.Seq2[*chromeCookieStoreFile, error] {
 	return FindCookieStoreFiles(chromiumRoots, `chromium`)
 }
 
+func FindBraveCookieStoreFiles() iter.Seq2[*chromeCookieStoreFile, error] {
+	return FindCookieStoreFiles(braveRoots, `brave`)
+}
+
 func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName string) iter.Seq2[*chromeCookieStoreFile, error] {
 	return func(yield func(*chromeCookieStoreFile, error) bool) {
 		if rootsFunc == nil {
