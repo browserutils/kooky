@@ -24,6 +24,10 @@ func firefoxRoots(yield func(string, error) bool) {
 	if !yield(filepath.Join(home, `.mozilla`, `firefox`), nil) {
 		return
 	}
+	// Mozilla PPA
+	if !yield(filepath.Join(home, `.mozilla`, `firefox-esr`), nil) {
+		return
+	}
 	// on WSL Linux add Windows paths
 	if runtime.GOOS != `linux` {
 		return
