@@ -10,4 +10,5 @@ import (
 var (
 	chromeRoots   = windowsChromeRoots(os.Getenv(`LocalAppData`))
 	chromiumRoots = windowsChromiumRoots(os.Getenv(`LocalAppData`))
+	braveRoots    = windowsBraveRoots(os.Getenv(`LocalAppData`))
 )

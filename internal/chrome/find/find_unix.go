@@ -89,3 +89,39 @@ func chromiumRoots(yield func(string, error) bool) {
 		}
 	}
 }
+
+func braveRoots(yield func(string, error) bool) {
+	// "${XDG_CONFIG_HOME:-$HOME/.config}"
+	var dotConfigs []string
+	// fallback
+	if home, err := os.UserHomeDir(); err != nil {
+		if !yield(``, err) {
+			return
+		}
+	} else {
+		dotConfigs = append(dotConfigs, filepath.Join(home, `.config`))
+	}
+	if dir, ok := os.LookupEnv(`XDG_CONFIG_HOME`); ok {
+		dotConfigs = append(dotConfigs, dir)
+	}
+	for _, dotConfig := range dotConfigs {
+		for _, p := range []string{
+			filepath.Join(dotConfig, `BraveSoftware`, `Brave-Browser`),
+			filepath.Join(dotConfig, `brave-browser`),
+		} {
+			if !yield(p, nil) {
+				return
+			}
+		}
+	}
+	// on WSL Linux add Windows paths
+	appDataRoot, err := wsl.WSLAppDataRoot()
+	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
+		return
+	}
+	for r, err := range windowsBraveRoots(filepath.Join(appDataRoot, `Local`)) {
+		if !yield(r, err) {
+			return
+		}
+	}
+}
