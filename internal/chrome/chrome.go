@@ -353,6 +353,10 @@ func decryptAESCBC(encrypted, password []byte, iterations int, dbVersion int64) 
 		prefixPaddingLen = 32
 	}
 
+	if len(decrypted)-paddingLen < prefixPaddingLen {
+		return nil, fmt.Errorf("decrypted data too short (%d bytes) for prefix padding (%d bytes)", len(decrypted)-paddingLen, prefixPaddingLen)
+	}
+
 	return decrypted[prefixPaddingLen : len(decrypted)-paddingLen], nil
 }
 
