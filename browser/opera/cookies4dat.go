@@ -73,7 +73,7 @@ func (s *operaPrestoCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.
 			}
 			return
 		}
-		if p.end || !yld(p.cookie, nil) {
+		if p.end || !p.yieldCookie(yld) {
 			return
 		}
 	}
@@ -86,11 +86,19 @@ type processor struct {
 	tagID         uint32
 	payloadLength uint32
 	domainParts   []string
+	onlyToSource  bool
 	path          string
 	cookie        *kooky.Cookie
 	filters       []kooky.Filter
 	browser       kooky.BrowserInfo
 	end           bool
+}
+
+func (p *processor) yieldCookie(yield func(*kooky.Cookie, error) bool) bool {
+	if p.cookie != nil && !p.onlyToSource {
+		p.cookie.Domain = `.` + p.cookie.Domain
+	}
+	return yield(p.cookie, nil)
 }
 
 func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) {
@@ -141,11 +149,12 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		c.Domain = domain
 		c.Path = p.path
 		c.Browser = p.browser
-		if !yield(p.cookie, nil) {
+		if !p.yieldCookie(yield) {
 			p.end = true
 			return n, err
 		}
 		p.cookie = c
+		p.onlyToSource = false
 	case tagIDDomainName:
 		p.domainParts = append(p.domainParts, string(payload))
 	case tagIDDomainEnd:
@@ -167,6 +176,8 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		p.cookie.Expires = time.Unix(int64(binary.BigEndian.Uint64(payload)), 0)
 	case tagIDCookieHTTPSOnly:
 		p.cookie.Secure = true
+	case tagIDCookieOnlyToSource:
+		p.onlyToSource = true
 	}
 
 	if !isEOF {
