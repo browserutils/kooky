@@ -397,5 +397,10 @@ func decryptAES256GCM(encrypted, password []byte, dbVersion int64) ([]byte, erro
 	if dbVersion >= 24 {
 		prefixPaddingLen = 32
 	}
+
+	if len(plaintext) < prefixPaddingLen {
+		return nil, fmt.Errorf("decrypted data too short (%d bytes) for prefix padding (%d bytes)", len(plaintext), prefixPaddingLen)
+	}
+
 	return plaintext[prefixPaddingLen:], nil
 }
