@@ -6,7 +6,9 @@ import (
 	"errors"
 	"io"
 	"math/bits"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/browserutils/kooky"
@@ -18,12 +20,6 @@ type fileHeader struct {
 	AppVersionNumber  uint32
 	IDTagLength       uint16
 	LengthLength      uint16
-}
-
-type record struct {
-	TagIDType         any
-	PayloadLengthType any
-	Payload           []byte
 }
 
 // "cookies4.dat" format
@@ -95,7 +91,10 @@ type processor struct {
 }
 
 func (p *processor) yieldCookie(yield func(*kooky.Cookie, error) bool) bool {
-	if p.cookie != nil && !p.onlyToSource {
+	if p.cookie == nil {
+		return true
+	}
+	if !p.onlyToSource {
 		p.cookie.Domain = `.` + p.cookie.Domain
 	}
 	return yield(p.cookie, nil)
@@ -110,83 +109,79 @@ func (p *processor) process(yield func(*kooky.Cookie, error) bool) (int, error) 
 		return 0, err
 	}
 
-	n, tagID, payloadLength, err := getRecord(p.reader, p.idTagLength, p.lengthLength)
-	isEOF := errors.Is(err, io.EOF)
-	if isEOF {
+	var totalN int
+	for {
+		n, tagID, payloadLength, err := getRecord(p.reader, p.idTagLength, p.lengthLength)
+		totalN += n
+		isEOF := errors.Is(err, io.EOF)
+		if isEOF {
+			p.tagID = tagID
+			p.payloadLength = payloadLength
+			return totalN, err
+		}
+		if err != nil {
+			return totalN, err
+		}
 		p.tagID = tagID
 		p.payloadLength = payloadLength
-	}
-	if err != nil {
-		return n, err
-	}
-	p.tagID = tagID
-	p.payloadLength = payloadLength
 
-	var payload []byte
-	if payloadLength > 0 {
-		switch p.tagID {
-		case tagIDDomainStart, tagIDPathStart, tagIDCookie:
-		default:
-			payload = make([]byte, payloadLength)
-			n2, err := p.reader.Read(payload)
-			n += n2
-			if err != nil {
-				return n, err
+		var payload []byte
+		if payloadLength > 0 {
+			switch p.tagID {
+			case tagIDDomainStart, tagIDPathStart, tagIDCookie:
+			default:
+				payload = make([]byte, payloadLength)
+				n2, err := io.ReadFull(p.reader, payload)
+				totalN += n2
+				if err != nil {
+					return totalN, err
+				}
 			}
 		}
-	}
-	switch tagID {
-	case tagIDCookie:
-		c := &kooky.Cookie{}
-		var domain string
-		for i := 0; i < len(p.domainParts); i++ {
-			if i == 0 {
-				domain = p.domainParts[len(p.domainParts)-i-1]
-			} else {
-				domain += `.` + p.domainParts[len(p.domainParts)-i-1]
+		switch tagID {
+		case tagIDCookie:
+			c := &kooky.Cookie{}
+			reversed := slices.Clone(p.domainParts)
+			slices.Reverse(reversed)
+			c.Domain = strings.Join(reversed, `.`)
+			c.Path = p.path
+			c.Browser = p.browser
+			if !p.yieldCookie(yield) {
+				p.end = true
+				return totalN, nil
 			}
+			p.cookie = c
+			p.onlyToSource = false
+		case tagIDDomainName:
+			p.domainParts = append(p.domainParts, string(payload))
+		case tagIDDomainEnd:
+			if len(p.domainParts) > 0 {
+				p.domainParts = p.domainParts[:len(p.domainParts)-1]
+			}
+		case tagIDPathName:
+			p.path = string(payload)
+		case tagIDPathStart, tagIDPathEnd:
+			p.path = ``
+		case tagIDCookieName:
+			if p.cookie != nil {
+				p.cookie.Name = string(payload)
+			}
+		case tagIDCookieValue:
+			if p.cookie != nil {
+				p.cookie.Value = string(payload)
+			}
+		case tagIDCookieDateExpiry:
+			if len(payload) == 8 && p.cookie != nil {
+				p.cookie.Expires = time.Unix(int64(binary.BigEndian.Uint64(payload)), 0)
+			}
+		case tagIDCookieHTTPSOnly:
+			if p.cookie != nil {
+				p.cookie.Secure = true
+			}
+		case tagIDCookieOnlyToSource:
+			p.onlyToSource = true
 		}
-		c.Domain = domain
-		c.Path = p.path
-		c.Browser = p.browser
-		if !p.yieldCookie(yield) {
-			p.end = true
-			return n, err
-		}
-		p.cookie = c
-		p.onlyToSource = false
-	case tagIDDomainName:
-		p.domainParts = append(p.domainParts, string(payload))
-	case tagIDDomainEnd:
-		if len(p.domainParts) > 0 {
-			p.domainParts = p.domainParts[:len(p.domainParts)-1]
-		}
-	case tagIDPathName:
-		p.path = string(payload)
-	case tagIDPathStart, tagIDPathEnd:
-		p.path = ``
-	case tagIDCookieName:
-		p.cookie.Name = string(payload)
-	case tagIDCookieValue:
-		p.cookie.Value = string(payload)
-	case tagIDCookieDateExpiry:
-		if len(payload) != 8 {
-			return n, err
-		}
-		p.cookie.Expires = time.Unix(int64(binary.BigEndian.Uint64(payload)), 0)
-	case tagIDCookieHTTPSOnly:
-		p.cookie.Secure = true
-	case tagIDCookieOnlyToSource:
-		p.onlyToSource = true
 	}
-
-	if !isEOF {
-		var n3 int
-		n3, err = p.process(yield)
-		n += n3
-	}
-
-	return n, err
 }
 
 func getRecord(s io.Reader, idTagLength, lengthLength uint16) (n int, tagID, payloadLength uint32, e error) {
