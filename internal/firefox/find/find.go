@@ -39,11 +39,21 @@ func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName, fileN
 				continue
 			}
 			var defaultProfileFolder string
+			var fallbackProfileFolder string
+			var fallbackCount int
 			for _, sec := range profIni.SectionStrings() {
 				cfgSec := profIni.Section(sec)
 				if cfgSec.Key(`Locked`).String() == `1` {
 					defaultProfileFolder = cfgSec.Key(`Default`).String()
 				}
+				if strings.HasPrefix(sec, `Profile`) && cfgSec.Key(`Default`).String() == `1` {
+					fallbackProfileFolder = cfgSec.Key(`Path`).String()
+					fallbackCount++
+				}
+			}
+			// fallback to Default=1 profile
+			if defaultProfileFolder == `` && fallbackCount == 1 {
+				defaultProfileFolder = fallbackProfileFolder
 			}
 			for _, sec := range profIni.SectionStrings() {
 				// dedicated profiles (firefox 67+) start with Install instead of Profile followed by upper case hex
@@ -54,7 +64,7 @@ func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName, fileN
 				cfgSec := profIni.Section(sec)
 				profileFolder := cfgSec.Key(`Path`).String()
 				var defaultBrowser bool
-				if profileFolder == defaultProfileFolder /* || cfgSec.Key(`Default`).String() == `1` */ {
+				if defaultProfileFolder != `` && profileFolder == defaultProfileFolder {
 					defaultBrowser = true
 				}
 				profileFolder = filepath.FromSlash(profileFolder)
