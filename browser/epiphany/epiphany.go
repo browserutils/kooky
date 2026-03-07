@@ -91,7 +91,7 @@ func (s *epiphanyCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Coo
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
 		err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, visitor(yield))
-		if !errors.Is(err, iterx.ErrYieldEnd) {
+		if err != nil && !errors.Is(err, iterx.ErrYieldEnd) {
 			yield(nil, err)
 		}
 	}
