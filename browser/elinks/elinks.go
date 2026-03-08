@@ -76,7 +76,7 @@ func (s *elinksCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cooki
 			lineNr++
 			cookie, err := parseLine(line)
 			if err != nil {
-				err = fmt.Errorf(`row %d: `, lineNr)
+				err = fmt.Errorf(`row %d: %w`, lineNr, err)
 			}
 			if !iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...) {
 				return
