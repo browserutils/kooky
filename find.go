@@ -189,22 +189,22 @@ func TraverseCookieStores(ctx context.Context) CookieStoreSeq {
 		case <-startChan:
 		}
 
+		muFinder.RLock()
+		defer muFinder.RUnlock()
+
 		var wg sync.WaitGroup
-		wg.Add(len(finders))
 		defer func() {
 			wg.Wait()
 			cancel()
 			close(storeChan)
 		}()
 
-		muFinder.RLock()
-		defer muFinder.RUnlock()
-
+		// TODO: use wg.Go when switching to Go 1.25
 		for _, finder := range finders {
 			if finder == nil {
-				wg.Done()
 				continue
 			}
+			wg.Add(1)
 			go func(finder CookieStoreFinder) {
 				defer wg.Done()
 				for cookieStore, err := range finder.FindCookieStores() {
