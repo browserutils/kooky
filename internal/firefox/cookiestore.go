@@ -14,6 +14,7 @@ type CookieStore struct {
 	cookies.DefaultCookieStore
 	Database   *sqlite3.DbFile
 	Containers map[int]string
+	dbFile     *os.File
 	contFile   *os.File
 }
 
@@ -33,9 +34,11 @@ func (s *CookieStore) Open() error {
 	}
 	db, err := sqlite3.OpenFrom(f)
 	if err != nil {
+		f.Close()
 		return err
 	}
 	s.Database = db
+	s.dbFile = f
 
 	contFileName := filepath.Join(filepath.Dir(s.FileNameStr), `containers.json`)
 	s.contFile, _ = utils.OpenFile(contFileName)
@@ -51,6 +54,11 @@ func (s *CookieStore) Close() error {
 		return nil
 	}
 	err := s.Database.Close()
+	if s.dbFile != nil {
+		if errDB := s.dbFile.Close(); errDB != nil && err == nil {
+			err = errDB
+		}
+	}
 	if err == nil {
 		s.Database = nil
 	}
