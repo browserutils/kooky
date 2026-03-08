@@ -228,22 +228,43 @@ func MergeCookieSeqs(seqs ...CookieSeq) CookieSeq {
 func mergeSeqs[S iter.Seq2[T, error], T any](seqs ...S) S {
 	seqs0 := func(yield func(T, error) bool) {}
 	seqs2 := func(yield func(T, error) bool) {
+		type ve struct {
+			v T
+			e error
+		}
+		ch := make(chan ve, len(seqs))
+		quit := make(chan struct{})
+
 		var wg sync.WaitGroup
-		defer wg.Wait()
-		wg.Add(len(seqs) + 1)
-		runner := func(seq S) {
-			defer wg.Done()
+		// TODO: use wg.Go when switching to Go 1.25
+		for _, seq := range seqs {
 			if seq == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(seq S) {
+				defer wg.Done()
+				for v, err := range seq {
+					select {
+					case ch <- ve{v: v, e: err}:
+					case <-quit:
+						return
+					}
+				}
+			}(seq)
+		}
+		go func() {
+			wg.Wait()
+			close(ch)
+		}()
+
+		for item := range ch {
+			if !yield(item.v, item.e) {
+				close(quit)
+				for range ch {
+				}
 				return
 			}
-			for v, error := range seq {
-				if !yield(v, error) {
-					return
-				}
-			}
-		}
-		for _, seq := range seqs {
-			go runner(seq)
 		}
 	}
 	switch len(seqs) {
