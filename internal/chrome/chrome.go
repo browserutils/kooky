@@ -338,12 +338,12 @@ func decryptAESCBC(encrypted, password []byte, iterations int, dbVersion int64) 
 	cbc.CryptBlocks(decrypted, encrypted)
 
 	// In the padding scheme the last <padding length> bytes
-	// have a value equal to the padding length, always in (1,16]
+	// have a value equal to the padding length, always in [1,16]
 	if len(decrypted)%aescbcLength != 0 {
 		return nil, fmt.Errorf("decrypted data block length is not a multiple of %d", aescbcLength)
 	}
 	paddingLen := int(decrypted[len(decrypted)-1])
-	if paddingLen > 16 {
+	if paddingLen < 1 || paddingLen > 16 {
 		return nil, fmt.Errorf("invalid last block padding length: %d", paddingLen)
 	}
 
