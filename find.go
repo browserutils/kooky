@@ -124,7 +124,6 @@ func (s CookieStoreSeq) TraverseCookies(ctx context.Context, filters ...Filter) 
 		var wg sync.WaitGroup
 		defer func() {
 			wg.Wait()
-			cancel()
 			close(cookieChan)
 		}()
 		for cookieStore, err := range s {
@@ -195,7 +194,6 @@ func TraverseCookieStores(ctx context.Context) CookieStoreSeq {
 		var wg sync.WaitGroup
 		defer func() {
 			wg.Wait()
-			cancel()
 			close(storeChan)
 		}()
 
