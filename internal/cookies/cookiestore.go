@@ -1,7 +1,6 @@
 package cookies
 
 import (
-	"context"
 	"errors"
 	"io"
 	"os"
@@ -109,17 +108,12 @@ func ReadCookiesClose(store CookieStore, filters ...kooky.Filter) kooky.CookieSe
 		return iterx.ErrCookieSeq(errors.New(`nil cookie store`))
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
-		defer func() {
-			if err := store.Close(); err != nil {
-				yield(nil, err)
-			}
-		}()
+		defer store.Close()
 		for cookie, err := range store.TraverseCookies(filters...) {
-			if !iterx.CookieFilterYield(context.Background(), cookie, err, yield, filters...) {
+			if !yield(cookie, err) {
 				return
 			}
 		}
-
 	}
 	return seq
 }
