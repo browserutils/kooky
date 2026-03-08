@@ -64,7 +64,7 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 	valRetr := func(row utils.TableRow) func(c *kooky.Cookie) error {
 		return func(c *kooky.Cookie) error { return s.saveCookieValue(c, row) }
 	}
-	yldr := iterx.NewCookieFilterYielder(splitFilters, filters...)
+	yldr := iterx.NewLazyCookieFilterYielder(splitFilters, filters...)
 
 	ctx := context.Background()
 	visitor := func(ctx context.Context, yield func(*kooky.Cookie, error) bool) func(rowID *int64, row utils.TableRow) error {

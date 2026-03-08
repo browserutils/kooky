@@ -20,7 +20,11 @@ func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie erro
 	return true
 }
 
-func NewCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ context.Context, yield func(*kooky.Cookie, error) bool, _ *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
+// NewLazyCookieFilterYielder returns a yield helper that defers cookie value
+// retrieval (e.g. decryption) until non-value filters have passed.
+// When splitFilters is true, filters are split into value and non-value filters
+// so that expensive operations like decryption are skipped for filtered-out cookies.
+func NewLazyCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ context.Context, yield func(*kooky.Cookie, error) bool, _ *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
 	var valueFilters, nonValueFilters []kooky.Filter
 	if splitFilters {
 		for _, filter := range filters {
