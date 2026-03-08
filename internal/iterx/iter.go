@@ -8,17 +8,16 @@ import (
 )
 
 func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
-	ret := true
 	if errCookie != nil {
 		if errors.Is(errCookie, ErrYieldEnd) {
 			return false
 		}
-		ret = yield(nil, errCookie)
+		return yield(nil, errCookie)
 	}
 	if kooky.FilterCookie(ctx, cookie, filters...) {
-		ret = yield(cookie, nil)
+		return yield(cookie, nil)
 	}
-	return ret
+	return true
 }
 
 func NewCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ context.Context, yield func(*kooky.Cookie, error) bool, _ *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
