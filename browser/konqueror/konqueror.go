@@ -37,8 +37,10 @@ func (s *konquerorCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Co
 	return func(yield func(*kooky.Cookie, error) bool) {
 		if err := s.Open(); err != nil {
 			yield(nil, err)
+			return
 		} else if s.File == nil {
 			yield(nil, errors.New(`file is nil`))
+			return
 		}
 
 		latin1 := charmap.ISO8859_1.NewDecoder().Reader(s.File)
