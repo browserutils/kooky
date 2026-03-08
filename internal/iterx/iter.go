@@ -43,37 +43,25 @@ func NewLazyCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func
 		if cookie == nil {
 			return true
 		}
+		if ctx.Err() != nil {
+			return false
+		}
 		retr := func(cookie *kooky.Cookie) bool {
 			err := valRetriever(cookie)
 			return err == nil || (yield(nil, err) && false)
 		}
-		done := make(chan struct{})
-		var ret, ctxDone bool
-		go func() {
-			defer func() { done <- struct{}{} }()
-			if valRetriever != nil {
-				if kooky.FilterCookie(ctx, cookie, nonValueFilters...) &&
-					retr(cookie) &&
-					kooky.FilterCookie(ctx, cookie, valueFilters...) {
-					ret = yield(cookie, nil)
-				} else {
-					ret = true
-				}
-			} else {
-				if kooky.FilterCookie(ctx, cookie, filters...) {
-					ret = yield(cookie, nil)
-				} else {
-					ret = true
-				}
+		if valRetriever != nil {
+			if kooky.FilterCookie(ctx, cookie, nonValueFilters...) &&
+				retr(cookie) &&
+				kooky.FilterCookie(ctx, cookie, valueFilters...) {
+				return yield(cookie, nil)
 			}
-		}()
-		select {
-		case <-ctx.Done():
-			ctxDone = true
-			<-done // wait for current yield to finish
-		case <-done:
+		} else {
+			if kooky.FilterCookie(ctx, cookie, filters...) {
+				return yield(cookie, nil)
+			}
 		}
-		return ret && !ctxDone
+		return true
 	}
 }
 
