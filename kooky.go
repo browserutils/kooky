@@ -30,13 +30,13 @@ type Cookie struct {
 //
 //	import _ "github.com/browserutils/kooky/browser/chrome"
 func ReadCookies(ctx context.Context, filters ...Filter) (Cookies, error) {
-	return TraverseCookies(ctx).ReadAllCookies(ctx)
+	return TraverseCookies(ctx, filters...).ReadAllCookies(ctx)
 }
 
 func AllCookies(filters ...Filter) Cookies {
 	// for convenience...
 	ctx := context.Background()
-	return TraverseCookies(ctx).Collect(ctx)
+	return TraverseCookies(ctx, filters...).Collect(ctx)
 }
 
 // adjustments to the json marshaling to allow dates with more than 4 year digits
