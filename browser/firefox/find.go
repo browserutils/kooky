@@ -24,6 +24,7 @@ func (f *firefoxFinder) FindCookieStores() kooky.CookieStoreSeq {
 				if !yield(nil, err) {
 					return
 				}
+				continue
 			}
 			if file == nil {
 				if !yield(nil, errors.New(`nil cookie store file`)) {
