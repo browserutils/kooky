@@ -38,21 +38,23 @@ PRs more than welcome.
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all" // register cookie store finders!
+	"github.com/browserutils/kooky/filter"
 )
 
 func main() {
 	// uses registered finders to find cookie store files in default locations
 	// applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
-	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`)).OnlyCookies()
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), filter.Valid, filter.DomainHasSuffix(`google.com`), filter.Name(`NID`)).OnlyCookies()
 
 	for cookie := range cookiesSeq {
 		fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
 	}
- }
+}
 ```
 
 ### Chrome on macOS

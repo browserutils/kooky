@@ -188,7 +188,7 @@ func (s CookieSeq) Filter(ctx context.Context, filters ...Filter) CookieSeq {
 				return
 			default:
 			}
-			if !FilterCookie(ctx, cookie, filters...) {
+			if !matchCookie(ctx, cookie, filters...) {
 				continue
 			}
 			if !yield(cookie, nil) {
@@ -208,7 +208,7 @@ func (s CookieSeq) FirstMatch(ctx context.Context, filters ...Filter) *Cookie {
 			return nil
 		default:
 		}
-		if FilterCookie(ctx, cookie, filters...) {
+		if matchCookie(ctx, cookie, filters...) {
 			return cookie
 		}
 	}

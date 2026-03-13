@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/filter"
 	"github.com/browserutils/kooky/internal/chrome"
 	"github.com/browserutils/kooky/internal/testutils"
 )
@@ -33,7 +34,7 @@ func TestReadCookies(t *testing.T) {
 	name := "user"
 
 	ctx := context.Background()
-	cookies = kooky.FilterCookies(ctx, cookies, kooky.Domain(domain), kooky.Name(name)).Collect(ctx)
+	cookies = kooky.FilterCookies(ctx, cookies, filter.Domain(domain), filter.Name(name)).Collect(ctx)
 	if len(cookies) == 0 {
 		t.Fatalf("Found no cookies with domain=%q, name=%q", domain, name)
 	}

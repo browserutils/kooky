@@ -1,19 +1,22 @@
-package kooky
+package kooky_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/filter"
 )
 
-var nidFilters = []Filter{
-	Domain(`.google.com`),
-	Name(`NID`),
+var nidFilters = []kooky.Filter{
+	filter.Domain(`.google.com`),
+	filter.Name(`NID`),
 }
 
 func BenchmarkFirstMatch(b *testing.B) {
 	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		cookie := TraverseCookies(ctx).FirstMatch(ctx, nidFilters...)
+		cookie := kooky.TraverseCookies(ctx).FirstMatch(ctx, nidFilters...)
 		_ = cookie
 	}
 }
@@ -21,7 +24,7 @@ func BenchmarkFirstMatch(b *testing.B) {
 func BenchmarkFirstMatchSlice(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// cookies := ReadCookies(nidFilters...) // old name
-		cookies := AllCookies(nidFilters...)
+		cookies := kooky.AllCookies(nidFilters...)
 		_ = cookies
 	}
 }

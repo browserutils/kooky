@@ -5,6 +5,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all" // register cookiestore finders
+	"github.com/browserutils/kooky/filter"
 )
 
 var cookieName = `NID`
@@ -16,10 +17,10 @@ func ExampleFilterCookies() {
 					Seq().
 					Filter(
 			ctx,
-			kooky.Valid,                    // remove expired cookies
-			kooky.DomainContains(`google`), // cookie domain has to contain "google"
-			kooky.Name(cookieName),         // cookie name is "NID"
-			kooky.Debug,                    // print cookies after applying previous filter
+			filter.Valid,                    // remove expired cookies
+			filter.DomainContains(`google`), // cookie domain has to contain "google"
+			filter.Name(cookieName),         // cookie name is "NID"
+			filter.Debug,                    // print cookies after applying previous filter
 		).
 		Collect(ctx) // iterate and collect in a slice
 

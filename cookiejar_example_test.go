@@ -11,6 +11,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/firefox"
+	"github.com/browserutils/kooky/filter"
 )
 
 func Example_cookieJar() {
@@ -26,13 +27,13 @@ func Example_cookieJar() {
 	}
 	// jar := s
 	// only store cookies relevant for the target website in the cookie jar
-	jar, _ := s.SubJar(ctx, kooky.FilterFunc(func(c *kooky.Cookie) bool {
-		return kooky.Domain(`github.com`).Filter(c) || kooky.Domain(`.github.com`).Filter(c)
+	jar, _ := s.SubJar(ctx, filter.FilterFunc(func(c *kooky.Cookie) bool {
+		return filter.Domain(`github.com`).Filter(c) || filter.Domain(`.github.com`).Filter(c)
 	}))
 
 	u, _ := url.Parse(`https://github.com/settings/profile`)
 
-	cookies := kooky.FilterCookies(ctx, jar.Cookies(u), kooky.Name(`logged_in`)).Collect(ctx)
+	cookies := kooky.FilterCookies(ctx, jar.Cookies(u), filter.Name(`logged_in`)).Collect(ctx)
 	if len(cookies) == 0 {
 		log.Fatal(`not logged in`)
 	}
