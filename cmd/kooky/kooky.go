@@ -13,6 +13,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
+	"github.com/browserutils/kooky/filter"
 
 	"github.com/spf13/pflag"
 )
@@ -31,13 +32,13 @@ func main() {
 	// cookie filters
 	filters := []kooky.Filter{storeFilter(browser, profile, defaultProfile)}
 	if showExpired == nil || !*showExpired {
-		filters = append(filters, kooky.Valid)
+		filters = append(filters, filter.Valid)
 	}
 	if domain != nil && len(*domain) > 0 {
-		filters = append(filters, kooky.DomainContains(*domain))
+		filters = append(filters, filter.DomainContains(*domain))
 	}
 	if name != nil && len(*name) > 0 {
-		filters = append(filters, kooky.Name(*name))
+		filters = append(filters, filter.Name(*name))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -126,7 +127,7 @@ func prFilePath(c *kooky.Cookie) string {
 }
 
 func storeFilter(browser, profile *string, defaultProfile *bool) kooky.Filter {
-	return kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
+	return filter.FilterFunc(func(cookie *kooky.Cookie) bool {
 		if cookie == nil || cookie.Browser == nil {
 			return false
 		}

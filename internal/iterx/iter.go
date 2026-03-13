@@ -5,7 +5,28 @@ import (
 	"errors"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/filter"
 )
+
+func matchCookie(ctx context.Context, cookie *kooky.Cookie, filters ...kooky.Filter) bool {
+	if cookie == nil {
+		return false
+	}
+	for _, f := range filters {
+		if f == nil {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+		if !f.Filter(cookie) {
+			return false
+		}
+	}
+	return true
+}
 
 func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie error, yield func(*kooky.Cookie, error) bool, filters ...kooky.Filter) bool {
 	if errCookie != nil {
@@ -14,7 +35,7 @@ func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie erro
 		}
 		return yield(nil, errCookie)
 	}
-	if kooky.FilterCookie(ctx, cookie, filters...) {
+	if matchCookie(ctx, cookie, filters...) {
 		return yield(cookie, nil)
 	}
 	return true
@@ -27,12 +48,12 @@ func CookieFilterYield(ctx context.Context, cookie *kooky.Cookie, errCookie erro
 func NewLazyCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func(_ context.Context, yield func(*kooky.Cookie, error) bool, _ *kooky.Cookie, errCookie error, valRetriever func(*kooky.Cookie) error) bool {
 	var valueFilters, nonValueFilters []kooky.Filter
 	if splitFilters {
-		for _, filter := range filters {
-			if _, ok := filter.(kooky.ValueFilterFunc); ok {
-				valueFilters = append(valueFilters, filter)
+		for _, f := range filters {
+			if _, ok := f.(filter.ValueFilterFunc); ok {
+				valueFilters = append(valueFilters, f)
 			} else {
 				// these non-value filters can be used for prefiltering before value decryption
-				nonValueFilters = append(nonValueFilters, filter)
+				nonValueFilters = append(nonValueFilters, f)
 			}
 		}
 	}
@@ -51,13 +72,13 @@ func NewLazyCookieFilterYielder(splitFilters bool, filters ...kooky.Filter) func
 			return err == nil || (yield(nil, err) && false)
 		}
 		if valRetriever != nil {
-			if kooky.FilterCookie(ctx, cookie, nonValueFilters...) &&
+			if matchCookie(ctx, cookie, nonValueFilters...) &&
 				retr(cookie) &&
-				kooky.FilterCookie(ctx, cookie, valueFilters...) {
+				matchCookie(ctx, cookie, valueFilters...) {
 				return yield(cookie, nil)
 			}
 		} else {
-			if kooky.FilterCookie(ctx, cookie, filters...) {
+			if matchCookie(ctx, cookie, filters...) {
 				return yield(cookie, nil)
 			}
 		}

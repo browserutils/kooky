@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/browserutils/kooky"
+	"github.com/browserutils/kooky/filter"
 )
 
 // example regex matching base64 strings
@@ -20,7 +21,7 @@ func ExampleFilter_regex() {
 		ctx,
 		cookies,
 		ValueRegexMatch(reBase64), // filter cookies with the regex filter
-		// kooky.Debug,            // print cookies after applying the regex filter
+		// filter.Debug,            // print cookies after applying the regex filter
 	).Collect(ctx)
 
 	for _, cookie := range cookies {
@@ -32,7 +33,7 @@ func ExampleFilter_regex() {
 }
 
 func ValueRegexMatch(re *regexp.Regexp) kooky.Filter {
-	return kooky.FilterFunc(func(cookie *kooky.Cookie) bool {
+	return filter.FilterFunc(func(cookie *kooky.Cookie) bool {
 		return cookie != nil && re != nil && re.Match([]byte(cookie.Value))
 	})
 }
