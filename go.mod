@@ -3,7 +3,7 @@ module github.com/browserutils/kooky
 go 1.24.0
 
 require (
-	github.com/browserutils/ese v0.0.0-20260314183921-1b24d01f894c
+	github.com/browserutils/ese v0.0.0-20260314231124-b3a60a007328
 	github.com/go-sqlite/sqlite3 v0.0.0-20180313105335-53dd8e640ee7
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/keybase/go-keychain v0.0.1
