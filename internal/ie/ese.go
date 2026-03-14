@@ -11,8 +11,8 @@ import (
 	"github.com/browserutils/kooky/internal/iterx"
 	"github.com/browserutils/kooky/internal/timex"
 
-	"github.com/Velocidex/ordereddict"
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/browserutils/ese/ordereddict"
+	"github.com/browserutils/ese/parser"
 )
 
 func (s *ESECookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
