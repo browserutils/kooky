@@ -15,3 +15,5 @@ func chromeRoots(yield func(string, error) bool) {
 }
 
 func chromiumRoots(yield func(string, error) bool) { _ = yield(``, errNotImplemented) }
+
+func braveRoots(yield func(string, error) bool) { _ = yield(``, errNotImplemented) }
