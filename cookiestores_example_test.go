@@ -6,6 +6,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all" // register cookiestore finders
+	"github.com/browserutils/kooky/filter"
 )
 
 func ExampleFindAllCookieStores() {
@@ -18,7 +19,7 @@ func ExampleFindAllCookieStores() {
 		defer store.Close()
 
 		var filters = []kooky.Filter{
-			kooky.Valid, // remove expired cookies
+			filter.Valid, // remove expired cookies
 		}
 
 		for cookie := range store.TraverseCookies(filters...).OnlyCookies() {
