@@ -223,7 +223,12 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 	}
 
 	for _, opsys := range oss {
-		// "useSavedKeyringPassword" and "tryNr" have to preserve state between retries
+		// Keyring password retry mechanism (per OS):
+		//   tryNr 0: use cached/saved keyring password
+		//   tryNr 1: re-query keyring fresh (no cache)
+		//   tryNr 2: fall back to hardcoded password (e.g. "peanuts" on Linux)
+		// On decryption failure, goto tryAgain loops back with tryNr incremented.
+		// Both vars preserve state across retries.
 		var useSavedKeyringPassword bool = true
 		var tryNr int
 	tryAgain:
