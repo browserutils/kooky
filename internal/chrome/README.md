@@ -1,3 +1,15 @@
+### Known Safe Storage combinations
+
+| Account        | Name                        | Application       | Portal App ID         |
+|----------------|-----------------------------|-------------------|-----------------------|
+| Chrome         | Chrome Safe Storage         | chrome            | com.google.Chrome     |
+| Chromium       | Chromium Safe Storage       | chromium          | org.chromium.Chromium |
+| Brave          | Brave Safe Storage          | brave             |                       |
+| Microsoft Edge | Microsoft Edge Safe Storage | chromium (shared) |                       |
+| Opera          | uses Chromium Safe Storage  | chromium (shared) |                       |
+| Vivaldi        | (portal only)               | vivaldi           | com.vivaldi.Vivaldi   |
+| Arc            | Arc Safe Storage            | arc               |                       |
+
 ### SQL schemes of file Cookies, table cookies
 
 extracted with sqlitebrowser

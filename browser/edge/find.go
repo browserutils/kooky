@@ -37,7 +37,7 @@ func (f *edgeFinder) FindCookieStores() kooky.CookieStoreSeq {
 					FileNameStr:          file.Path,
 				},
 			}
-			cookieStore.SetSafeStorage(`Microsoft Edge`, ``)
+			cookieStore.SetSafeStorage(`Microsoft Edge`, ``, ``)
 			if !yield(&cookies.CookieJar{CookieStore: cookieStore}, nil) {
 				return
 			}
