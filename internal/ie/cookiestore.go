@@ -9,7 +9,7 @@ import (
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/utils"
 
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/browserutils/ese/parser"
 )
 
 type CookieStore struct {
