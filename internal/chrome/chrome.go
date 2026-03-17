@@ -6,13 +6,16 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"runtime"
 	"slices"
 	"strconv"
 	"sync"
 
+	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/browserutils/kooky"
@@ -253,6 +256,12 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 			}
 		case `linux`:
 			switch {
+			case bytes.HasPrefix(encrypted, []byte(`v12`)):
+				// os_crypt_async SecretPortalKeyProvider: AES-256-GCM with HKDF-SHA256 derived key
+				// Chromium source: secret_portal_key_provider.cc
+				// Key = HKDF-SHA256(secret, salt="fdo_portal_secret_salt", info="HKDF-SHA-256 AES-256-GCM", len=32)
+				needsKeyringQuerying = true
+				decrypt = decryptV12AES256GCM
 			case bytes.HasPrefix(encrypted, []byte(`v11`)):
 				needsKeyringQuerying = true
 				fallbackPassword = fallbackPasswordLinux[:]
@@ -261,8 +270,10 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 			default:
 				password = fallbackPasswordLinux[:]
 			}
-			decrypt = func(encrypted, password []byte, dbVersion int64) ([]byte, error) {
-				return decryptAESCBC(encrypted, password, aescbcIterationsLinux, dbVersion)
+			if decrypt == nil {
+				decrypt = func(encrypted, password []byte, dbVersion int64) ([]byte, error) {
+					return decryptAESCBC(encrypted, password, aescbcIterationsLinux, dbVersion)
+				}
 			}
 		}
 		if decrypt == nil {
@@ -310,6 +321,11 @@ const (
 	aescbcIterationsLinux = 1
 	aescbcIterationsMacOS = 1003
 	aescbcLength          = 16
+
+	// os_crypt_async SecretPortalKeyProvider HKDF parameters
+	// Source: components/os_crypt/async/browser/secret_portal_key_provider.cc
+	portalHKDFSalt = `fdo_portal_secret_salt`
+	portalHKDFInfo = "HKDF-SHA-256 AES-256-GCM"
 )
 
 func decryptAESCBC(encrypted, password []byte, iterations int, dbVersion int64) ([]byte, error) {
@@ -403,4 +419,20 @@ func decryptAES256GCM(encrypted, password []byte, dbVersion int64) ([]byte, erro
 	}
 
 	return plaintext[prefixPaddingLen:], nil
+}
+
+// decryptV12AES256GCM handles the os_crypt_async SecretPortalKeyProvider encryption.
+// The portal secret (password parameter) is first derived via HKDF-SHA256 to produce
+// a 32-byte AES-256-GCM key, then decrypted with AES-256-GCM.
+// Chromium source: components/os_crypt/async/browser/secret_portal_key_provider.cc
+func decryptV12AES256GCM(encrypted, password []byte, dbVersion int64) ([]byte, error) {
+	// Derive AES-256 key from portal secret via HKDF-SHA256
+	// salt and info match Chromium's kSaltForHkdf and kInfoForHkdf
+	hkdfReader := hkdf.New(sha256.New, password, []byte(portalHKDFSalt), []byte(portalHKDFInfo))
+	derivedKey := make([]byte, 32) // AES-256
+	if _, err := io.ReadFull(hkdfReader, derivedKey); err != nil {
+		return nil, fmt.Errorf("v12 HKDF key derivation: %w", err)
+	}
+
+	return decryptAES256GCM(encrypted, derivedKey, dbVersion)
 }
