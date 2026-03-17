@@ -1,3 +1,5 @@
+//go:build example
+
 package kooky_test
 
 import (

@@ -24,7 +24,7 @@ func TestReadCookies(t *testing.T) {
 	}
 
 	// timezone
-	tz := time.Local
+	tz := time.UTC
 
 	c := cookies[0]
 	if c.Domain != ".google.de" {
@@ -36,7 +36,7 @@ func TestReadCookies(t *testing.T) {
 	if c.Path != "/complete/search" {
 		t.Errorf("c.Path=%q", c.Path)
 	}
-	if !c.Expires.Equal(time.Date(2021, 4, 13, 10, 13, 04, 0, tz)) {
+	if !c.Expires.Equal(time.Date(2021, 4, 13, 8, 13, 04, 0, tz)) {
 		t.Errorf("c.Expires=%q", c.Expires)
 	}
 	if c.Secure {
