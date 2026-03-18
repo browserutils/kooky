@@ -55,7 +55,7 @@ func (c *Cookie) MarshalJSON() ([]byte, error) {
 		Quoted      bool          `json:"quoted"`
 		Path        string        `json:"path"`
 		Domain      string        `json:"domain"`
-		Expires     jsonTime      `json:"expires"`
+		Expires     *jsonTime     `json:"expires,omitempty"`
 		RawExpires  string        `json:"raw_expires,omitempty"`
 		MaxAge      int           `json:"max_age"`
 		Secure      bool          `json:"secure"`
@@ -65,7 +65,7 @@ func (c *Cookie) MarshalJSON() ([]byte, error) {
 		Raw         string        `json:"raw,omitempty"`
 		Unparsed    []string      `json:"unparsed,omitempty"`
 		// extra fields
-		Creation         jsonTime `json:"creation"`
+		Creation         *jsonTime `json:"creation,omitempty"`
 		Browser          string   `json:"browser,omitempty"`
 		Profile          string   `json:"profile,omitempty"`
 		IsDefaultProfile bool     `json:"is_default_profile"`
@@ -77,7 +77,6 @@ func (c *Cookie) MarshalJSON() ([]byte, error) {
 		Quoted:      c.Cookie.Quoted,
 		Path:        c.Cookie.Path,
 		Domain:      c.Cookie.Domain,
-		Expires:     jsonTime{c.Cookie.Expires},
 		RawExpires:  c.Cookie.RawExpires,
 		MaxAge:      c.Cookie.MaxAge,
 		Secure:      c.Cookie.Secure,
@@ -86,8 +85,13 @@ func (c *Cookie) MarshalJSON() ([]byte, error) {
 		Partitioned: c.Cookie.Partitioned,
 		Raw:         c.Cookie.Raw,
 		Unparsed:    c.Cookie.Unparsed,
-		Creation:    jsonTime{c.Creation},
 		Container:   c.Container,
+	}
+	if !c.Cookie.Expires.IsZero() {
+		c2.Expires = &jsonTime{c.Cookie.Expires}
+	}
+	if !c.Creation.IsZero() {
+		c2.Creation = &jsonTime{c.Creation}
 	}
 	if c.Browser != nil {
 		c2.Browser = c.Browser.Browser()
