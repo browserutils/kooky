@@ -46,5 +46,32 @@ func (f *firefoxFinder) FindCookieStores() kooky.CookieStoreSeq {
 				return
 			}
 		}
+		for file, err := range find.FindFirefoxSessionCookieStoreFiles() {
+			if err != nil {
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			if file == nil {
+				if !yield(nil, errors.New(`nil cookie store file`)) {
+					return
+				}
+				continue
+			}
+			st := &cookies.CookieJar{
+				CookieStore: &firefox.SessionCookieStore{
+					DefaultCookieStore: cookies.DefaultCookieStore{
+						BrowserStr:           file.Browser,
+						ProfileStr:           file.Profile,
+						IsDefaultProfileBool: file.IsDefaultProfile,
+						FileNameStr:          file.Path,
+					},
+				},
+			}
+			if !yield(st, nil) {
+				return
+			}
+		}
 	}
 }

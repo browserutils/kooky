@@ -20,6 +20,10 @@ func FindFirefoxCookieStoreFiles() iter.Seq2[*firefoxCookieStoreFile, error] {
 	return FindCookieStoreFiles(firefoxRoots, `firefox`, `cookies.sqlite`)
 }
 
+func FindFirefoxSessionCookieStoreFiles() iter.Seq2[*firefoxCookieStoreFile, error] {
+	return FindCookieStoreFiles(firefoxRoots, `firefox`, filepath.Join(`sessionstore-backups`, `recovery.jsonlz4`))
+}
+
 func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName, fileName string) iter.Seq2[*firefoxCookieStoreFile, error] {
 	return func(yield func(*firefoxCookieStoreFile, error) bool) {
 		if rootsFunc == nil {

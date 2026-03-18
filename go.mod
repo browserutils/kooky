@@ -7,6 +7,7 @@ require (
 	github.com/go-sqlite/sqlite3 v0.0.0-20180313105335-53dd8e640ee7
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/keybase/go-keychain v0.0.1
+	github.com/pierrec/lz4/v4 v4.1.26
 	github.com/spf13/pflag v1.0.10
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/crypto v0.48.0
