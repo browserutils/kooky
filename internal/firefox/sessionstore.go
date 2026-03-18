@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -14,42 +15,96 @@ import (
 	"github.com/browserutils/kooky/internal/iterx"
 )
 
-// SessionCookieStore reads session cookies from Firefox session store files
-// (recovery.jsonlz4, recovery.baklz4, sessionstore.jsonlz4).
+// sessionStoreFiles lists session store files ordered by freshness:
+// runtime files first (most current), then shutdown files.
+var sessionStoreFiles = []string{
+	filepath.Join(`sessionstore-backups`, `recovery.jsonlz4`),
+	filepath.Join(`sessionstore-backups`, `recovery.baklz4`),
+	`sessionstore.jsonlz4`,
+	filepath.Join(`sessionstore-backups`, `previous.jsonlz4`),
+}
+
+// SessionCookieStore reads session cookies from Firefox session store files.
+// FileNameStr is the profile directory; the store resolves the actual file on access.
 type SessionCookieStore struct {
 	cookies.DefaultCookieStore
 	Containers     map[int]string
+	profileDir     string
+	resolvedPath   string
 	sessionCookies []sessionStoreCookie
 }
 
 var _ cookies.CookieStore = (*SessionCookieStore)(nil)
 
+func (s *SessionCookieStore) resolveFile() string {
+	dir := s.profileDir
+	if dir == `` {
+		dir = s.FileNameStr
+	}
+	for _, name := range sessionStoreFiles {
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); err == nil {
+			s.resolvedPath = path
+			return path
+		}
+	}
+	return ``
+}
+
+func (s *SessionCookieStore) FilePath() string {
+	if s == nil {
+		return ``
+	}
+	if s.resolvedPath != `` {
+		return s.resolvedPath
+	}
+	return s.resolveFile()
+}
+
 func (s *SessionCookieStore) Open() error {
 	if s == nil {
 		return errors.New(`cookie store is nil`)
 	}
-	if s.sessionCookies != nil {
-		return nil
+	if s.profileDir == `` {
+		s.profileDir = s.FileNameStr
 	}
 
-	f, err := os.Open(s.FileNameStr)
+	s.resolvedPath = ``
+	s.sessionCookies = nil
+
+	var errs []error
+	for _, name := range sessionStoreFiles {
+		path := filepath.Join(s.profileDir, name)
+		store, err := readSessionStoreFile(path)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		s.resolvedPath = path
+		s.FileNameStr = path
+		s.sessionCookies = store.Cookies
+		return nil
+	}
+	return errors.Join(errs...)
+}
+
+func readSessionStoreFile(path string) (*sessionStoreData, error) {
+	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
 	data, err := decompressMozLz4(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var store sessionStoreData
 	if err := json.Unmarshal(data, &store); err != nil {
-		return err
+		return nil, err
 	}
-
-	s.sessionCookies = store.Cookies
-	return nil
+	return &store, nil
 }
 
 func (s *SessionCookieStore) Close() error {
@@ -64,6 +119,7 @@ func (s *SessionCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 	if s == nil {
 		return iterx.ErrCookieSeq(errors.New(`cookie store is nil`))
 	}
+	// always re-read; session store files are rewritten frequently by Firefox
 	if err := s.Open(); err != nil {
 		return iterx.ErrCookieSeq(err)
 	}
@@ -79,6 +135,7 @@ func (s *SessionCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 			cookie.HttpOnly = sc.HTTPOnly
 			// session cookies: zero expiry
 			cookie.Expires = time.Time{}
+			// TODO: creation time?
 			cookie.Browser = s
 
 			switch sc.SameSite {
