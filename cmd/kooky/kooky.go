@@ -100,7 +100,7 @@ func prCookieLine(w io.Writer, cookie *kooky.Cookie, trimLen int) {
 		trimStr(cookie.Name, trimLen),
 		// be careful about raw bytes
 		trimStr(strings.Trim(fmt.Sprintf(`%q`, cookie.Value), `"`), trimLen),
-		cookie.Expires.Format(`2006.01.02 15:04:05`),
+		prExpires(cookie),
 	)
 }
 
@@ -116,6 +116,13 @@ func prProfile(c *kooky.Cookie) string {
 		return ``
 	}
 	return c.Browser.Profile()
+}
+
+func prExpires(c *kooky.Cookie) string {
+	if c == nil || c.Expires.IsZero() {
+		return `-`
+	}
+	return c.Expires.Format(`2006.01.02 15:04:05`)
 }
 
 func prFilePath(c *kooky.Cookie) string {
