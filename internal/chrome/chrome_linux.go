@@ -32,23 +32,7 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 		return s.KeyringPasswordBytes, nil
 	}
 
-	// chromium --password-store=gnome
-
-	// this is mostly a copy from github.com/zalando/go-keyring (MIT License)
-	// Get()      from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L77
-	// findItem() from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L51
-
-	browser := s.BrowserStr
-	switch browser {
-	case `chrome`:
-	case `chromium`:
-	case `brave`:
-	case `opera`:
-		browser = `chromium`
-	default:
-		// TODO:
-		return nil, errors.New(`unknown browser`)
-	}
+	browser := s.safeStorageApplication()
 
 	kpmKey := `dbus_` + browser
 	if useSaved {
@@ -86,6 +70,12 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 }
 
 func (s *CookieStore) getSecretServicePassword(browser string) ([]byte, error) {
+	// chromium --password-store=gnome
+
+	// this is mostly a copy from github.com/zalando/go-keyring (MIT License)
+	// Get()      from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L77
+	// findItem() from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L51
+
 	svc, err := secret_service.NewSecretService()
 	if err != nil {
 		return nil, err
@@ -167,14 +157,18 @@ func (s *CookieStore) getKWalletPassword(kdeVer string) ([]byte, error) {
 		}
 
 		var pw string
-		if err := obj.Call(`org.kde.KWallet.readPassword`, 0, handle, folder, entry, appID).Store(&pw); err != nil {
-			continue
-		}
-		if len(pw) == 0 {
-			continue
+		if err := obj.Call(`org.kde.KWallet.readPassword`, 0, handle, folder, entry, appID).Store(&pw); err == nil && len(pw) > 0 {
+			return []byte(pw), nil
 		}
 
-		return []byte(pw), nil
+		// Fallback: try xdg-desktop-portal binary entry (used by Vivaldi, newer Chromium)
+		portalAppID := s.portalAppIDValue()
+		if len(portalAppID) > 0 {
+			var portalBytes []byte
+			if err := obj.Call(`org.kde.KWallet.readEntry`, 0, handle, `xdg-desktop-portal`, portalAppID, appID).Store(&portalBytes); err == nil && len(portalBytes) > 0 {
+				return portalBytes, nil
+			}
+		}
 	}
 
 	return nil, errors.New(`kwallet: password not found`)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
+	chromefind "github.com/browserutils/kooky/internal/chrome/find"
 	"github.com/browserutils/kooky/internal/cookies"
 )
 
@@ -40,21 +41,30 @@ func (f *operaFinder) FindCookieStores() kooky.CookieStoreSeq {
 			}
 		}
 
-		for root, err := range operaBlinkRoots {
+		for file, err := range chromefind.FindCookieStoreFiles(operaBlinkRoots, `opera`) {
 			if err != nil {
 				if !yield(nil, err) {
 					return
 				}
+				continue
 			}
+			if file == nil {
+				continue
+			}
+			cookieStore := &chrome.CookieStore{
+				DefaultCookieStore: cookies.DefaultCookieStore{
+					BrowserStr:           file.Browser,
+					ProfileStr:           file.Profile,
+					OSStr:                file.OS,
+					IsDefaultProfileBool: file.IsDefaultProfile,
+					FileNameStr:          file.Path,
+				},
+			}
+			// Opera shares Chromium's encryption key
+			cookieStore.SetSafeStorage(`Chromium`, ``, ``)
 			st := &cookies.CookieJar{
 				CookieStore: &operaCookieStore{
-					CookieStore: &chrome.CookieStore{
-						DefaultCookieStore: cookies.DefaultCookieStore{
-							BrowserStr:           `opera`,
-							IsDefaultProfileBool: true,
-							FileNameStr:          filepath.Join(root, `Cookies`),
-						},
-					},
+					CookieStore: cookieStore,
 				},
 			}
 			if !yield(st, nil) {

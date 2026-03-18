@@ -7,6 +7,7 @@ package edge
 import (
 	"context"
 	"os"
+	"runtime"
 
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
@@ -34,6 +35,11 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 			c := &chrome.CookieStore{}
 			c.FileNameStr = filename
 			c.BrowserStr = `edge`
+			if runtime.GOOS == `darwin` {
+				c.SetSafeStorage(`Microsoft Edge`, ``, ``)
+			} else {
+				c.SetSafeStorage(`Chromium`, ``, ``)
+			}
 			s.CookieStore = c
 		},
 	}

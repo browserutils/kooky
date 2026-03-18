@@ -37,7 +37,14 @@ func (f *edgeFinder) FindCookieStores() kooky.CookieStoreSeq {
 					FileNameStr:          file.Path,
 				},
 			}
-			cookieStore.SetSafeStorage(`Microsoft Edge`, ``, ``)
+			// On macOS, Edge uses its own keychain entry.
+			// On Linux, Edge shares Chromium's encryption key.
+			switch file.OS {
+			case `darwin`:
+				cookieStore.SetSafeStorage(`Microsoft Edge`, ``, ``)
+			default:
+				cookieStore.SetSafeStorage(`Chromium`, ``, ``)
+			}
 			if !yield(&cookies.CookieJar{CookieStore: cookieStore}, nil) {
 				return
 			}
