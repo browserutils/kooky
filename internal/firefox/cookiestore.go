@@ -12,10 +12,11 @@ import (
 
 type CookieStore struct {
 	cookies.DefaultCookieStore
-	Database   *sqlite3.DbFile
-	Containers map[int]string
-	dbFile     *os.File
-	contFile   *os.File
+	Database      *sqlite3.DbFile
+	Containers    map[int]string
+	containersErr error
+	dbFile        *os.File
+	contFile      *os.File
 }
 
 var _ cookies.CookieStore = (*CookieStore)(nil)

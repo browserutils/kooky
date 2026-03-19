@@ -29,6 +29,7 @@ var sessionStoreFiles = []string{
 type SessionCookieStore struct {
 	cookies.DefaultCookieStore
 	Containers     map[int]string
+	containersErr  error
 	profileDir     string
 	resolvedPath   string
 	sessionCookies []sessionStoreCookie
@@ -68,6 +69,8 @@ func (s *SessionCookieStore) Open() error {
 	if s.profileDir == `` {
 		s.profileDir = s.FileNameStr
 	}
+
+	s.initSessionContainersMap()
 
 	s.resolvedPath = ``
 	s.sessionCookies = nil
@@ -125,6 +128,11 @@ func (s *SessionCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 	}
 
 	return func(yield func(*kooky.Cookie, error) bool) {
+		if s.containersErr != nil {
+			if !yield(nil, s.containersErr) {
+				return
+			}
+		}
 		for _, sc := range s.sessionCookies {
 			cookie := &kooky.Cookie{}
 			cookie.Name = sc.Name
@@ -154,8 +162,12 @@ func (s *SessionCookieStore) TraverseCookies(filters ...kooky.Filter) kooky.Cook
 				ucidStr := strconv.Itoa(sc.OriginAttributes.UserContextID)
 				cookie.Container = ucidStr
 				if contName, ok := s.Containers[sc.OriginAttributes.UserContextID]; ok && len(contName) > 0 {
-					cookie.Container += `|` + contName
+					cookie.Container = contName
 				}
+			}
+			// CHIPS partitioned cookie
+			if len(sc.OriginAttributes.PartitionKey) > 0 {
+				cookie.Partitioned = true
 			}
 
 			if !iterx.CookieFilterYield(context.Background(), cookie, nil, yield, filters...) {
@@ -183,5 +195,6 @@ type sessionStoreCookie struct {
 }
 
 type sessionStoreOriginAttribs struct {
-	UserContextID int `json:"userContextId"`
+	UserContextID int    `json:"userContextId"`
+	PartitionKey  string `json:"partitionKey"`
 }

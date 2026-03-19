@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/browserutils/kooky"
@@ -23,7 +22,7 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 		return iterx.ErrCookieSeq(errors.New(`database is nil`))
 	}
 
-	_ = s.initContainersMap()
+	s.initContainersMap()
 
 	visitor := func(yield func(*kooky.Cookie, error) bool) func(rowId *int64, row utils.TableRow) error {
 		return func(rowId *int64, row utils.TableRow) error {
@@ -90,20 +89,20 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 				return err
 			}
 
-			// Container
-			if s.Containers != nil {
-				ucidStr, _ := row.String(`originAttributes`)
-				prefixContextID := `^userContextId=`
-				if len(ucidStr) > 0 && strings.HasPrefix(ucidStr, prefixContextID) {
-					ucidStr = strings.TrimPrefix(ucidStr, prefixContextID)
+			// Container and Partitioned
+			if origAttr, _ := row.String(`originAttributes`); len(origAttr) > 0 {
+				attrs := parseOriginAttributes(origAttr)
+				if ucidStr, ok := attrs[`userContextId`]; ok && s.Containers != nil {
 					cookie.Container = ucidStr
 					ucid, err := strconv.Atoi(ucidStr)
 					if err == nil {
-						contName, okContName := s.Containers[ucid]
-						if okContName && len(contName) > 0 {
-							cookie.Container += `|` + contName
+						if contName, ok := s.Containers[ucid]; ok && len(contName) > 0 {
+							cookie.Container = contName
 						}
 					}
+				}
+				if _, ok := attrs[`partitionKey`]; ok {
+					cookie.Partitioned = true
 				}
 			}
 
@@ -116,6 +115,11 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 		}
 	}
 	seq := func(yield func(*kooky.Cookie, error) bool) {
+		if s.containersErr != nil {
+			if !yield(nil, s.containersErr) {
+				return
+			}
+		}
 		err := utils.VisitTableRows(s.Database, `moz_cookies`, map[string]string{}, visitor(yield))
 		if err != nil && !errors.Is(err, iterx.ErrYieldEnd) {
 			yield(nil, err)
