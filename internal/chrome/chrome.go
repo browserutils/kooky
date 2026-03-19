@@ -222,6 +222,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 		oss = append(oss, opsys)
 	}
 
+	var keyringErr error
 	for _, opsys := range oss {
 		// Keyring password retry mechanism (per OS):
 		//   tryNr 0: use cached/saved keyring password
@@ -292,6 +293,7 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 				if err == nil {
 					password = pw
 				} else {
+					keyringErr = err
 					password = fallbackPassword
 					tryNr = 2 // skip querying
 				}
@@ -317,7 +319,10 @@ func (s *CookieStore) decrypt(encrypted []byte) ([]byte, error) {
 		}
 	}
 
-	return nil, errors.New(`unknown encryption method`)
+	if keyringErr != nil {
+		return nil, fmt.Errorf("keyring password retrieval failed: %w", keyringErr)
+	}
+	return nil, errors.New(`decryption failed`)
 }
 
 const (
