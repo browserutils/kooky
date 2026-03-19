@@ -53,7 +53,7 @@ func (row TableRow) Int64(columnName string) (int64, error) {
 func (row TableRow) Value(columnName string) (any, error) {
 	if index, ok := row.columns[columnName]; !ok {
 		return nil, fmt.Errorf("table doesn't have a column named [%s]", columnName)
-	} else if count := len(row.columns); count <= index {
+	} else if count := len(row.record.Values); count <= index {
 		return nil, fmt.Errorf("column named [%s] has index %d but row only has %d values", columnName, index, count)
 	} else {
 		return row.record.Values[index], nil
@@ -61,7 +61,7 @@ func (row TableRow) Value(columnName string) (any, error) {
 }
 
 func (row TableRow) ValueOrFallback(columnName string, fallback any) any {
-	if index, ok := row.columns[columnName]; ok && index < len(row.columns) {
+	if index, ok := row.columns[columnName]; ok && index < len(row.record.Values) {
 		return row.record.Values[index]
 	}
 	return fallback
@@ -71,7 +71,7 @@ func Value[T any](row TableRow, columnName string) (T, error) {
 	var zero T
 	if index, ok := row.columns[columnName]; !ok {
 		return zero, fmt.Errorf("table doesn't have a column named [%s]", columnName)
-	} else if count := len(row.columns); count <= index {
+	} else if count := len(row.record.Values); count <= index {
 		return zero, fmt.Errorf("column named [%s] has index %d but row only has %d values", columnName, index, count)
 	} else if v, ok := row.record.Values[index].(T); !ok {
 		return zero, fmt.Errorf("expected column [%s] to be type %T; got type %[3]T with value %[3]v", columnName, zero, row.record.Values[index])
@@ -82,7 +82,7 @@ func Value[T any](row TableRow, columnName string) (T, error) {
 
 func ValueOrFallback[T any](row TableRow, columnName string, fallback T, tryConvert bool) (T, error) {
 	index, ok := row.columns[columnName]
-	if !ok || index >= len(row.columns) || index < 0 {
+	if !ok || index >= len(row.record.Values) || index < 0 {
 		return fallback, fmt.Errorf("expected column [%s] does not exist", columnName)
 	}
 	v := row.record.Values[index]
