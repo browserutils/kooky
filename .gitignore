@@ -24,3 +24,9 @@ go.work.sum
 *.code-workspace
 .idea/
 
+# Block markdown files by default
+*.md
+# Whitelist
+!/NOTES.md
+!README.md
+
