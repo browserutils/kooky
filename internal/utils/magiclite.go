@@ -26,11 +26,19 @@ var signatures = map[string][]signature{
 	},
 }
 
+// DetectFileType opens filename and identifies its type by magic bytes.
+// On success the returned file is open and seeked to the start;
+// the caller is responsible for closing it.
 func DetectFileType(filename string) (f *os.File, typ string, e error) {
 	f, err := OpenFile(filename)
 	if err != nil {
 		return nil, ``, err
 	}
+	defer func() {
+		if e != nil {
+			f.Close()
+		}
+	}()
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, ``, err
