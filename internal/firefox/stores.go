@@ -34,6 +34,11 @@ func CookieStoresForProfiles(profiles iter.Seq2[find.Profile, error]) kooky.Cook
 			defer wg.Done()
 			var inner sync.WaitGroup
 			for p, err := range profiles {
+				select {
+				case <-quit:
+					return
+				default:
+				}
 				if err != nil {
 					select {
 					case ch <- storeOrErr{err: err}:
