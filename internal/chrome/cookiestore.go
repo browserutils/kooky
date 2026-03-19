@@ -2,6 +2,7 @@ package chrome
 
 import (
 	"errors"
+	"os"
 
 	"github.com/go-sqlite/sqlite3"
 
@@ -17,6 +18,7 @@ type CookieStore struct {
 	DecryptionMethod     func(data, password []byte, dbVersion int64) ([]byte, error)
 	storage              safeStorage
 	dbVersion            int64
+	dbFile               *os.File
 }
 
 func (s *CookieStore) Open() error {
@@ -33,9 +35,11 @@ func (s *CookieStore) Open() error {
 	}
 	db, err := sqlite3.OpenFrom(f)
 	if err != nil {
+		f.Close()
 		return err
 	}
 	s.Database = db
+	s.dbFile = f
 
 	return nil
 }
@@ -48,6 +52,11 @@ func (s *CookieStore) Close() error {
 		return nil
 	}
 	err := s.Database.Close()
+	if s.dbFile != nil {
+		if errDB := s.dbFile.Close(); errDB != nil && err == nil {
+			err = errDB
+		}
+	}
 	if err == nil {
 		s.Database = nil
 	}

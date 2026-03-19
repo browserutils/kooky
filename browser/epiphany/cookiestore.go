@@ -2,6 +2,7 @@ package epiphany
 
 import (
 	"errors"
+	"os"
 
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/utils"
@@ -11,6 +12,7 @@ import (
 type epiphanyCookieStore struct {
 	cookies.DefaultCookieStore
 	Database *sqlite3.DbFile
+	dbFile   *os.File
 }
 
 var _ cookies.CookieStore = (*epiphanyCookieStore)(nil)
@@ -29,9 +31,11 @@ func (s *epiphanyCookieStore) Open() error {
 	}
 	db, err := sqlite3.OpenFrom(f)
 	if err != nil {
+		f.Close()
 		return err
 	}
 	s.Database = db
+	s.dbFile = f
 
 	return nil
 }
@@ -44,6 +48,11 @@ func (s *epiphanyCookieStore) Close() error {
 		return nil
 	}
 	err := s.Database.Close()
+	if s.dbFile != nil {
+		if errDB := s.dbFile.Close(); errDB != nil && err == nil {
+			err = errDB
+		}
+	}
 	if err == nil {
 		s.Database = nil
 	}
