@@ -6,6 +6,7 @@
 [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-browserutils%2Fkooky-blue.svg)](https://deepwiki.com/browserutils/kooky)
 
 Reaching into browser-specific, vaguely documented, possibly
 concurrently modified cookie stores to pilfer cookies is a bad idea.
