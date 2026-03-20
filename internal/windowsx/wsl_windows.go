@@ -17,14 +17,14 @@ var (
 )
 
 func Username() (string, error) {
-	if len(appData) == 0 {
+	if len(username) == 0 {
 		return ``, errors.New(`%USERNAME% is empty`)
 	}
 	return username, nil
 }
 
 func UserProfile() (string, error) {
-	if len(appData) == 0 {
+	if len(userProfile) == 0 {
 		return ``, errors.New(`%USERPROFILE% is empty`)
 	}
 	return userProfile, nil
@@ -38,7 +38,7 @@ func AppData() (string, error) {
 }
 
 func LocalAppData() (string, error) {
-	if len(appData) == 0 {
+	if len(localAppData) == 0 {
 		return ``, errors.New(`%LocalAppData% is empty`)
 	}
 	return localAppData, nil
