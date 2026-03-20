@@ -22,6 +22,11 @@ kooky: ${SRC}
 test:
 	@env GOWORK=off go test -count=1 -timeout=30s ./... | grep -v '^? '
 
+.PHONY: host-testwebsite
+host-testwebsite:
+	@env GOWORK=off go generate ./internal/testcmd/website/
+	@env GOWORK=off go run ./internal/testcmd/website/ -tls
+
 .PHONY: clean
 clean:
 	@rm -f -- kooky kooky.exe kooky.test
