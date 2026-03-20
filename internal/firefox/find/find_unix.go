@@ -3,10 +3,8 @@
 package find
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/browserutils/kooky/internal/windowsx"
 )
@@ -29,14 +27,12 @@ func firefoxRoots(yield func(string, error) bool) {
 		return
 	}
 	// on WSL Linux add Windows paths
-	if runtime.GOOS != `linux` {
+	if !windowsx.IsWSL() {
 		return
 	}
-	appData, err := windowsx.AppData()
-	if err != nil && (errors.Is(err, windowsx.ErrNotWSL) || !yield(``, err)) {
-		return
-	}
-	if !yield(filepath.Join(appData, `Mozilla`, `Firefox`), nil) {
-		return
+	for r, err := range windowsFirefoxRoots {
+		if !yield(r, err) {
+			return
+		}
 	}
 }

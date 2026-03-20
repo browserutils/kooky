@@ -5,6 +5,8 @@ package edge
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 func edgeChromiumRoots(yield func(string, error) bool) {
@@ -15,5 +17,14 @@ func edgeChromiumRoots(yield func(string, error) bool) {
 	}
 	if !yield(filepath.Join(cfgDir, `microsoft-edge`), nil) {
 		return
+	}
+	// on WSL Linux add Windows paths
+	if !windowsx.IsWSL() {
+		return
+	}
+	for r, err := range windowsEdgeRoots {
+		if !yield(r, err) {
+			return
+		}
 	}
 }

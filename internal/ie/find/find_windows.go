@@ -10,6 +10,7 @@ import (
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/ie"
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 type IEFinder struct {
@@ -30,13 +31,16 @@ func init() {
 
 func (f *IEFinder) FindCookieStores() kooky.CookieStoreSeq {
 	return func(yield func(kooky.CookieStore, error) bool) {
-		locApp, err := os.UserCacheDir()
+		locApp, err := windowsx.LocalAppData()
 		if !yield(nil, err) {
 			return
 		}
-		home := os.Getenv(`USERPROFILE`)
+		home, err := windowsx.UserProfile()
+		if !yield(nil, err) {
+			return
+		}
 		windows := os.Getenv(`windir`)
-		appData, err := os.UserConfigDir()
+		appData, err := windowsx.AppData()
 		if !yield(nil, err) {
 			return
 		}

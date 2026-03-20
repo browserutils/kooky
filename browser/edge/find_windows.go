@@ -1,26 +1,12 @@
 //go:build windows
-// +build windows
 
 package edge
 
 import (
-	"os"
-	"path/filepath"
-
 	iefind "github.com/browserutils/kooky/internal/ie/find"
 )
 
-func edgeChromiumRoots(yield func(string, error) bool) {
-	// %LocalAppData%
-	locApp, err := os.UserCacheDir()
-	if err != nil {
-		_ = yield(``, err)
-		return
-	}
-	if !yield(filepath.Join(locApp, `Microsoft`, `Edge`, `User Data`), nil) {
-		return
-	}
-}
+var edgeChromiumRoots = windowsEdgeRoots
 
 func init() {
 	edgeOldCookieStores = (&iefind.IEFinder{Browser: `edge`}).FindCookieStores()
