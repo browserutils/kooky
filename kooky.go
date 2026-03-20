@@ -66,11 +66,11 @@ func (c *Cookie) MarshalJSON() ([]byte, error) {
 		Unparsed    []string      `json:"unparsed,omitempty"`
 		// extra fields
 		Creation         *jsonTime `json:"creation,omitempty"`
-		Browser          string   `json:"browser,omitempty"`
-		Profile          string   `json:"profile,omitempty"`
-		IsDefaultProfile bool     `json:"is_default_profile"`
-		Container        string   `json:"container,omitempty"`
-		FilePath         string   `json:"file_path,omitempty"`
+		Browser          string    `json:"browser,omitempty"`
+		Profile          string    `json:"profile,omitempty"`
+		IsDefaultProfile bool      `json:"is_default_profile"`
+		Container        string    `json:"container,omitempty"`
+		FilePath         string    `json:"file_path,omitempty"`
 	}{
 		Name:        c.Cookie.Name,
 		Value:       c.Cookie.Value,

@@ -5,6 +5,8 @@ package windowsx
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -40,10 +42,13 @@ var getWinEnv = sync.OnceValue(func() winEnv {
 			`echo ^%LocalAppData^%: %LocalAppData%`,
 	)
 	out, err := cmd.Output()
-	if err != nil {
-		return winEnv{err: err}
+	if err == nil {
+		if env := parseWinEnv(string(out)); env.username != "" {
+			return env
+		}
 	}
-	return parseWinEnv(string(out))
+	// fallback: guess from PATH
+	return guessWinEnv()
 })
 
 func parseWinEnv(output string) winEnv {
@@ -67,6 +72,26 @@ func parseWinEnv(output string) winEnv {
 		}
 	}
 	return env
+}
+
+// guessWinEnv extracts the Windows username from PATH and derives standard paths
+func guessWinEnv() winEnv {
+	pathDirs := strings.Split(os.Getenv("PATH"), ":")
+	// WSL2 default: interop.appendWindowsPath: true, can be disabled
+	windowsAppsPattern := regexp.MustCompile(`/mnt/c/Users/([^/]+)/AppData/Local/Microsoft/WindowsApps`)
+	for _, dir := range pathDirs {
+		if matches := windowsAppsPattern.FindStringSubmatch(dir); matches != nil {
+			username := matches[1]
+			profile := filepath.Join(`/mnt/c/Users`, username)
+			return winEnv{
+				username:     username,
+				userProfile:  profile,
+				appData:      filepath.Join(profile, `AppData`, `Roaming`),
+				localAppData: filepath.Join(profile, `AppData`, `Local`),
+			}
+		}
+	}
+	return winEnv{err: ErrNotWSL}
 }
 
 // winToWSLPath converts a Windows path like C:\Users\john to /mnt/c/Users/john
