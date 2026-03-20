@@ -1,4 +1,6 @@
-### SQL schemes of file cookies.sqlite, table moz_cookies
+# Firefox
+
+## SQL schemes of file cookies.sqlite, table moz_cookies
 
 extracted with sqlitebrowser
 

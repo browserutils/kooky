@@ -1,4 +1,6 @@
-### SQL schemes of file cookies.sqlite, table moz_cookies
+# Epiphany
+
+## SQL schemes of file cookies.sqlite, table moz_cookies
 
 extracted with sqlitebrowser
 

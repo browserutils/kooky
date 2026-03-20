@@ -1,4 +1,6 @@
-### Known Safe Storage combinations
+# Chromium
+
+## Known Safe Storage combinations
 
 | Account        | Name                        | Application       | Portal App ID         |
 |----------------|-----------------------------|-------------------|-----------------------|
@@ -10,7 +12,7 @@
 | Vivaldi        | (portal only)               | vivaldi           | com.vivaldi.Vivaldi   |
 | Arc            | Arc Safe Storage            | arc               |                       |
 
-### SQL schemes of file Cookies, table cookies
+## SQL schemes of file Cookies, table cookies
 
 extracted with sqlitebrowser
 

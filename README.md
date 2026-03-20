@@ -38,20 +38,20 @@ PRs more than welcome.
 package main
 
 import (
-	"fmt"
+    "fmt"
 
-	"github.com/browserutils/kooky"
-	_ "github.com/browserutils/kooky/browser/all" // register cookie store finders!
+    "github.com/browserutils/kooky"
+    _ "github.com/browserutils/kooky/browser/all" // register cookie store finders!
 )
 
 func main() {
-	// uses registered finders to find cookie store files in default locations
-	// applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
-	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`)).OnlyCookies()
+    // uses registered finders to find cookie store files in default locations
+    // applies the passed filters "Valid", "DomainHasSuffix()" and "Name()" in order to the cookies
+    cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`google.com`), kooky.Name(`NID`)).OnlyCookies()
 
-	for cookie := range cookiesSeq {
-		fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
-	}
+    for cookie := range cookiesSeq {
+        fmt.Println(cookie.Domain, cookie.Name, cookie.Value)
+    }
  }
 ```
 
@@ -61,20 +61,20 @@ func main() {
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
+    "fmt"
+    "log"
+    "os"
 
-	"github.com/browserutils/kooky/browser/chrome"
+    "github.com/browserutils/kooky/browser/chrome"
 )
 
 func main() {
-	dir, _ := os.UserConfigDir() // "/<USER>/Library/Application Support/"
-	cookiesFile := dir + "/Google/Chrome/Default/Cookies"
-	cookiesSeq := chrome.TraverseCookies(cookiesFile).OnlyCookies()
-	for cookie := range cookiesSeq {
-		fmt.Println(cookie)
-	}
+    dir, _ := os.UserConfigDir() // "/<USER>/Library/Application Support/"
+    cookiesFile := dir + "/Google/Chrome/Default/Cookies"
+    cookiesSeq := chrome.TraverseCookies(cookiesFile).OnlyCookies()
+    for cookie := range cookiesSeq {
+        fmt.Println(cookie)
+    }
 }
 ```
 
@@ -84,29 +84,30 @@ func main() {
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
+    "fmt"
+    "log"
+    "os"
 
-	"github.com/browserutils/kooky/browser/safari"
+    "github.com/browserutils/kooky/browser/safari"
 )
 
 func main() {
-	dir, _ := os.UserHomeDir()
-	cookiesFile := dir + "/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
-	cookiesSeq := safari.TraverseCookies(cookiesFile).OnlyCookies()
-	for cookie := range cookiesSeq {
-		fmt.Println(cookie)
-	}
+    dir, _ := os.UserHomeDir()
+    cookiesFile := dir + "/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
+    cookiesSeq := safari.TraverseCookies(cookiesFile).OnlyCookies()
+    for cookie := range cookiesSeq {
+        fmt.Println(cookie)
+    }
 }
 ```
 
 ## Thanks/references
+
 - Thanks to [@dacort](https://github.com/dacort) for MacOS cookie decrypting
-  code at https://gist.github.com/dacort/bd6a5116224c594b14db.
+  code at  [dacort/cookiemonster.go](https://gist.github.com/dacort/bd6a5116224c594b14db).
 - Thanks to [@as0ler](https://github.com/as0ler)
   (and originally [@satishb3](https://github.com/satishb3) I believe) for
-  Safari cookie-reading Python code at https://github.com/as0ler/BinaryCookieReader.
+  Safari cookie-reading Python code at [as0ler/BinaryCookieReader](https://github.com/as0ler/BinaryCookieReader).
 - Thanks to all the people who have contributed functionality and fixes:
   - [@srlehn](https://github.com/srlehn) - many fixes, Linux support for Chrome, added about a dozen browsers!
   - [@zippoxer](https://github.com/zippoxer) - Windows support for Chrome
