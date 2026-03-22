@@ -1,5 +1,4 @@
 // registration of all browsers
-
 package all
 
 import (

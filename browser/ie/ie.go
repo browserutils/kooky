@@ -1,3 +1,4 @@
+// Internet Explorer
 package ie
 
 import (

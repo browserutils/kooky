@@ -1,4 +1,3 @@
-// Browsh Browser
 package browsh
 
 import (
