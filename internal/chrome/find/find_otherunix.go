@@ -2,14 +2,8 @@
 
 package find
 
-func windowsChromeRoots(_ string) func(yield func(string, error) bool) {
-	return func(yield func(string, error) bool) {}
-}
+// for Windows and WSL
 
-func windowsChromiumRoots(_ string) func(yield func(string, error) bool) {
-	return func(yield func(string, error) bool) {}
-}
-
-func windowsBraveRoots(_ string) func(yield func(string, error) bool) {
-	return func(yield func(string, error) bool) {}
-}
+func windowsChromeRoots(yield func(string, error) bool)   {}
+func windowsChromiumRoots(yield func(string, error) bool) {}
+func windowsBraveRoots(yield func(string, error) bool)    {}

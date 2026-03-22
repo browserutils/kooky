@@ -24,6 +24,9 @@ func (f *braveFinder) FindCookieStores() kooky.CookieStoreSeq {
 				}
 				continue
 			}
+			if file == nil {
+				continue
+			}
 			st := &cookies.CookieJar{
 				CookieStore: &chrome.CookieStore{
 					DefaultCookieStore: cookies.DefaultCookieStore{

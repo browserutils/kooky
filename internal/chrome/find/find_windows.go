@@ -1,14 +1,9 @@
 //go:build windows
-// +build windows
 
 package find
 
-import (
-	"os"
-)
-
 var (
-	chromeRoots   = windowsChromeRoots(os.Getenv(`LocalAppData`))
-	chromiumRoots = windowsChromiumRoots(os.Getenv(`LocalAppData`))
-	braveRoots    = windowsBraveRoots(os.Getenv(`LocalAppData`))
+	chromeRoots   = windowsChromeRoots
+	chromiumRoots = windowsChromiumRoots
+	braveRoots    = windowsBraveRoots
 )

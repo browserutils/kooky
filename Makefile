@@ -20,7 +20,7 @@ kooky: ${SRC}
 
 .PHONY: test
 test:
-	@env GOWORK=off go test -count=1 -timeout=30s ./... | grep -v '^? '
+	@set -o pipefail && env GOWORK=off go test -count=1 -timeout=30s ./... | grep -v '^? '
 
 .PHONY: clean
 clean:

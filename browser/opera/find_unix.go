@@ -1,11 +1,12 @@
 //go:build !windows && !darwin
-// +build !windows,!darwin
 
 package opera
 
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 func operaPrestoRoots(yield func(string, error) bool) {
@@ -18,9 +19,18 @@ func operaPrestoRoots(yield func(string, error) bool) {
 	}
 
 	_ = yield(filepath.Join(home, `.opera`), nil)
+
+	if !windowsx.IsWSL() {
+		return
+	}
+	for root, err := range windowsOperaPrestoRoots {
+		if !yield(root, err) {
+			return
+		}
+	}
 }
 
-func operaBlinkRoots(yield func(string, error) bool) {
+var operaBlinkRoots = func(yield func(string, error) bool) {
 	// https://kb.digital-detective.net/display/BF/Location+of+Opera+Blink+Data
 
 	var dotConfigs []string
@@ -34,6 +44,15 @@ func operaBlinkRoots(yield func(string, error) bool) {
 	}
 	for _, dotConfig := range dotConfigs {
 		if !yield(filepath.Join(dotConfig, `opera`), nil) {
+			return
+		}
+	}
+
+	if !windowsx.IsWSL() {
+		return
+	}
+	for root, err := range windowsOperaBlinkRoots {
+		if !yield(root, err) {
 			return
 		}
 	}

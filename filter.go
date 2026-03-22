@@ -98,7 +98,7 @@ func filterCookieSeq(ctx context.Context, cookies CookieSeq, filters ...Filter) 
 func filterCookieSlice[S ~[]*T, T Cookie | http.Cookie](ctx context.Context, cookies S, filters ...Filter) CookieSeq {
 	return func(yield func(*Cookie, error) bool) {
 		if len(cookies) < 1 {
-			_ = yield(nil, errors.New(`cookie slice of lenght 0`))
+			_ = yield(nil, errors.New(`cookie slice of length 0`))
 			return
 		}
 		switch cookiesTyped := any(cookies).(type) {

@@ -3,21 +3,22 @@
 package ie
 
 import (
-	"os"
 	"path/filepath"
+
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 func ieRoots(yield func(string, error) bool) {
-	confDir, err := os.UserConfigDir()
+	appData, err := windowsx.AppData()
 	if err != nil {
 		_ = yield(``, err)
 		return
 	}
 
-	if !yield(filepath.Join(confDir, `Microsoft`, `Windows`, `Cookies`), nil) {
+	if !yield(filepath.Join(appData, `Microsoft`, `Windows`, `Cookies`), nil) {
 		return
 	}
-	if !yield(filepath.Join(confDir, `Microsoft`, `Windows`, `Cookies`, `Low`), nil) {
+	if !yield(filepath.Join(appData, `Microsoft`, `Windows`, `Cookies`, `Low`), nil) {
 		return
 	}
 }

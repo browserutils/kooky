@@ -1,6 +1,6 @@
 # Notes
 
-# pre-cookies4.dat Format
+## pre-cookies4.dat Format
 
 https://web.archive.org/web/20180218163617/http://www.opera.com/docs/operafiles/#opfileform
 "The generic format is NOT backwards compatible with Opera 3.x and earlier"

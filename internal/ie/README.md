@@ -89,7 +89,6 @@ https://web.archive.org/web/20191220154919/https://bsmuir.kinja.com/windows-10-m
 
 https://www.linkedin.com/pulse/windows-10-microsoft-edge-browser-forensics-brent-muir
 
-
 ### Tools
 
 https://www.nirsoft.net/utils/edge_cookies_view.html

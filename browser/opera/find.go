@@ -60,8 +60,7 @@ func (f *operaFinder) FindCookieStores() kooky.CookieStoreSeq {
 					FileNameStr:          file.Path,
 				},
 			}
-			// Opera shares Chromium's encryption key
-			cookieStore.SetSafeStorage(`Chromium`, ``, ``)
+			cookieStore.SetSafeStorage(operaSafeStorageAccount, ``, ``)
 			st := &cookies.CookieJar{
 				CookieStore: &operaCookieStore{
 					CookieStore: cookieStore,

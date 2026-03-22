@@ -7,3 +7,5 @@ import "errors"
 func edgeChromiumRoots(yield func(string, error) bool) {
 	_ = yield(``, errors.New(`platform not supported`))
 }
+
+func windowsEdgeRoots(yield func(string, error) bool) {}

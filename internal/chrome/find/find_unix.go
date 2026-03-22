@@ -3,11 +3,10 @@
 package find
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
-	"github.com/browserutils/kooky/internal/wsl"
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 func chromeRoots(yield func(string, error) bool) {
@@ -48,11 +47,10 @@ func chromeRoots(yield func(string, error) bool) {
 		}
 	}
 	// on WSL Linux add Windows paths
-	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
+	if !windowsx.IsWSL() {
 		return
 	}
-	for r, err := range windowsChromeRoots(filepath.Join(appDataRoot, `Local`)) {
+	for r, err := range windowsChromeRoots {
 		if !yield(r, err) {
 			return
 		}
@@ -79,11 +77,10 @@ func chromiumRoots(yield func(string, error) bool) {
 		}
 	}
 	// on WSL Linux add Windows paths
-	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
+	if !windowsx.IsWSL() {
 		return
 	}
-	for r, err := range windowsChromiumRoots(filepath.Join(appDataRoot, `Local`)) {
+	for r, err := range windowsChromiumRoots {
 		if !yield(r, err) {
 			return
 		}
@@ -115,11 +112,10 @@ func braveRoots(yield func(string, error) bool) {
 		}
 	}
 	// on WSL Linux add Windows paths
-	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
+	if !windowsx.IsWSL() {
 		return
 	}
-	for r, err := range windowsBraveRoots(filepath.Join(appDataRoot, `Local`)) {
+	for r, err := range windowsBraveRoots {
 		if !yield(r, err) {
 			return
 		}

@@ -3,12 +3,10 @@
 package find
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 
-	"github.com/browserutils/kooky/internal/wsl"
+	"github.com/browserutils/kooky/internal/windowsx"
 )
 
 func firefoxRoots(yield func(string, error) bool) {
@@ -29,14 +27,12 @@ func firefoxRoots(yield func(string, error) bool) {
 		return
 	}
 	// on WSL Linux add Windows paths
-	if runtime.GOOS != `linux` {
+	if !windowsx.IsWSL() {
 		return
 	}
-	appDataRoot, err := wsl.WSLAppDataRoot()
-	if err != nil && (errors.Is(err, wsl.ErrNotWSL) || !yield(``, err)) {
-		return
-	}
-	if !yield(filepath.Join(appDataRoot, `Roaming`, `Mozilla`, `Firefox`), nil) {
-		return
+	for r, err := range windowsFirefoxRoots {
+		if !yield(r, err) {
+			return
+		}
 	}
 }
