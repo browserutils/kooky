@@ -52,8 +52,7 @@ func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, 
 		c := &chrome.CookieStore{}
 		c.FileNameStr = filename
 		c.BrowserStr = `opera`
-		// Opera shares Chromium's encryption key
-		c.SetSafeStorage(`Chromium`, ``, ``)
+		c.SetSafeStorage(operaSafeStorageAccount, ``, ``)
 		s.CookieStore = c
 	default:
 		f.Close()
