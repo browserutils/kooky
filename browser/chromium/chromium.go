@@ -16,6 +16,7 @@ import (
 //
 // See the exported Keyring* variables for known browser configurations.
 type KeyringConfig struct {
+	Browser     string // browser name for display/filtering, e.g. "vivaldi" (defaults to "chromium")
 	Account     string // keychain account, e.g. "Chrome", "Microsoft Edge"
 	Storage     string // keychain entry, e.g. "Chrome Safe Storage" (derived from Account if empty)
 	Application string // secret service / kwallet app attr, e.g. "chrome" (derived from Account if empty)
@@ -26,11 +27,12 @@ type KeyringConfig struct {
 // that do not have their own package.
 var (
 	// linux: $XDG_CONFIG_HOME/vivaldi/Default/Cookies
-	KeyringConfigVivaldiLinux  = &KeyringConfig{Account: `Chrome`, PortalAppID: `com.vivaldi.Vivaldi`}
-	KeyringConfigVivaldiDarwin = &KeyringConfig{Account: `Vivaldi`}
+	KeyringConfigVivaldiLinux = &KeyringConfig{Browser: `vivaldi`, Account: `Chrome`, PortalAppID: `com.vivaldi.Vivaldi`}
+	// macOS: ~/Library/Application Support/Vivaldi/Default/Cookies
+	KeyringConfigVivaldiDarwin = &KeyringConfig{Browser: `vivaldi`, Account: `Vivaldi`}
 
 	// Application may be "arc" or "chrome" depending on version
-	KeyringConfigArc = &KeyringConfig{Account: `Arc`}
+	KeyringConfigArc = &KeyringConfig{Browser: `arc`, Account: `Arc`}
 )
 
 func ReadCookies(ctx context.Context, filename string, keyring *KeyringConfig, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
@@ -56,6 +58,9 @@ func cookieStore(filename string, keyring *KeyringConfig, filters ...kooky.Filte
 	s := &chrome.CookieStore{}
 	s.FileNameStr = filename
 	s.BrowserStr = `chromium`
+	if keyring != nil && len(keyring.Browser) > 0 {
+		s.BrowserStr = keyring.Browser
+	}
 
 	if keyring != nil {
 		s.SetSafeStorage(keyring.Account, keyring.Storage, keyring.Application)
