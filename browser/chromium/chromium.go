@@ -8,23 +8,66 @@ import (
 	"github.com/browserutils/kooky/internal/cookies"
 )
 
-func ReadCookies(ctx context.Context, filename string, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
-	return cookies.SingleRead(cookieStore, filename, filters...).ReadAllCookies(ctx)
+// KeyringConfig configures how the cookie store retrieves
+// the decryption key from the system keyring.
+//
+// All fields are optional. When empty, defaults are derived
+// from the browser name (e.g. "Chromium" → "Chromium Safe Storage").
+//
+// See the exported Keyring* variables for known browser configurations.
+type KeyringConfig struct {
+	Browser     string // browser name for display/filtering, e.g. "vivaldi" (defaults to "chromium")
+	Account     string // keychain account, e.g. "Chrome", "Microsoft Edge"
+	Storage     string // keychain entry, e.g. "Chrome Safe Storage" (derived from Account if empty)
+	Application string // secret service / kwallet app attr, e.g. "chrome" (derived from Account if empty)
+	PortalAppID string // xdg-desktop-portal app ID, e.g. "org.chromium.Chromium"
 }
 
-func TraverseCookies(filename string, filters ...kooky.Filter) kooky.CookieSeq {
-	return cookies.SingleRead(cookieStore, filename, filters...)
+// Known keyring configurations for Chromium-based browsers
+// that do not have their own package.
+var (
+	// linux: $XDG_CONFIG_HOME/vivaldi/Default/Cookies
+	KeyringConfigVivaldiLinux = &KeyringConfig{Browser: `vivaldi`, Account: `Chrome`, PortalAppID: `com.vivaldi.Vivaldi`}
+	// macOS: ~/Library/Application Support/Vivaldi/Default/Cookies
+	KeyringConfigVivaldiDarwin = &KeyringConfig{Browser: `vivaldi`, Account: `Vivaldi`}
+
+	// Application may be "arc" or "chrome" depending on version
+	KeyringConfigArc = &KeyringConfig{Browser: `arc`, Account: `Arc`}
+)
+
+func ReadCookies(ctx context.Context, filename string, keyring *KeyringConfig, filters ...kooky.Filter) ([]*kooky.Cookie, error) {
+	return cookies.SingleRead(cookieStoreFunc(keyring), filename, filters...).ReadAllCookies(ctx)
+}
+
+func TraverseCookies(filename string, keyring *KeyringConfig, filters ...kooky.Filter) kooky.CookieSeq {
+	return cookies.SingleRead(cookieStoreFunc(keyring), filename, filters...)
 }
 
 // CookieStore has to be closed with CookieStore.Close() after use.
-func CookieStore(filename string, filters ...kooky.Filter) (kooky.CookieStore, error) {
-	return cookieStore(filename, filters...)
+func CookieStore(filename string, keyring *KeyringConfig, filters ...kooky.Filter) (kooky.CookieStore, error) {
+	return cookieStore(filename, keyring, filters...)
 }
 
-func cookieStore(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
+func cookieStoreFunc(keyring *KeyringConfig) func(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
+	return func(filename string, filters ...kooky.Filter) (*cookies.CookieJar, error) {
+		return cookieStore(filename, keyring, filters...)
+	}
+}
+
+func cookieStore(filename string, keyring *KeyringConfig, filters ...kooky.Filter) (*cookies.CookieJar, error) {
 	s := &chrome.CookieStore{}
 	s.FileNameStr = filename
 	s.BrowserStr = `chromium`
+	if keyring != nil && len(keyring.Browser) > 0 {
+		s.BrowserStr = keyring.Browser
+	}
+
+	if keyring != nil {
+		s.SetSafeStorage(keyring.Account, keyring.Storage, keyring.Application)
+		if len(keyring.PortalAppID) > 0 {
+			s.SetPortalAppID(keyring.PortalAppID)
+		}
+	}
 
 	return cookies.NewCookieJar(s, filters...), nil
 }
