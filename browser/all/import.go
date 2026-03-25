@@ -19,4 +19,5 @@ import (
 	_ "github.com/browserutils/kooky/browser/safari"
 	_ "github.com/browserutils/kooky/browser/uzbl"
 	_ "github.com/browserutils/kooky/browser/w3m"
+	_ "github.com/browserutils/kooky/browser/website"
 )
