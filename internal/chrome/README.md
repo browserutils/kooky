@@ -6,11 +6,12 @@
 |----------------|-----------------------------|-------------------|-----------------------|
 | Chrome         | Chrome Safe Storage         | chrome            | com.google.Chrome     |
 | Chromium       | Chromium Safe Storage       | chromium          | org.chromium.Chromium |
+| Dia            | Dia Safe Storage            | dia               |                       |
+| Arc            | Arc Safe Storage            | arc               |                       |
 | Brave          | Brave Safe Storage          | brave             |                       |
 | Microsoft Edge | Microsoft Edge Safe Storage | chromium (shared) |                       |
 | Opera          | uses Chromium Safe Storage  | chromium (shared) |                       |
 | Vivaldi        | (portal only)               | vivaldi           | com.vivaldi.Vivaldi   |
-| Arc            | Arc Safe Storage            | arc               |                       |
 
 ## SQL schemes of file Cookies, table cookies
 
