@@ -13,6 +13,7 @@ import (
 	_ "github.com/browserutils/kooky/browser/firefox"
 	_ "github.com/browserutils/kooky/browser/ie"
 	_ "github.com/browserutils/kooky/browser/konqueror"
+	_ "github.com/browserutils/kooky/browser/ladybird"
 	_ "github.com/browserutils/kooky/browser/lynx"
 	_ "github.com/browserutils/kooky/browser/netscape"
 	_ "github.com/browserutils/kooky/browser/opera"
