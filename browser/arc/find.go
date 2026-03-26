@@ -3,6 +3,8 @@
 package arc
 
 import (
+	"os"
+
 	"github.com/browserutils/kooky"
 	"github.com/browserutils/kooky/internal/chrome"
 	chromefind "github.com/browserutils/kooky/internal/chrome/find"
@@ -27,6 +29,15 @@ func (f *arcFinder) FindCookieStores() kooky.CookieStoreSeq {
 				continue
 			}
 			if file == nil {
+				continue
+			}
+			if _, err := os.Stat(file.Path); err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				if !yield(nil, err) {
+					return
+				}
 				continue
 			}
 			cookieStore := &chrome.CookieStore{
