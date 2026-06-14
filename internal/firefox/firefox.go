@@ -24,6 +24,13 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 
 	s.initContainersMap()
 
+	// Firefox 141/user_version 15 documented Cookie::Expiry() as seconds:
+	// https://hg.mozilla.org/releases/mozilla-release/raw-file/FIREFOX_141_0_RELEASE/netwerk/cookie/Cookie.h
+	// Firefox 142 bumped cookies.sqlite user_version to 16 and migrated
+	// moz_cookies.expiry from Unix seconds to Unix milliseconds (Mozilla Bug 1972757):
+	// https://hg.mozilla.org/releases/mozilla-release/raw-file/FIREFOX_142_0_RELEASE/netwerk/cookie/CookiePersistentStorage.cpp
+	expiryInMillis := s.Database.UserVersion() >= 16
+
 	visitor := func(yield func(*kooky.Cookie, error) bool) func(rowId *int64, row utils.TableRow) error {
 		return func(rowId *int64, row utils.TableRow) error {
 			cookie := kooky.Cookie{}
@@ -65,7 +72,11 @@ func (s *CookieStore) TraverseCookies(filters ...kooky.Filter) kooky.CookieSeq {
 
 			// Expires
 			if expiry, err := row.Int64(`expiry`); err == nil {
-				cookie.Expires = time.Unix(expiry, 0)
+				if expiryInMillis {
+					cookie.Expires = time.UnixMilli(expiry)
+				} else {
+					cookie.Expires = time.Unix(expiry, 0)
+				}
 			} else {
 				return err
 			}

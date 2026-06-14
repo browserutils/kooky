@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/browserutils/ese v0.0.0-20260314233042-37b6a03a93ce
-	github.com/go-sqlite/sqlite3 v0.0.0-20180313105335-53dd8e640ee7
+	github.com/browserutils/sqlite3 v0.0.2
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/keybase/go-keychain v0.0.1
 	github.com/pierrec/lz4/v4 v4.1.26
