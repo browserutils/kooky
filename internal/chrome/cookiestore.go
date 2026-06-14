@@ -4,7 +4,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/go-sqlite/sqlite3"
+	"github.com/browserutils/sqlite3"
 
 	"github.com/browserutils/kooky/internal/cookies"
 	"github.com/browserutils/kooky/internal/utils"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-sqlite/sqlite3"
+	"github.com/browserutils/sqlite3"
 )
 
 type TableRow struct {

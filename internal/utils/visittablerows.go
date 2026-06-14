@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/go-sqlite/sqlite3"
+	"github.com/browserutils/sqlite3"
 )
 
 func VisitTableRows(db *sqlite3.DbFile, tableName string, columnNameMappings map[string]string, f func(rowID *int64, row TableRow) error) error {
