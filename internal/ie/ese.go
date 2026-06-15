@@ -199,7 +199,7 @@ func convertCookieEntry(entry *webCacheCookieEntry, bi kooky.BrowserInfo) (*kook
 	cookie.Path = entry.path
 
 	rdp := strings.Split(strings.Trim(entry.rDomain, `.`), `.`)
-	for i := 0; i < len(rdp); i++ {
+	for i := range rdp {
 		cookie.Domain += `.` + rdp[len(rdp)-1-i]
 	}
 	cookie.Domain = strings.TrimLeft(cookie.Domain, `.`)

@@ -104,7 +104,7 @@ type containers struct {
 func parseOriginAttributes(s string) map[string]string {
 	s = strings.TrimPrefix(s, `^`)
 	attrs := make(map[string]string)
-	for _, part := range strings.Split(s, `&`) {
+	for part := range strings.SplitSeq(s, `&`) {
 		if k, v, ok := strings.Cut(part, `=`); ok && len(k) > 0 {
 			attrs[k] = v
 		}
