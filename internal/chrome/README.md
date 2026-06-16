@@ -6,6 +6,7 @@
 |----------------|-----------------------------|-------------------|-----------------------|
 | Chrome         | Chrome Safe Storage         | chrome            | com.google.Chrome     |
 | Chromium       | Chromium Safe Storage       | chromium          | org.chromium.Chromium |
+| Dia            | Dia Safe Storage            | dia               |                       |
 | Brave          | Brave Safe Storage          | brave             |                       |
 | Microsoft Edge | Microsoft Edge Safe Storage | chromium (shared) |                       |
 | Opera          | uses Chromium Safe Storage  | chromium (shared) |                       |
