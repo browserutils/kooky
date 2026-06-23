@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>kooky website cookie viewer</title>
+	<style>
+		body {
+			font-family: monospace;
+			margin: 1em;
+			background: #1e1e1e;
+			color: #d4d4d4;
+		}
+
+		table {
+			border-collapse: collapse;
+			width: 100%;
+			margin-top: 1em;
+		}
+
+		th,
+		td {
+			border: 1px solid #444;
+			padding: 4px 8px;
+			text-align: left;
+			white-space: nowrap;
+		}
+
+		th {
+			background: #2a2a2a;
+			position: sticky;
+			top: 0;
+		}
+
+		tr:hover {
+			background: #303030;
+		}
+
+		#filters {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5em;
+			align-items: end;
+		}
+
+		#filters label {
+			display: flex;
+			flex-direction: column;
+			font-size: 0.85em;
+			color: #aaa;
+		}
+
+		#filters input,
+		#filters select {
+			font-family: monospace;
+			padding: 2px 4px;
+			background: #2a2a2a;
+			color: #d4d4d4;
+			border: 1px solid #444;
+		}
+
+		#status {
+			margin: 0.5em 0;
+			color: #888;
+		}
+
+		button {
+			font-family: monospace;
+			background: #2a2a2a;
+			color: #d4d4d4;
+			border: 1px solid #444;
+			padding: 4px 8px;
+			cursor: pointer;
+		}
+
+		button:hover {
+			background: #383838;
+		}
+
+		a {
+			color: #b0b0b0;
+		}
+	</style>
+</head>
+
+<body>
+	<h3>kooky website cookie viewer</h3>
+	<div id="status">loading wasm…</div>
+	<div id="filters" style="display:none">
+		<label>Name <input type="text" id="f-name" placeholder="filter"></label>
+		<label>Value <input type="text" id="f-value" placeholder="filter"></label>
+		<label>Domain <input type="text" id="f-domain" placeholder="filter"></label>
+		<label>Path <input type="text" id="f-path" placeholder="filter"></label>
+		<label>Secure <select id="f-secure">
+				<option value="">all</option>
+				<option value="true">true</option>
+				<option value="false">false</option>
+			</select></label>
+		<label>SameSite <select id="f-samesite">
+				<option value="">all</option>
+				<option value="Strict">Strict</option>
+				<option value="Lax">Lax</option>
+				<option value="None">None</option>
+			</select></label>
+		<label>Partitioned <select id="f-partitioned">
+				<option value="">all</option>
+				<option value="true">true</option>
+				<option value="false">false</option>
+			</select></label>
+		<label style="margin-left:auto"><button id="btn-export">Export JSON</button></label>
+	</div>
+	<div id="app"></div>
+
+	<script src="/wasm_exec.js"></script>
+	<script>
+		const go = new Go();
+		WebAssembly.instantiateStreaming(fetch("/main.wasm"), go.importObject).then(result => {
+			go.run(result.instance);
+		});
+	</script>
+	<script>
+		// filtering is done client-side on the rendered table
+		function applyFilters() {
+			const table = document.getElementById("cookie-table");
+			if (!table) return;
+			const rows = table.querySelectorAll("tbody tr");
+			const fName = document.getElementById("f-name").value.toLowerCase();
+			const fValue = document.getElementById("f-value").value.toLowerCase();
+			const fDomain = document.getElementById("f-domain").value.toLowerCase();
+			const fPath = document.getElementById("f-path").value.toLowerCase();
+			const fSecure = document.getElementById("f-secure").value;
+			const fSameSite = document.getElementById("f-samesite").value;
+			const fPartitioned = document.getElementById("f-partitioned").value;
+			rows.forEach(row => {
+				const cells = row.querySelectorAll("td");
+				const show =
+					(!fName || cells[0].textContent.toLowerCase().includes(fName)) &&
+					(!fValue || cells[1].textContent.toLowerCase().includes(fValue)) &&
+					(!fDomain || cells[2].textContent.toLowerCase().includes(fDomain)) &&
+					(!fPath || cells[3].textContent.toLowerCase().includes(fPath)) &&
+					(!fSecure || cells[5].textContent === fSecure) &&
+					(!fSameSite || cells[6].textContent === fSameSite) &&
+					(!fPartitioned || cells[7].textContent === fPartitioned);
+				row.style.display = show ? "" : "none";
+			});
+		}
+		document.getElementById("filters").querySelectorAll("input, select").forEach(el => {
+			el.addEventListener("input", applyFilters);
+		});
+	</script>
+	<script>
+		// _kooky_report is set by wasm as a JSON string
+		document.getElementById("btn-export").addEventListener("click", function () {
+			const data = window._kooky_report;
+			if (!data) return;
+			const blob = new Blob([data], { type: "application/json" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = "cookies.json";
+			a.click();
+			URL.revokeObjectURL(url);
+		});
+	</script>
+</body>
+
+</html>

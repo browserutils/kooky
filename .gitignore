@@ -24,6 +24,10 @@ go.work.sum
 *.code-workspace
 .idea/
 
+# Build artifacts
+/wasm
+/website
+
 # Block markdown files by default
 *.md
 # Whitelist
