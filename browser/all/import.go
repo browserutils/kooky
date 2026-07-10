@@ -18,5 +18,6 @@ import (
 	_ "github.com/browserutils/kooky/browser/opera"
 	_ "github.com/browserutils/kooky/browser/safari"
 	_ "github.com/browserutils/kooky/browser/uzbl"
+	_ "github.com/browserutils/kooky/browser/vivaldi"
 	_ "github.com/browserutils/kooky/browser/w3m"
 )
