@@ -20,6 +20,15 @@ import (
 
 // https://gist.github.com/dacort/bd6a5116224c594b14db
 
+const (
+	secretServiceName = `org.freedesktop.secrets`
+	secretServicePath = `/org/freedesktop/secrets`
+	// defaultCollectionAlias is where gnome-keyring points the "default" alias.
+	// Chrome Safe Storage usually lives here ("Default keyring"), not in "login".
+	defaultCollectionAlias = `/org/freedesktop/secrets/aliases/default`
+	loginCollectionPath    = `/org/freedesktop/secrets/collection/login`
+)
+
 // getKeyringPassword retrieves the Chrome Safe Storage password,
 // caching it for future calls.
 func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
@@ -45,21 +54,30 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 	// the freedesktop Secret Service search does not find keys stored there.
 	// https://chromium.googlesource.com/chromium/src/+/master/docs/linux/password_storage.md
 	var pw []byte
-	var err error
+	var primaryErr, fallbackErr error
 	kdeVer, isKDE := os.LookupEnv(`KDE_SESSION_VERSION`)
 	if isKDE {
-		pw, err = s.getKWalletPassword(kdeVer)
-		if err != nil {
-			pw, err = s.getSecretServicePassword(browser)
+		pw, primaryErr = s.getKWalletPassword(kdeVer)
+		if primaryErr != nil {
+			pw, fallbackErr = s.getSecretServicePassword(browser)
 		}
 	} else {
-		pw, err = s.getSecretServicePassword(browser)
-		if err != nil {
-			pw, err = s.getKWalletPassword(``)
+		pw, primaryErr = s.getSecretServicePassword(browser)
+		if primaryErr != nil {
+			pw, fallbackErr = s.getKWalletPassword(``)
 		}
 	}
-	if err != nil {
-		return nil, err
+	if len(pw) == 0 {
+		switch {
+		case primaryErr != nil && fallbackErr != nil:
+			return nil, fmt.Errorf("%w; fallback: %v", primaryErr, fallbackErr)
+		case primaryErr != nil:
+			return nil, primaryErr
+		case fallbackErr != nil:
+			return nil, fallbackErr
+		default:
+			return nil, errors.New(`keyring password not found`)
+		}
 	}
 
 	s.KeyringPasswordBytes = pw
@@ -71,33 +89,95 @@ func (s *CookieStore) getKeyringPassword(useSaved bool) ([]byte, error) {
 
 func (s *CookieStore) getSecretServicePassword(browser string) ([]byte, error) {
 	// chromium --password-store=gnome
-
-	// this is mostly a copy from github.com/zalando/go-keyring (MIT License)
-	// Get()      from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L77
-	// findItem() from https://github.com/zalando/go-keyring/blob/07372e614fb45baa337eaca014ed232b7b196200/keyring_linux.go#L51
+	//
+	// Historically this only searched go-keyring's "login" collection. That
+	// misses Chrome Safe Storage on common gnome-keyring setups where the
+	// secret lives in the default keyring (aliases/default → Default_5fkeyring)
+	// while a separate empty/unrelated "login" collection still exists.
+	// secret-tool uses Service.SearchItems (all collections); we do the same,
+	// then fall back to per-collection search for older implementations.
 
 	svc, err := secret_service.NewSecretService()
 	if err != nil {
 		return nil, err
 	}
 
-	collection := svc.GetLoginCollection()
-	if err := svc.Unlock(collection.Path()); err != nil {
-		return nil, err
-	}
-
 	search := map[string]string{
 		"application": browser,
 	}
-	results, err := svc.SearchItems(collection, search)
-	if err != nil {
+
+	if pw, err := secretServicePasswordFromServiceSearch(svc, search); err == nil && len(pw) > 0 {
+		return pw, nil
+	}
+
+	var lastErr error
+	for _, collection := range secretServiceCollections(svc) {
+		// Best-effort unlock. go-keyring's Unlock is strict about path identity
+		// (alias vs resolved path) and errors when a collection is already
+		// unlocked; SearchItems/GetSecret still work on unlocked collections.
+		_ = svc.Unlock(collection.Path())
+
+		results, err := svc.SearchItems(collection, search)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if len(results) == 0 {
+			continue
+		}
+
+		pw, err := secretServiceReadItem(svc, results[0])
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		if len(pw) > 0 {
+			return pw, nil
+		}
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("secret not found in keyring for application %q", browser)
+}
+
+// secretServicePasswordFromServiceSearch uses org.freedesktop.Secret.Service.SearchItems,
+// which searches every collection (same as secret-tool).
+func secretServicePasswordFromServiceSearch(svc *secret_service.SecretService, search map[string]string) ([]byte, error) {
+	obj := svc.Object(secretServiceName, secretServicePath)
+
+	var unlocked, locked []dbus.ObjectPath
+	if err := obj.Call(`org.freedesktop.Secret.Service.SearchItems`, 0, search).Store(&unlocked, &locked); err != nil {
 		return nil, err
 	}
-	if len(results) == 0 {
+
+	if len(locked) > 0 {
+		// Best-effort unlock of locked matches; ignore prompt failures so we
+		// can still try already-unlocked results.
+		var unlockedPaths []dbus.ObjectPath
+		var prompt dbus.ObjectPath
+		_ = obj.Call(`org.freedesktop.Secret.Service.Unlock`, 0, locked).Store(&unlockedPaths, &prompt)
+	}
+
+	candidates := make([]dbus.ObjectPath, 0, len(unlocked)+len(locked))
+	candidates = append(candidates, unlocked...)
+	candidates = append(candidates, locked...)
+	if len(candidates) == 0 {
 		return nil, fmt.Errorf("secret not found in keyring")
 	}
-	item := results[0]
 
+	for _, item := range candidates {
+		pw, err := secretServiceReadItem(svc, item)
+		if err != nil || len(pw) == 0 {
+			continue
+		}
+		return pw, nil
+	}
+	return nil, fmt.Errorf("secret not found in keyring")
+}
+
+func secretServiceReadItem(svc *secret_service.SecretService, item dbus.ObjectPath) ([]byte, error) {
 	session, err := svc.OpenSession()
 	if err != nil {
 		return nil, err
@@ -108,8 +188,44 @@ func (s *CookieStore) getSecretServicePassword(browser string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return secret.Value, nil
+}
+
+// secretServiceCollections returns Secret Service collections to search, in
+// priority order: default alias (Chrome's usual home), login, then any others.
+func secretServiceCollections(svc *secret_service.SecretService) []dbus.BusObject {
+	preferred := []dbus.ObjectPath{
+		defaultCollectionAlias,
+		loginCollectionPath,
+	}
+
+	var out []dbus.BusObject
+	seen := map[string]struct{}{}
+	add := func(path dbus.ObjectPath) {
+		if path == `` || path == `/` {
+			return
+		}
+		key := string(path)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		out = append(out, svc.Object(secretServiceName, path))
+	}
+
+	for _, p := range preferred {
+		add(p)
+	}
+
+	obj := svc.Object(secretServiceName, secretServicePath)
+	if val, err := obj.GetProperty(`org.freedesktop.Secret.Service.Collections`); err == nil {
+		if paths, ok := val.Value().([]dbus.ObjectPath); ok {
+			for _, p := range paths {
+				add(p)
+			}
+		}
+	}
+	return out
 }
 
 // getKWalletPassword retrieves the safe storage password via the KWallet D-Bus API.

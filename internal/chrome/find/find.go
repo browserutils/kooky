@@ -30,6 +30,24 @@ func FindBraveCookieStoreFiles() iter.Seq2[*chromeCookieStoreFile, error] {
 	return FindCookieStoreFiles(braveRoots, `brave`)
 }
 
+// cookieDBCandidates returns Chromium cookie DB paths for a profile directory,
+// in preference order (Network/Cookies for Chrome 96+, then legacy Cookies).
+// Only paths that currently exist are returned so callers do not surface
+// spurious open errors for the missing layout.
+func cookieDBCandidates(root, profDir string) []string {
+	candidates := []string{
+		filepath.Join(root, profDir, `Network`, `Cookies`), // Chrome 96+
+		filepath.Join(root, profDir, `Cookies`),
+	}
+	var existing []string
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			existing = append(existing, p)
+		}
+	}
+	return existing
+}
+
 func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName string) iter.Seq2[*chromeCookieStoreFile, error] {
 	return func(yield func(*chromeCookieStoreFile, error) bool) {
 		if rootsFunc == nil {
@@ -63,49 +81,32 @@ func FindCookieStoreFiles(rootsFunc iter.Seq2[string, error], browserName string
 				if !yield(nil, err) {
 					return
 				}
-				st := &chromeCookieStoreFile{
-					Browser:          browserName,
-					Profile:          `Profile 1`,
-					IsDefaultProfile: true,
-					Path:             filepath.Join(root, `Default`, `Network`, `Cookies`), // Chrome 96
-					OS:               runtime.GOOS,
-				}
-				if !yield(st, nil) {
-					return
-				}
-				st = &chromeCookieStoreFile{
-					Browser:          browserName,
-					Profile:          `Profile 1`,
-					IsDefaultProfile: true,
-					Path:             filepath.Join(root, `Default`, `Cookies`),
-					OS:               runtime.GOOS,
-				}
-				if !yield(st, nil) {
-					return
+				for _, cookiePath := range cookieDBCandidates(root, `Default`) {
+					st := &chromeCookieStoreFile{
+						Browser:          browserName,
+						Profile:          `Profile 1`,
+						IsDefaultProfile: true,
+						Path:             cookiePath,
+						OS:               runtime.GOOS,
+					}
+					if !yield(st, nil) {
+						return
+					}
 				}
 				continue
 			}
 			for profDir, profStr := range localState.Profile.InfoCache {
-				st := &chromeCookieStoreFile{
-
-					Browser:          browserName,
-					Profile:          profStr.Name,
-					IsDefaultProfile: profStr.IsUsingDefaultName,
-					Path:             filepath.Join(root, profDir, `Network`, `Cookies`), // Chrome 96
-					OS:               runtime.GOOS,
-				}
-				if !yield(st, nil) {
-					return
-				}
-				st = &chromeCookieStoreFile{
-					Browser:          browserName,
-					Profile:          profStr.Name,
-					IsDefaultProfile: profStr.IsUsingDefaultName,
-					Path:             filepath.Join(root, profDir, `Cookies`),
-					OS:               runtime.GOOS,
-				}
-				if !yield(st, nil) {
-					return
+				for _, cookiePath := range cookieDBCandidates(root, profDir) {
+					st := &chromeCookieStoreFile{
+						Browser:          browserName,
+						Profile:          profStr.Name,
+						IsDefaultProfile: profStr.IsUsingDefaultName,
+						Path:             cookiePath,
+						OS:               runtime.GOOS,
+					}
+					if !yield(st, nil) {
+						return
+					}
 				}
 			}
 		}
