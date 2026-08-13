@@ -22,6 +22,14 @@ func FindFirefoxProfiles() iter.Seq2[Profile, error] {
 	return FindProfiles(firefoxRoots, `firefox`)
 }
 
+// FindZenProfiles returns all Zen Browser (https://zen-browser.app) profiles
+// from known root directories. Zen is a Firefox fork that keeps its own
+// profile tree — separate from Firefox's — but writes profiles.ini in the
+// same format, so it reuses FindProfiles/FindProfilesInRoot as-is.
+func FindZenProfiles() iter.Seq2[Profile, error] {
+	return FindProfiles(zenRoots, `zen`)
+}
+
 // FindProfilesInRoot parses a single profiles.ini from rootDir
 // and returns the discovered profiles.
 func FindProfilesInRoot(rootDir, browserName string) ([]Profile, error) {
